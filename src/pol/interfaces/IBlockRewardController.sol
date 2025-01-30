@@ -53,6 +53,18 @@ interface IBlockRewardController is IPOLErrors {
     /// @param rewardRate The amount of BGT minted to the distributor.
     event BlockRewardProcessed(bytes indexed pubkey, uint64 nextTimestamp, uint256 baseRate, uint256 rewardRate);
 
+    /// @notice Emitted when base BGT is minted to either the operator or their receiver
+    /// @param operator The operator address that earned the base rewards
+    /// @param receiver The address that received the base rewards (operator or their set receiver)
+    /// @param amount The amount of base BGT minted
+    event BaseMinted(address indexed operator, address indexed receiver, uint256 indexed amount);
+
+    /// @notice Emitted when an operator sets or changes their receiver address
+    /// @param operator The operator address that changed their receiver
+    /// @param oldReceiver The previous receiver address (zero if first time setting)
+    /// @param newReceiver The new receiver address (zero if clearing receiver)
+    event OperatorReceiverUpdated(address indexed operator, address indexed oldReceiver, address indexed newReceiver);
+
     /// @notice Returns the constant base rate for BGT.
     /// @return The constant base amount of BGT to be minted in the current block.
     function baseRate() external view returns (uint256);
@@ -152,4 +164,11 @@ interface IBlockRewardController is IPOLErrors {
      * @param _distributor The new distributor contract.
      */
     function setDistributor(address _distributor) external;
+
+    /**
+     * @notice Sets or updates the receiver address for an operator's base BGT rewards
+     * @dev Only the operator can set their receiver
+     * @param receiver The address that will receive base BGT rewards. Set to address(0) to receive rewards directly
+     */
+    function setOperatorReceiver(address receiver) external;
 }

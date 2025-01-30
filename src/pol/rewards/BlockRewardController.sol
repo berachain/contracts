@@ -63,6 +63,9 @@ contract BlockRewardController is IBlockRewardController, OwnableUpgradeable, UU
     /// @notice The reward convexity param in the function, determines how fast it converges to its max, 18 dec.
     int256 public rewardConvexity;
 
+    /// @notice The mapping of operators to their receiver addresses for base rewards
+    mapping(address => address) public operatorReceivers;
+
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
         _disableInitializers();
@@ -235,11 +238,34 @@ contract BlockRewardController is IBlockRewardController, OwnableUpgradeable, UU
         // Use the beaconDepositContract to fetch the operator, Its gauranteed to return a valid address.
         // Beacon Deposit contract will enforce validators to set an operator.
         address operator = beaconDepositContract.getOperator(pubkey);
-        if (base > 0) bgt.mint(operator, base);
-
+        
+        // Check if the operator has set a receiver for their base rewards
+        address receiver = operatorReceivers[operator];
+        // If no receiver is set (address(0)), mint to operator directly
+        if (base > 0) {
+            address mintTo = receiver == address(0) ? operator : receiver;
+            bgt.mint(mintTo, base);
+            emit BaseMinted(operator, mintTo, base);
+        }
+        
         // Mint the scaled rewards BGT for validator reward allocation to the distributor.
         if (reward > 0) bgt.mint(distributor, reward);
 
         return reward;
+    }
+
+    /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
+    /*                       OPERATOR RECEIVERS                   */
+    /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
+
+    /**
+     * @notice Sets or updates the receiver address for an operator's base BGT rewards
+     * @dev Only the operator can set their receiver
+     * @param receiver The address that will receive base BGT rewards. Set to address(0) to receive rewards directly
+     */
+    function setOperatorReceiver(address receiver) external {
+        address oldReceiver = operatorReceivers[msg.sender];
+        operatorReceivers[msg.sender] = receiver;
+        emit OperatorReceiverUpdated(msg.sender, oldReceiver, receiver);
     }
 }
