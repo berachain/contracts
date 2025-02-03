@@ -4,7 +4,7 @@ pragma solidity 0.8.26;
 import "./MockERC20.sol";
 import { IDistributor } from "src/pol/interfaces/IDistributor.sol";
 
-/// @dev For test purposes this contract simulate a malicius ERC20
+/// @dev For test purposes this contract simulate a malicious ERC20
 /// that try to reentrancy attack the distributor contract
 contract ReentrantERC20 is MockERC20 {
     address internal distributor;

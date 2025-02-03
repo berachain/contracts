@@ -57,7 +57,7 @@ contract BlockRewardController is IBlockRewardController, OwnableUpgradeable, UU
     /// @notice The minimum reward rate for BGT after accounting for validator boosts.
     uint256 public minBoostedRewardRate;
 
-    /// @notice The boost mutliplier param in the function, determines the inflation cap, 18 dec.
+    /// @notice The boost multiplier param in the function, determines the inflation cap, 18 dec.
     uint256 public boostMultiplier;
 
     /// @notice The reward convexity param in the function, determines how fast it converges to its max, 18 dec.
@@ -232,7 +232,7 @@ contract BlockRewardController is IBlockRewardController, OwnableUpgradeable, UU
 
         emit BlockRewardProcessed(pubkey, nextTimestamp, base, reward);
 
-        // Use the beaconDepositContract to fetch the operator, Its gauranteed to return a valid address.
+        // Use the beaconDepositContract to fetch the operator, Its guaranteed to return a valid address.
         // Beacon Deposit contract will enforce validators to set an operator.
         address operator = beaconDepositContract.getOperator(pubkey);
         if (base > 0) bgt.mint(operator, base);

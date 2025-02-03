@@ -804,7 +804,7 @@ contract RewardVaultTest is DistributorTest, StakingTest {
         assertEq(updatedAmountRemaining, amountToAdd1 + insufficientAmountToAdd);
     }
 
-    // test the increase in incentive rate when amoutRemaining is not required to be 0.
+    // test the increase in incentive rate when amountRemaining is not required to be 0.
     function testFuzz_AddIncentive_IncreaseIncentiveRate(uint256 newIncentiveRate) public {
         newIncentiveRate = bound(newIncentiveRate, 200 * 1e18 + 1, 1e36);
         // updates the incentive rate to 200 * 1e18 while minRate is 100 * 1e18.

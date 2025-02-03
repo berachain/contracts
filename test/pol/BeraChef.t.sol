@@ -226,8 +226,8 @@ contract BeraChefTest is POLTest {
 
     /// @dev Should fail if default reward allocation contains a weight percentage equal to 0
     function testFail_SetDefaultRewardAllocationWithZeroPercentageWeight() public {
-        address receiverOne = makeAddr("recevierOne");
-        address receiverTwo = makeAddr("recevierTwo");
+        address receiverOne = makeAddr("receiverOne");
+        address receiverTwo = makeAddr("receiverTwo");
         IBeraChef.Weight[] memory weights = new IBeraChef.Weight[](3);
         weights[0] = IBeraChef.Weight(receiver, 5000);
         weights[1] = IBeraChef.Weight(receiverOne, 0);
@@ -305,8 +305,8 @@ contract BeraChefTest is POLTest {
 
     /// @dev Should fail if reward allocation contains a weight percentage equal to 0
     function test_FailIfZeroRewardAllocationWeight() public {
-        address receiverOne = makeAddr("recevierOne");
-        address receiverTwo = makeAddr("recevierTwo");
+        address receiverOne = makeAddr("receiverOne");
+        address receiverTwo = makeAddr("receiverTwo");
         IBeraChef.Weight[] memory weights = new IBeraChef.Weight[](3);
         weights[0] = IBeraChef.Weight(receiver, 5000);
         weights[1] = IBeraChef.Weight(receiverOne, 0);

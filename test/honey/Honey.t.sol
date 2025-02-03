@@ -335,7 +335,7 @@ contract HoneyTest is StdCheats, SoladyTest {
         // Initialize the faultyHoney through the proxy
         FaultyMockHoney(address(honey)).initialize(faultyHoneyOwner);
 
-        // Factory slot has not initializated on the Proxy storage
+        // Factory slot has not initialized on the Proxy storage
         // So factory is equal to address(0)
         // "collidedFactoryValue" variable instead, has taken the value of the factory address
         // since it's pointing to the "original" factory slot of the storage
