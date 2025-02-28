@@ -266,7 +266,7 @@ contract BlockRewardControllerTest is POLTest {
         address receiver = makeAddr("receiver");
         // Set receiver for operator
         vm.prank(operator);
-        blockRewardController.setOperatorReceiver(receiver);
+        blockRewardController.setOperatorReceiver(valData.pubkey, receiver);
         
         // Verify receiver is set correctly
         assertEq(blockRewardController.operatorReceivers(operator), receiver);
@@ -289,11 +289,11 @@ contract BlockRewardControllerTest is POLTest {
         address receiver = makeAddr("receiver");
         // First set a receiver
         vm.prank(operator);
-        blockRewardController.setOperatorReceiver(receiver);
+        blockRewardController.setOperatorReceiver(valData.pubkey, receiver);
         
         // Then clear it by setting to address(0)
         vm.prank(operator);
-        blockRewardController.setOperatorReceiver(address(0));
+        blockRewardController.setOperatorReceiver(valData.pubkey, address(0));
         
         // Verify receiver is cleared
         assertEq(blockRewardController.operatorReceivers(operator), address(0));
@@ -339,7 +339,7 @@ contract BlockRewardControllerTest is POLTest {
         // Setup receivers in BlockRewardController
         address receiver1 = makeAddr("receiver1");
         vm.prank(operator);
-        blockRewardController.setOperatorReceiver(receiver1);
+        blockRewardController.setOperatorReceiver(valData.pubkey, receiver1);
         
         // Don't set receiver for operator2
         
@@ -452,5 +452,28 @@ contract BlockRewardControllerTest is POLTest {
     function _helper_Boost(address user, uint256 amount, bytes memory pubkey) internal {
         amount = _bound(amount, 1, type(uint128).max / 2);
         _helper_ActivateBoost(user, user, pubkey, amount);
+    }
+
+    /// @dev Should fail if not the operator tries to set receiver
+    function test_SetOperatorReceiver_FailIfNotOperator() public {
+        // Try to set receiver from a non-operator address
+        address nonOperator = makeAddr("nonOperator");
+        vm.prank(nonOperator);
+        vm.expectRevert(IPOLErrors.NotOperator.selector);
+        blockRewardController.setOperatorReceiver(valData.pubkey, address(1));
+    }
+
+    /// @dev Should successfully set operator receiver when called by the operator
+    function test_SetOperatorReceiver_Success() public {
+        address receiver = makeAddr("receiver");
+        
+        // Set receiver as the operator
+        vm.prank(operator);
+        vm.expectEmit(true, true, true, true);
+        emit IBlockRewardController.OperatorReceiverUpdated(operator, address(0), receiver);
+        blockRewardController.setOperatorReceiver(valData.pubkey, receiver);
+        
+        // Verify receiver is set correctly
+        assertEq(blockRewardController.operatorReceivers(operator), receiver);
     }
 }

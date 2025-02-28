@@ -260,12 +260,21 @@ contract BlockRewardController is IBlockRewardController, OwnableUpgradeable, UU
 
     /**
      * @notice Sets or updates the receiver address for an operator's base BGT rewards
-     * @dev Only the operator can set their receiver
+     * @dev Only the operator associated with the provided pubkey can set their receiver
+     * @param pubkey The validator's public key used to retrieve the operator from the deposit contract
      * @param receiver The address that will receive base BGT rewards. Set to address(0) to receive rewards directly
      */
-    function setOperatorReceiver(address receiver) external {
-        address oldReceiver = operatorReceivers[msg.sender];
-        operatorReceivers[msg.sender] = receiver;
-        emit OperatorReceiverUpdated(msg.sender, oldReceiver, receiver);
+    function setOperatorReceiver(bytes calldata pubkey, address receiver) external {
+        // Get the operator address from the deposit contract using the provided pubkey
+        address operator = beaconDepositContract.getOperator(pubkey);
+        
+        // Ensure that only the operator can set their receiver
+        if (msg.sender != operator) {
+            NotOperator.selector.revertWith();
+        }
+        
+        address oldReceiver = operatorReceivers[operator];
+        operatorReceivers[operator] = receiver;
+        emit OperatorReceiverUpdated(operator, oldReceiver, receiver);
     }
 }

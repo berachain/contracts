@@ -64,5 +64,5 @@ contract NoopBlockRewardController is IBlockRewardController {
     function setDistributor(address _distributor) external { }
 
     /// @inheritdoc IBlockRewardController
-    function setOperatorReceiver(address _receiver) external { }
+    function setOperatorReceiver(bytes calldata pubkey, address _receiver) external { }
 }
