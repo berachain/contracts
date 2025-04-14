@@ -83,25 +83,27 @@ contract POLGasSimulationSimple is GovernanceBaseTest {
         vm.roll(100);
 
         // Setup proposal actions, encoded call data for governance actions
-        address[] memory targets = new address[](8);
+        address[] memory targets = new address[](9);
         targets[0] = address(blockRewardController);
         targets[1] = address(blockRewardController);
         targets[2] = address(blockRewardController);
         targets[3] = address(blockRewardController);
         targets[4] = address(bgt);
         targets[5] = address(beraChef);
-        targets[6] = address(bgt);
-        targets[7] = address(factory);
+        targets[6] = address(beraChef);
+        targets[7] = address(bgt);
+        targets[8] = address(factory);
 
-        bytes[] memory calldatas = new bytes[](8);
+        bytes[] memory calldatas = new bytes[](9);
         calldatas[0] = abi.encodeCall(BlockRewardController.setRewardRate, (5 ether));
         calldatas[1] = abi.encodeCall(BlockRewardController.setMinBoostedRewardRate, (5 ether));
         calldatas[2] = abi.encodeCall(BlockRewardController.setBoostMultiplier, (3 ether));
         calldatas[3] = abi.encodeCall(BlockRewardController.setRewardConvexity, (0.5 ether));
         calldatas[4] = abi.encodeCall(BGT.whitelistSender, (address(distributor), true));
         calldatas[5] = abi.encodeCall(BeraChef.setRewardAllocationBlockDelay, (0));
-        calldatas[6] = abi.encodeCall(BGT.setMinter, (address(blockRewardController)));
-        calldatas[7] =
+        calldatas[6] = abi.encodeCall(BeraChef.setMaxWeightPerVault, (1e4));
+        calldatas[7] = abi.encodeCall(BGT.setMinter, (address(blockRewardController)));
+        calldatas[8] =
             abi.encodeCall(RewardVaultFactory.setBGTIncentiveDistributor, (address(bgtIncentiveDistributor)));
 
         // Create and execute governance proposals

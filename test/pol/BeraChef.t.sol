@@ -50,6 +50,9 @@ contract BeraChefTest is POLTest {
         beraChef.setMaxNumWeightsPerRewardAllocation(255);
 
         vm.expectRevert();
+        beraChef.setMaxWeightPerVault(1000);
+
+        vm.expectRevert();
         beraChef.setRewardAllocationBlockDelay(255);
 
         vm.expectRevert();
@@ -117,6 +120,51 @@ contract BeraChefTest is POLTest {
         vm.prank(governance);
         beraChef.setMaxNumWeightsPerRewardAllocation(seed);
         assertEq(beraChef.maxNumWeightsPerRewardAllocation(), seed);
+    }
+
+    function test_SetMaxWeightPerVault_FailInvalid() public {
+        vm.prank(governance);
+        vm.expectRevert(IPOLErrors.InvalidMaxWeightPerVault.selector);
+        beraChef.setMaxWeightPerVault(0);
+
+        vm.prank(governance);
+        vm.expectRevert(IPOLErrors.InvalidMaxWeightPerVault.selector);
+        beraChef.setMaxWeightPerVault(1e4 + 1);
+    }
+
+    function test_SetMaxWeightPerVault_FailIfInvalidateDefaultRewardAllocation() public {
+        vm.startPrank(governance);
+        IBeraChef.Weight[] memory weights = new IBeraChef.Weight[](2);
+        weights[0] = IBeraChef.Weight(receiver, 5000);
+        weights[1] = IBeraChef.Weight(receiver2, 5000);
+
+        vm.expectEmit(true, true, true, true);
+        emit IBeraChef.SetDefaultRewardAllocation(IBeraChef.RewardAllocation(1, weights));
+        beraChef.setDefaultRewardAllocation(IBeraChef.RewardAllocation(1, weights));
+
+        // Default reward allocation is set with 2 weights
+        vm.expectRevert(IPOLErrors.InvalidateDefaultRewardAllocation.selector);
+        beraChef.setMaxWeightPerVault(4000);
+    }
+
+    /// @dev Should set the max number of weights per reward allocation
+    function test_SetMaxWeightPerVault() public {
+        vm.expectEmit(true, true, true, true);
+        emit IBeraChef.MaxWeightPerVaultSet(0.2e4);
+        vm.prank(governance);
+        beraChef.setMaxWeightPerVault(uint96(0.2e4));
+        assertEq(beraChef.maxWeightPerVault(), 0.2e4);
+    }
+
+    /// @dev Should set the max number of weights per reward allocation
+    function testFuzz_SetMaxWeightPerVault(uint96 w) public {
+        uint96 minValid = uint96(1e4) / beraChef.maxNumWeightsPerRewardAllocation();
+        minValid += (uint96(1e4) % beraChef.maxNumWeightsPerRewardAllocation() == 0 ? 0 : 1); // ceil value
+
+        w = uint96(bound(w, minValid, 1e4));
+        vm.prank(governance);
+        beraChef.setMaxWeightPerVault(w);
+        assertEq(beraChef.maxWeightPerVault(), w);
     }
 
     /// @dev Should set the reward allocation block delay
@@ -192,7 +240,7 @@ contract BeraChefTest is POLTest {
         weights[1] = IBeraChef.Weight(receiver2, 5000);
         vm.startPrank(governance);
         beraChef.setDefaultRewardAllocation(IBeraChef.RewardAllocation(0, weights));
-        vm.expectRevert(IPOLErrors.InvalidRewardAllocationWeights.selector);
+        vm.expectRevert(IPOLErrors.InvalidateDefaultRewardAllocation.selector);
         beraChef.setVaultWhitelistedStatus(receiver, false, "");
     }
 
@@ -222,18 +270,6 @@ contract BeraChefTest is POLTest {
         vm.prank(governance);
         beraChef.setVaultWhitelistedStatus(receiver, isWhitelisted, "");
         assertEq(beraChef.isWhitelistedVault(receiver), isWhitelisted);
-    }
-
-    /// @dev Should revert if new reward allocation contains a weight percentage equal to 0
-    function test_FailIfNewRewardAllocationWith_ZeroPercentageWeight() public {
-        IBeraChef.Weight[] memory weights = new IBeraChef.Weight[](3);
-        weights[0] = IBeraChef.Weight(receiver, 5000);
-        weights[1] = IBeraChef.Weight(receiver, 5000);
-        weights[2] = IBeraChef.Weight(receiver2, 0);
-
-        vm.prank(operator);
-        vm.expectRevert(IPOLErrors.ZeroPercentageWeight.selector);
-        beraChef.queueNewRewardAllocation(valData.pubkey, uint64(block.number + 1), weights);
     }
 
     /// @dev Should set the default reward allocation
@@ -278,6 +314,54 @@ contract BeraChefTest is POLTest {
         beraChef.queueNewRewardAllocation(valData.pubkey, uint64(block.number + 1), weights);
     }
 
+    /// @dev Should fail if the new reward allocation weights too high
+    function test_FailIfTheNewRewardAllocationHasInvalidWeights() public {
+        vm.prank(governance);
+        beraChef.setMaxWeightPerVault(uint96(0.2e4));
+
+        IBeraChef.Weight[] memory weights = new IBeraChef.Weight[](2);
+
+        weights[0] = IBeraChef.Weight(receiver, 5000);
+        weights[1] = IBeraChef.Weight(makeAddr("receiverOne"), 5000);
+
+        vm.prank(operator);
+        vm.expectRevert(IPOLErrors.InvalidWeight.selector);
+        beraChef.queueNewRewardAllocation(valData.pubkey, uint64(block.number + 1), weights);
+    }
+
+    /// @dev Should fail if the new reward allocation weights too high TODO
+    function test_FallbackToDefaultRAWhenLoweringMaxWeightPerVault() public {
+        vm.prank(governance);
+        beraChef.setVaultWhitelistedStatus(receiver2, true, "");
+
+        IBeraChef.Weight[] memory defaultWeights = new IBeraChef.Weight[](2);
+        defaultWeights[0] = IBeraChef.Weight(receiver, 5000);
+        defaultWeights[1] = IBeraChef.Weight(receiver2, 5000);
+        vm.prank(governance);
+        beraChef.setDefaultRewardAllocation(IBeraChef.RewardAllocation(0, defaultWeights));
+
+        IBeraChef.Weight[] memory weights = new IBeraChef.Weight[](1);
+        weights[0] = IBeraChef.Weight(receiver, 10_000);
+
+        vm.prank(operator);
+        beraChef.queueNewRewardAllocation(valData.pubkey, uint64(block.number + 1), weights);
+
+        vm.roll(block.number + 1);
+        vm.prank(address(distributor));
+        beraChef.activateReadyQueuedRewardAllocation(valData.pubkey);
+        IBeraChef.RewardAllocation memory ra = beraChef.getActiveRewardAllocation(valData.pubkey);
+        assertEq(1, ra.weights.length);
+
+        vm.prank(governance);
+        beraChef.setMaxWeightPerVault(uint96(6000)); // invalidates queued reward allocation
+
+        ra = beraChef.getActiveRewardAllocation(valData.pubkey);
+        IBeraChef.RewardAllocation memory dra = beraChef.getDefaultRewardAllocation();
+        assertEq(dra.weights.length, ra.weights.length);
+        assertEq(dra.weights[0].percentageNumerator, ra.weights[0].percentageNumerator);
+        assertEq(dra.weights[1].percentageNumerator, ra.weights[1].percentageNumerator);
+    }
+
     /// @dev Should fail if not a whitelisted vault
     function test_FailIfNotWhitelistedVault() public {
         vm.prank(governance);
@@ -300,14 +384,13 @@ contract BeraChefTest is POLTest {
 
     /// @dev Should fail if reward allocation contains a weight percentage equal to 0
     function test_FailIfZeroRewardAllocationWeight() public {
-        address receiverOne = makeAddr("recevierOne");
-        address receiverTwo = makeAddr("recevierTwo");
         IBeraChef.Weight[] memory weights = new IBeraChef.Weight[](3);
         weights[0] = IBeraChef.Weight(receiver, 5000);
-        weights[1] = IBeraChef.Weight(receiverOne, 0);
-        weights[2] = IBeraChef.Weight(receiverTwo, 5000);
+        weights[1] = IBeraChef.Weight(makeAddr("receiverOne"), 0);
+        weights[2] = IBeraChef.Weight(makeAddr("receiverTwo"), 5000);
+
         vm.prank(operator);
-        vm.expectRevert(IPOLErrors.ZeroPercentageWeight.selector);
+        vm.expectRevert(IPOLErrors.InvalidWeight.selector);
         beraChef.queueNewRewardAllocation(valData.pubkey, uint64(block.number + 1), weights);
     }
 

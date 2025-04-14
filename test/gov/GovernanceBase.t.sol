@@ -54,7 +54,7 @@ abstract contract GovernanceBaseTest is POLTest {
                 uint256 index = i * vaults.length + j;
                 targets[index] = address(vault);
                 calldatas[index] = abi.encodeCall(
-                    RewardVault.whitelistIncentiveToken, (address(incentives[i]), 100 ether, address(this))
+                    RewardVault.whitelistIncentiveToken, (address(incentives[i]), 1 ether, address(this))
                 );
             }
         }
@@ -66,7 +66,7 @@ abstract contract GovernanceBaseTest is POLTest {
                 RewardVault vault = vaults[j];
                 deal(address(incentives[i]), address(this), 100 ether);
                 incentives[i].approve(address(vault), 100 ether);
-                vault.addIncentive(address(incentives[i]), 100 ether, 1 ether);
+                vault.addIncentive(address(incentives[i]), 100 ether, 100 ether);
             }
         }
     }

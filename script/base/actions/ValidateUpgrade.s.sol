@@ -26,6 +26,11 @@ contract ValidateUpgrade is Script {
         Upgrades.validateUpgrade("RewardVault.sol", options);
         console2.log("RewardVault can be upgraded successfully.");
 
+        // check RewardVault 3 days rewards duration upgrade
+        options.referenceContract = "RewardVault_V1.sol:RewardVault_V1";
+        Upgrades.validateUpgrade("RewardVault.sol", options);
+        console2.log("RewardVault V2 can be upgraded successfully.");
+
         // Check RewardVaultFactory safe upgrade
         options.referenceContract = "RewardVaultFactory_V0.sol:RewardVaultFactory_V0";
         Upgrades.validateUpgrade("RewardVaultFactory.sol", options);

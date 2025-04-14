@@ -58,6 +58,9 @@ contract NoopBeraChef is IBeraChef {
     function setMaxNumWeightsPerRewardAllocation(uint8) external pure { }
 
     /// @inheritdoc IBeraChef
+    function setMaxWeightPerVault(uint96) external pure { }
+
+    /// @inheritdoc IBeraChef
     function setRewardAllocationBlockDelay(uint64) external pure { }
 
     /// @inheritdoc IBeraChef

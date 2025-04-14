@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.26;
 
-import { IPOLErrors } from "./IPOLErrors.sol";
+import { IPOLErrors } from "../../pol/interfaces/IPOLErrors.sol";
 import { IStakingRewards } from "../../base/IStakingRewards.sol";
 
-interface IRewardVault is IPOLErrors, IStakingRewards {
+interface IRewardVault_V1 is IPOLErrors, IStakingRewards {
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
     /*                           EVENTS                           */
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
@@ -221,12 +221,4 @@ interface IRewardVault is IPOLErrors, IStakingRewards {
     /// @param incentiveRate The amount of the token to incentivize per BGT emission.
     /// @dev Permissioned function, only callable by incentive token manager.
     function addIncentive(address token, uint256 amount, uint256 incentiveRate) external;
-
-    /// @notice Process incentives added via IERC20.transfer, adding them to the incentive accounting.
-    /// @notice Allows permissionless incentive addition, without dossing the manager possibility to
-    /// let the incentive accounting go to 0 in order to be able to decrease the incentive rate.
-    /// @param token The address of the token to process.
-    /// @param amount The amount of token to account as incentive.
-    /// @dev Permissioned function, only callable by incentive token manager.
-    function accountIncentives(address token, uint256 amount) external;
 }

@@ -49,6 +49,10 @@ interface IPOLErrors is IStakingRewardsErrors {
     error NotFactoryVault();
     // Signature: 0x978dc040
     error ZeroPercentageWeight();
+    // Signature: 0x585b9263
+    error InvalidWeight();
+    // Signature: 0xcb1ee123
+    error InvalidMaxWeightPerVault();
     // Signature: 0xab396d11
     error InvalidCommissionValue();
     // Signature: 0x0c32c4fa
@@ -109,6 +113,8 @@ interface IPOLErrors is IStakingRewardsErrors {
     error MinIncentiveRateIsZero();
     // Signature: 0x8e7572da
     error InvariantCheckFailed();
+    // Signature: 0x451fa036
+    error InvalidIncentiveRate();
 
     /*                         BEACON ROOTS                        */
 

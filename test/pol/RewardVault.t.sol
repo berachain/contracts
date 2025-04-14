@@ -734,6 +734,18 @@ contract RewardVaultTest is DistributorTest, StakingTest {
         vault.addIncentive(address(dai), 10 * 1e18, incentiveRate);
     }
 
+    function test_AddIncentive_FailsIfRateLessThanMinIncentiveRate() public {
+        testFuzz_AddIncentive_FailsIfRateLessThanMinIncentiveRate(100 * 1e18 - 1);
+    }
+
+    function testFuzz_AddIncentive_FailsIfRateLessThanMinIncentiveRate(uint256 incentiveRate) public {
+        incentiveRate = bound(incentiveRate, 0, 100 * 1e18 - 1);
+        test_WhitelistIncentiveToken();
+        vm.prank(daiIncentiveManager);
+        vm.expectRevert(IPOLErrors.InvalidIncentiveRate.selector);
+        vault.addIncentive(address(dai), 100 * 1e18, incentiveRate);
+    }
+
     function test_AddIncentive_FailsIfNotWhitelisted() public {
         vm.expectRevert(IPOLErrors.TokenNotWhitelisted.selector);
         vault.addIncentive(address(dai), 10 * 1e18, 10 * 1e18);
@@ -766,79 +778,36 @@ contract RewardVaultTest is DistributorTest, StakingTest {
         vault.addIncentive(address(dai), 10 * 1e18, 10 * 1e18);
     }
 
-    // test incentiveRate >= incentiveRateStored
-    // amount >= FixedPointMathLib.mulDiv(amountRemaining, rateDelta, incentiveRateStored)
-    function test_IncreaseIncentiveRate() public {
-        uint256 newIncentiveRate = 150 * 1e18;
-        uint256 amountToAdd1 = 5_000_000 * 1e18;
-        uint256 amountToAdd2 = 2_500_000 * 1e18;
-        addIncentives(amountToAdd1, 100 * 1e18);
-
-        // amount >= FixedPointMathLib.mulDiv(amountRemaining, rateDelta, incentiveRateStored), incentive rate updated
-        vm.prank(daiIncentiveManager);
-        vault.addIncentive(address(dai), amountToAdd2, newIncentiveRate);
-        // check the dai incentive data
-        (uint256 updatedMinIncentiveRate, uint256 updatedIncentiveRate, uint256 updatedAmountRemaining,) =
-            vault.incentives(address(dai));
-
-        assertEq(updatedMinIncentiveRate, 100 * 1e18);
-        assertEq(updatedIncentiveRate, newIncentiveRate);
-        assertEq(updatedAmountRemaining, amountToAdd1 + amountToAdd2);
-    }
-
-    // amount < FixedPointMathLib.mulDiv(amountRemaining, rateDelta, incentiveRateStored)
-    function test_DoNotUpdateIncentiveRateWhenAmountIsInsufficient() public {
-        // Set an initial incentive rate and add incentives
+    // Incentive rate can always be increased.
+    function testFuzz_AddIncentive_IncreaseIncentiveRate(uint256 amount, uint256 newIncentiveRate) public {
+        uint256 initialAmount = 100 * 1e18;
         uint256 initialIncentiveRate = 100 * 1e18;
-        uint256 amountToAdd1 = 5_000_000 * 1e18;
-        addIncentives(amountToAdd1, initialIncentiveRate);
+        addIncentives(initialAmount, initialIncentiveRate);
 
-        // Attempt to update the incentive rate with an insufficient amount
-        uint256 higherIncentiveRate = 150 * 1e18;
-        uint256 insufficientAmountToAdd = 1000 * 1e18; // set to be insufficient
+        amount = bound(amount, 100 * 1e18, 5000 * 1e18);
+        newIncentiveRate = bound(newIncentiveRate, initialIncentiveRate + 1, 1e36);
 
         vm.prank(daiIncentiveManager);
-        vault.addIncentive(address(dai), insufficientAmountToAdd, higherIncentiveRate);
-
-        (uint256 updatedMinIncentiveRate, uint256 updatedIncentiveRate, uint256 updatedAmountRemaining,) =
-            vault.incentives(address(dai));
-
-        // The incentive rate should not be updated
-        assertEq(updatedMinIncentiveRate, 100 * 1e18);
-        assertEq(updatedIncentiveRate, initialIncentiveRate);
-        assertEq(updatedAmountRemaining, amountToAdd1 + insufficientAmountToAdd);
-    }
-
-    // test the increase in incentive rate when amoutRemaining is not required to be 0.
-    function testFuzz_AddIncentive_IncreaseIncentiveRate(uint256 newIncentiveRate) public {
-        newIncentiveRate = bound(newIncentiveRate, 200 * 1e18 + 1, 1e36);
-        // updates the incentive rate to 200 * 1e18 while minRate is 100 * 1e18.
-        addIncentives(100 * 1e18, 200 * 1e18);
-        // amountRemaining is 100 * 1e18.
-        uint256 bgtIncentivizedWithCurrentRate = (100 * 1e18 * 1e18) / (200 * 1e18);
-        uint256 minAmountToAdd =
-            FixedPointMathLib.mulDiv(bgtIncentivizedWithCurrentRate, (newIncentiveRate - 200 * 1e18), 1e18);
-        minAmountToAdd = FixedPointMathLib.max(minAmountToAdd, 100 * 1e18);
-        // add more dai incentive with rate of newIncentiveRate
-        vm.prank(daiIncentiveManager);
-        vault.addIncentive(address(dai), minAmountToAdd, newIncentiveRate);
+        vault.addIncentive(address(dai), amount, newIncentiveRate);
         (, uint256 incentiveRate, uint256 amountRemaining,) = vault.incentives(address(dai));
         assertEq(incentiveRate, newIncentiveRate);
-        assertEq(amountRemaining, 100 * 1e18 + minAmountToAdd);
+        assertEq(amountRemaining, initialAmount + amount);
     }
 
     // test the decrease in incentive rate when amountRemaining is not 0.
-    function testFuzz_AddIncentive_IncentiveRateNotChanged(uint256 newIncentiveRate) public {
-        newIncentiveRate = bound(newIncentiveRate, 100 * 1e18 + 1, 200 * 1e18 - 1);
+    function testFuzz_AddIncentive_IncentiveRateNotChanged(uint256 amount, uint256 newIncentiveRate) public {
+        uint256 initialAmount = 100 * 1e18;
+        uint256 initialIncentiveRate = 200 * 1e18;
         // updates the incentive rate to 200 * 1e18 while minRate is 100 * 1e18.
-        addIncentives(101 * 1e18, 200 * 1e18);
+        addIncentives(initialAmount, initialIncentiveRate);
+
+        amount = bound(amount, 100 * 1e18, 5_000_000 * 1e18);
+        newIncentiveRate = bound(newIncentiveRate, 100 * 1e18, initialIncentiveRate - 1);
         // add more dai incentive with rate of newIncentiveRate
         // it wont change the rate as amountRemaining is not 0 and newIncentiveRate is less than current rate.
         vm.prank(daiIncentiveManager);
-        vault.addIncentive(address(dai), 100 * 1e18, newIncentiveRate);
-        (, uint256 incentiveRate, uint256 amountRemaining,) = vault.incentives(address(dai));
-        assertNotEq(incentiveRate, newIncentiveRate);
-        assertEq(amountRemaining, 201 * 1e18);
+        vm.expectRevert(IPOLErrors.InvalidIncentiveRate.selector);
+        vault.addIncentive(address(dai), amount, newIncentiveRate);
     }
 
     // incentive rate changes if undistributed incentive amount is 0.
@@ -1214,5 +1183,43 @@ contract RewardVaultTest is DistributorTest, StakingTest {
         );
         emit IRewardVault.IncentivesProcessed(valData.pubkey, address(maxGasConsumeERC20), 1e17, validatorShare);
         vault.notifyRewardAmount(valData.pubkey, 1e17);
+    }
+
+    function test_AccountIncentives_FailsIfNotManager() public {
+        _addIncentiveToken(address(dai), daiIncentiveManager, 500 * 1e18, 100 * 1e18);
+
+        vm.startPrank(makeAddr("fail"));
+        vm.expectRevert(abi.encodeWithSelector(IPOLErrors.NotIncentiveManager.selector));
+        vault.accountIncentives(address(dai), 100e18);
+    }
+
+    function test_AccountIncentives_FailsIfAmountSmall() public {
+        _addIncentiveToken(address(dai), daiIncentiveManager, 500 * 1e18, 100 * 1e18);
+
+        vm.startPrank(daiIncentiveManager);
+        vm.expectRevert(abi.encodeWithSelector(IPOLErrors.AmountLessThanMinIncentiveRate.selector));
+        vault.accountIncentives(address(dai), 1e18);
+    }
+
+    function test_AccountIncentives_FailsIfNotEnoughBalance() public {
+        _addIncentiveToken(address(dai), daiIncentiveManager, 500 * 1e18, 100 * 1e18);
+
+        vm.startPrank(daiIncentiveManager);
+        vm.expectRevert(abi.encodeWithSelector(IPOLErrors.NotEnoughBalance.selector));
+        vault.accountIncentives(address(dai), 100e18);
+    }
+
+    function test_AccountIncentives() public {
+        _addIncentiveToken(address(dai), daiIncentiveManager, 500 * 1e18, 100 * 1e18);
+        deal(address(dai), address(vault), dai.balanceOf(address(vault)) + 100e18);
+
+        (,, uint256 amountRemaining,) = vault.incentives(address(dai));
+        assertEq(amountRemaining, 500e18);
+
+        vm.startPrank(daiIncentiveManager);
+        vault.accountIncentives(address(dai), 100e18);
+
+        (,, amountRemaining,) = vault.incentives(address(dai));
+        assertEq(amountRemaining, 600e18);
     }
 }

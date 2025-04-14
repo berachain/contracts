@@ -103,7 +103,7 @@ abstract contract StakingTest is Test {
 
     function test_GetRewards() public virtual {
         test_NotifyRewardsSetRewardRate();
-        vm.warp(block.timestamp + 7 days);
+        vm.warp(block.timestamp + VAULT.rewardsDuration());
         uint256 earned = VAULT.earned(address(this));
         _getReward(address(this), address(this), address(this));
         assertEq(rewardToken.balanceOf(address(this)), earned);
@@ -124,11 +124,11 @@ abstract contract StakingTest is Test {
         test_NotifyRewardsDoesNotSetRewardRate();
         // first stake sets the reward rate.
         performStake(address(this), 10 ether);
-        uint256 expectedRewardRate = FixedPointMathLib.fullMulDiv(10 ether, 1e18, 7 days);
+        uint256 expectedRewardRate = FixedPointMathLib.fullMulDiv(10 ether, 1e18, VAULT.rewardsDuration());
         assertEq(VAULT.rewardRate(), expectedRewardRate);
         assertEq(VAULT.lastTimeRewardApplicable(), block.timestamp);
         assertEq(VAULT.lastUpdateTime(), block.timestamp);
-        assertEq(VAULT.periodFinish(), block.timestamp + 7 days);
+        assertEq(VAULT.periodFinish(), block.timestamp + VAULT.rewardsDuration());
     }
 
     function test_NotifyRewardsFailsIfRewardInsolvent() public virtual {
@@ -228,21 +228,22 @@ abstract contract StakingTest is Test {
         performStake(user, amount);
         uint256 undistributedRewards = amount * PRECISION - VAULT.rewardRate() * VAULT.rewardsDuration();
         assertEq(VAULT.undistributedRewards(), undistributedRewards);
-        vm.warp(block.timestamp + 3 days);
-        uint256 leftOver = 4 days * VAULT.rewardRate();
+        vm.warp(block.timestamp + 1 days);
+        // 2 days left in the reward cycle
+        uint256 leftOver = 2 days * VAULT.rewardRate();
         undistributedRewards += leftOver;
         _withdraw(user, amount);
         // reward rate wont be set as supply is 0
         performNotify(1 ether);
         undistributedRewards += 1 ether * PRECISION;
         assertEq(VAULT.undistributedRewards(), undistributedRewards);
-        assertEq(VAULT.periodFinish(), block.timestamp + 4 days);
+        assertEq(VAULT.periodFinish(), block.timestamp + 2 days);
 
         // notify rewards again
         performNotify(1 ether);
         undistributedRewards += 1 ether * PRECISION;
         assertEq(VAULT.undistributedRewards(), undistributedRewards);
-        assertEq(VAULT.periodFinish(), block.timestamp + 4 days);
+        assertEq(VAULT.periodFinish(), block.timestamp + 2 days);
         // reward rate will be set after this
         performStake(user, amount);
         assertEq(VAULT.rewardRate(), undistributedRewards / rewardsDuration);
@@ -251,7 +252,7 @@ abstract contract StakingTest is Test {
         assertEq(VAULT.periodFinish(), block.timestamp + rewardsDuration);
 
         // test another notify rewards with empty vault after periodFinish
-        vm.warp(block.timestamp + 8 days);
+        vm.warp(block.timestamp + 4 days);
         _withdraw(user, amount);
         assertEq(VAULT.undistributedRewards(), undistributedRewards);
         performNotify(1 ether);
@@ -267,13 +268,13 @@ abstract contract StakingTest is Test {
         performNotify(100 ether);
         performStake(user, 100 ether);
         uint256 blockTimestamp = vm.getBlockTimestamp();
-        // reward rate is computed over default rewards duration of 7 days
-        uint256 startingRate = FixedPointMathLib.fullMulDiv(100 ether, PRECISION, 7 days);
+        // reward rate is computed over default rewards duration of 3 days
+        uint256 startingRate = FixedPointMathLib.fullMulDiv(100 ether, PRECISION, 3 days);
         assertEq(VAULT.rewardRate(), startingRate);
 
-        vm.warp(blockTimestamp + 1 days);
+        vm.warp(blockTimestamp + 0.5 days);
         blockTimestamp = vm.getBlockTimestamp();
-        assertApproxEqAbs(VAULT.earned(user), FixedPointMathLib.fullMulDiv(startingRate, 1 days, PRECISION), 1e2);
+        assertApproxEqAbs(VAULT.earned(user), FixedPointMathLib.fullMulDiv(startingRate, 0.5 days, PRECISION), 1e2);
 
         // changing rewards duration is allowed during reward cycle
         _setRewardsDuration(4 days);
@@ -281,22 +282,22 @@ abstract contract StakingTest is Test {
 
         // does not affect reward rate and thus user earned amount...
         assertEq(VAULT.rewardRate(), startingRate);
-        vm.warp(blockTimestamp + 1 days);
+        vm.warp(blockTimestamp + 0.5 days);
         blockTimestamp = vm.getBlockTimestamp();
-        assertApproxEqAbs(VAULT.earned(user), FixedPointMathLib.fullMulDiv(startingRate, 2 days, PRECISION), 1e2);
+        assertApproxEqAbs(VAULT.earned(user), FixedPointMathLib.fullMulDiv(startingRate, 1 days, PRECISION), 1e2);
 
         // ... until a new amount is notified to the vault
         performNotify(100 ether);
 
-        uint256 leftOver = 100 ether * PRECISION - startingRate * 2 days;
+        uint256 leftOver = 100 ether * PRECISION - startingRate * 1 days;
         uint256 newRate = (100 ether * PRECISION + leftOver) / 4 days;
         assertEq(VAULT.rewardRate(), newRate);
 
         vm.warp(blockTimestamp + 1 days);
         blockTimestamp = vm.getBlockTimestamp();
-        uint256 expectedEarned = FixedPointMathLib.fullMulDiv(startingRate, 2 days, PRECISION)
+        uint256 expectedEarned = FixedPointMathLib.fullMulDiv(startingRate, 1 days, PRECISION)
             + FixedPointMathLib.fullMulDiv(newRate, 1 days, PRECISION);
-        assertApproxEqAbs(VAULT.earned(user), expectedEarned, 1e2);
+        assertApproxEqAbs(VAULT.earned(user), expectedEarned, 2e2);
     }
 
     /// @dev Changing rewards duration during reward cycle afftects users staking in different times.
@@ -307,29 +308,30 @@ abstract contract StakingTest is Test {
         performNotify(100 ether);
         performStake(user, 100 ether);
 
-        uint256 startingRate = FixedPointMathLib.fullMulDiv(100 ether, PRECISION, 7 days);
-        vm.warp(blockTimestamp + 1 days);
+        // default rewards duration is 3 days
+        uint256 startingRate = FixedPointMathLib.fullMulDiv(100 ether, PRECISION, 3 days);
+        vm.warp(blockTimestamp + 0.5 days);
         blockTimestamp = vm.getBlockTimestamp();
 
         _setRewardsDuration(4 days);
 
         // user staking after _setRewardsDuration is still earning at the same rate until a new notify
         performStake(user2, 100 ether);
-        vm.warp(blockTimestamp + 1 days);
+        vm.warp(blockTimestamp + 0.5 days);
         blockTimestamp = vm.getBlockTimestamp();
 
         performNotify(100 ether);
 
-        uint256 leftOver = 100 ether - FixedPointMathLib.fullMulDiv(startingRate, 2 days, PRECISION);
+        uint256 leftOver = 100 ether - FixedPointMathLib.fullMulDiv(startingRate, 1 days, PRECISION);
         uint256 newRate = FixedPointMathLib.fullMulDiv(100 ether + leftOver, PRECISION, 4 days);
 
         vm.warp(blockTimestamp + 1 days);
         blockTimestamp = vm.getBlockTimestamp();
-        uint256 userExpectedEarned = FixedPointMathLib.fullMulDiv(startingRate, 1 days, PRECISION)
-            + FixedPointMathLib.fullMulDiv(startingRate, 1 days, PRECISION) / 2
+        uint256 userExpectedEarned = FixedPointMathLib.fullMulDiv(startingRate, 0.5 days, PRECISION)
+            + FixedPointMathLib.fullMulDiv(startingRate, 0.5 days, PRECISION) / 2
             + FixedPointMathLib.fullMulDiv(newRate, 1 days, PRECISION) / 2;
 
-        uint256 user2ExpectedEarned = FixedPointMathLib.fullMulDiv(startingRate, 1 days, PRECISION) / 2
+        uint256 user2ExpectedEarned = FixedPointMathLib.fullMulDiv(startingRate, 0.5 days, PRECISION) / 2
             + FixedPointMathLib.fullMulDiv(newRate, 1 days, PRECISION) / 2;
 
         assertApproxEqAbs(VAULT.earned(user), userExpectedEarned, 5e2);

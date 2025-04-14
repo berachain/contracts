@@ -181,7 +181,7 @@ contract UtilsTest is Test {
         uint256 gas = gasleft();
         _exeedGasLimitToken.transfer(to, 1e18);
         uint256 gasUsed = gas - gasleft();
-        assertGt(gasUsed, 5e5); // Check used for the transfer is grater than the limit (500k)
+        assertGt(gasUsed, 5e5); // Check used for the transfer is greater than the limit (500k)
 
         bool success = address(_exeedGasLimitToken).trySafeTransfer(address(this), 1e18);
         assertFalse(success);

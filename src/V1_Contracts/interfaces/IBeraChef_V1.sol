@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.26;
 
-import { IPOLErrors } from "./IPOLErrors.sol";
+import { IPOLErrors } from "../../pol/interfaces/IPOLErrors.sol";
 
 /// @notice Interface of the BeraChef module
-interface IBeraChef is IPOLErrors {
+interface IBeraChef_V1 is IPOLErrors {
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
     /*                          STRUCTS                           */
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
@@ -51,10 +51,6 @@ interface IBeraChef is IPOLErrors {
     /// @notice Emitted when the maximum number of weights per reward allocation has been set.
     /// @param maxNumWeightsPerRewardAllocation The maximum number of weights per reward allocation.
     event MaxNumWeightsPerRewardAllocationSet(uint8 maxNumWeightsPerRewardAllocation);
-
-    /// @notice Emitted when the maximum weight per vault in a reward allocation has been set.
-    /// @param maxWeightPerVault The maximum weight per vault (in basis points).
-    event MaxWeightPerVaultSet(uint96 maxWeightPerVault);
 
     /// @notice Emitted when the delay in blocks before a new reward allocation can go into effect has been set.
     /// @param rewardAllocationBlockDelay The delay in blocks before a new reward allocation can go into effect.
@@ -208,9 +204,6 @@ interface IBeraChef is IPOLErrors {
 
     /// @notice Sets the maximum number of weights per reward allocation.
     function setMaxNumWeightsPerRewardAllocation(uint8 _maxNumWeightsPerRewardAllocation) external;
-
-    /// @notice Sets the maximum weight a vault can assume in a reward allocation.
-    function setMaxWeightPerVault(uint96 _maxWeightPerVault) external;
 
     /// @notice Sets the delay in blocks before a new reward allocation can be queued.
     function setRewardAllocationBlockDelay(uint64 _rewardAllocationBlockDelay) external;

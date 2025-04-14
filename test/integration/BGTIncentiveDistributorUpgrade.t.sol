@@ -26,9 +26,8 @@ import {
 } from "script/pol/POLAddresses.sol";
 
 import { BGT_INCENTIVE_DISTRIBUTOR_SALT } from "script/pol/POLSalts.sol";
-/// @title BGTIncentiveDistributorUpgradeTest
-/// @notice Base contract to test the protocol functions after certain governance actions on a fork of live network
 
+/// @title BGTIncentiveDistributorUpgradeTest
 contract BGTIncentiveDistributorUpgradeTest is Create2Deployer, BGTIncentiveDistributorDeployer, Test {
     address safeOwner = 0xD13948F99525FB271809F45c268D72a3C00a568D;
     // pubkey of BicroStrategy validator, distribution at block 2286450
