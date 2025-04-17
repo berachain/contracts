@@ -355,4 +355,129 @@ contract CollateralVaultTest is HoneyBaseTest {
         assertEq(sharesAfter, 0);
         assertEq(dai.balanceOf(receiver), redeemedDai);
     }
+
+    function test_Deposit_InCustody() external {
+        // generate custody address and give infinite allowance to usdtVault
+        address custody = getCustodyAndSetAllowanceToVault();
+
+        // deposit some usdt in the vault
+        usdt.transfer(address(factory), 1000e6);
+        vm.startPrank(address(factory));
+        usdt.approve(address(usdtVault), 1000e6);
+        usdtVault.deposit(100e6, address(factory));
+        assertEq(usdt.balanceOf(address(usdtVault)), 100e6);
+
+        // when custody is set, all usdtVault usdt moves to the custody address
+        usdtVault.setCustodyInfo(true, custody);
+        assertEq(usdt.balanceOf(address(usdtVault)), 0);
+        assertEq(usdt.balanceOf(custody), 100e6);
+
+        // test deposit in custody
+        usdtVault.deposit(100e6, address(factory));
+        assertEq(usdt.balanceOf(address(usdtVault)), 0);
+        assertEq(usdt.balanceOf(custody), 200e6);
+
+        // when custody is removed, all usdt moves back to the usdtVault
+        usdtVault.setCustodyInfo(false, address(custody));
+        assertEq(usdt.balanceOf(address(usdtVault)), 200e6);
+        assertEq(usdt.balanceOf(custody), 0);
+    }
+
+    function test_Mint_inCustody() external {
+        // generate custody address and give infinite allowance to usdtVault
+        address custody = getCustodyAndSetAllowanceToVault();
+
+        usdt.transfer(address(factory), 1000e6);
+        vm.startPrank(address(factory));
+        usdt.approve(address(usdtVault), 1000e6);
+
+        // set the custody vault
+        usdtVault.setCustodyInfo(true, custody);
+
+        // mint 100e18 share of vault, which means 100e6 usdt required
+        usdtVault.mint(100e18, address(factory));
+        assertEq(usdt.balanceOf(address(usdtVault)), 0);
+        assertEq(usdt.balanceOf(custody), 100e6);
+
+        // mint more shares
+        usdtVault.mint(100e18, address(factory));
+        assertEq(usdt.balanceOf(address(usdtVault)), 0);
+        assertEq(usdt.balanceOf(custody), 200e6);
+
+        // when custody is removed, all usdt moves back to the usdtVault
+        usdtVault.setCustodyInfo(false, address(custody));
+        assertEq(usdt.balanceOf(address(usdtVault)), 200e6);
+        assertEq(usdt.balanceOf(custody), 0);
+    }
+
+    function test_redeem_inCustody() external {
+        // generate custody address and give infinite allowance to usdtVault
+        address custody = getCustodyAndSetAllowanceToVault();
+        usdt.transfer(address(factory), 1000e6);
+
+        // set the custody vault
+        vm.startPrank(address(factory));
+        usdtVault.setCustodyInfo(true, custody);
+
+        usdt.approve(address(usdtVault), 1000e6);
+        usdtVault.deposit(100e6, address(factory));
+        assertEq(usdt.balanceOf(address(usdtVault)), 0);
+        assertEq(usdt.balanceOf(custody), 100e6);
+
+        // redeem from custody
+        uint256 sharesToRedeem = 50e6 * 1e12;
+        usdtVault.redeem(sharesToRedeem, address(factory), address(factory));
+        assertEq(usdt.balanceOf(address(usdtVault)), 0);
+        assertEq(usdt.balanceOf(custody), 50e6);
+
+        // redeem more than the custody balance
+        sharesToRedeem = 100e6 * 1e12;
+        vm.expectRevert(ERC4626.RedeemMoreThanMax.selector);
+        usdtVault.redeem(sharesToRedeem, address(factory), address(factory));
+    }
+
+    function test_setCustodyInfo() external {
+        // generate custody address and give infinite allowance to usdtVault
+        address custody = getCustodyAndSetAllowanceToVault();
+
+        // should revert if set custody vault with zero address
+        vm.prank(address(factory));
+        vm.expectRevert(IHoneyErrors.ZeroAddress.selector);
+        usdtVault.setCustodyInfo(true, address(0));
+
+        // should set custody vault successfully
+        vm.prank(address(factory));
+        vm.expectEmit(true, true, true, true);
+        emit CollateralVault.CustodyInfoSet(true, custody);
+        usdtVault.setCustodyInfo(true, custody);
+        (bool isCustodyVault, address custodyAddress) = usdtVault.custodyInfo();
+        assertEq(isCustodyVault, true);
+        assertEq(custodyAddress, custody);
+
+        // should revert if try to change custody vault without removing the existing custody vault
+        vm.prank(address(factory));
+        vm.expectRevert(IHoneyErrors.InvalidCustodyInfoInput.selector);
+        usdtVault.setCustodyInfo(true, address(factory));
+
+        // should revert if try to remove custody vault without passing existing custody vault address
+        vm.prank(address(factory));
+        vm.expectRevert(IHoneyErrors.InvalidCustodyInfoInput.selector);
+        usdtVault.setCustodyInfo(false, address(factory));
+
+        // should remove custody vault successfully
+        vm.prank(address(factory));
+        vm.expectEmit(true, true, true, true);
+        emit CollateralVault.CustodyInfoSet(false, address(0));
+        usdtVault.setCustodyInfo(false, custody);
+        (isCustodyVault, custodyAddress) = usdtVault.custodyInfo();
+        assertEq(isCustodyVault, false);
+        assertEq(custodyAddress, address(0));
+    }
+
+    function getCustodyAndSetAllowanceToVault() internal returns (address custody) {
+        custody = makeAddr("custody");
+        vm.prank(custody);
+        usdt.approve(address(usdtVault), type(uint256).max);
+        return custody;
+    }
 }

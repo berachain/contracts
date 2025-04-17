@@ -6,14 +6,14 @@ import { ERC4626 } from "solady/src/tokens/ERC4626.sol";
 import { SafeTransferLib } from "solady/src/utils/SafeTransferLib.sol";
 
 import { IPriceOracle } from "../extras/IPriceOracle.sol";
-import { IHoneyFactory } from "./IHoneyFactory.sol";
+import { IHoneyFactory } from "src/honey/IHoneyFactory.sol";
 import { Utils } from "../libraries/Utils.sol";
-import { Honey } from "./Honey.sol";
-import { VaultAdmin, CollateralVault } from "./VaultAdmin.sol";
+import { Honey } from "src/honey/Honey.sol";
+import { VaultAdmin_V0 } from "./VaultAdmin_V0.sol";
 
 /// @notice This is the factory contract for minting and redeeming Honey.
 /// @author Berachain Team
-contract HoneyFactory is IHoneyFactory, VaultAdmin {
+contract HoneyFactory_V0 is IHoneyFactory, VaultAdmin_V0 {
     using Utils for bytes4;
 
     /// @dev The constant representing 100% of mint/redeem rate.
@@ -91,13 +91,12 @@ contract HoneyFactory is IHoneyFactory, VaultAdmin {
         address _honey,
         address _polFeeCollector,
         address _feeReceiver,
-        address _priceOracle,
-        address _beacon
+        address _priceOracle
     )
         external
         initializer
     {
-        __VaultAdmin_init(_governance, _polFeeCollector, _feeReceiver, _beacon);
+        __VaultAdmin_init(_governance, _polFeeCollector, _feeReceiver);
 
         if (_honey == address(0)) ZeroAddress.selector.revertWith();
         if (_priceOracle == address(0)) ZeroAddress.selector.revertWith();
@@ -769,9 +768,7 @@ contract HoneyFactory is IHoneyFactory, VaultAdmin {
     function _checkInvariants(address asset) internal view {
         ERC4626 vault = vaults[asset];
         uint256 totalShares = vault.totalSupply();
-        (bool isCustodyVault, address custodyAddress) = CollateralVault(address(vault)).custodyInfo();
-        uint256 totalAssets =
-            isCustodyVault ? ERC20(asset).balanceOf(custodyAddress) : ERC20(asset).balanceOf(address(vault));
+        uint256 totalAssets = ERC20(asset).balanceOf(address(vault));
         if (vault.convertToAssets(totalShares) > totalAssets) {
             InsufficientAssets.selector.revertWith(totalAssets, totalShares);
         }

@@ -51,4 +51,6 @@ interface IHoneyErrors {
     error UnexpectedBasketModeStatus();
     // Signature: 0x5419864a
     error CapCanCauseDenialOfService();
+    // Signature: 0xcd09f603
+    error InvalidCustodyInfoInput();
 }

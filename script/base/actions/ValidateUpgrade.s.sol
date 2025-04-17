@@ -36,6 +36,16 @@ contract ValidateUpgrade is Script {
         Upgrades.validateUpgrade("RewardVaultFactory.sol", options);
         console2.log("RewardVaultFactory can be upgraded successfully.");
 
+        // check HoneyFactory safe upgrade
+        options.referenceContract = "HoneyFactory_V0.sol:HoneyFactory_V0";
+        Upgrades.validateUpgrade("HoneyFactory.sol", options);
+        console2.log("HoneyFactory can be upgraded successfully.");
+
+        // check collateral vault safe upgrade
+        options.referenceContract = "CollateralVault_V0.sol:CollateralVault_V0";
+        Upgrades.validateUpgrade("CollateralVault.sol", options);
+        console2.log("CollateralVault can be upgraded successfully.");
+
         vm.stopBroadcast();
     }
 }

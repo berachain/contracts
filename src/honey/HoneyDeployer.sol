@@ -1,10 +1,13 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.26;
 
+import { UpgradeableBeacon } from "solady/src/utils/UpgradeableBeacon.sol";
 import { Create2Deployer } from "../base/Create2Deployer.sol";
 import { Honey } from "./Honey.sol";
 import { HoneyFactory } from "./HoneyFactory.sol";
 import { HoneyFactoryReader } from "./HoneyFactoryReader.sol";
+
+import { CollateralVault } from "./VaultAdmin.sol";
 
 /// @title HoneyDeployer
 /// @author Berachain Team
@@ -29,6 +32,9 @@ contract HoneyDeployer is Create2Deployer {
         uint256 honeyFactoryReaderSalt,
         address priceOracle
     ) {
+        // deploy the beacon
+        address beacon = address(new UpgradeableBeacon(governance, address(new CollateralVault())));
+
         // deploy the Honey implementation
         address honeyImpl = deployWithCreate2(0, type(Honey).creationCode);
         // deploy the Honey proxy
@@ -46,7 +52,7 @@ contract HoneyDeployer is Create2Deployer {
 
         // initialize the contracts
         honey.initialize(governance, address(honeyFactory));
-        honeyFactory.initialize(governance, address(honey), polFeeCollector, feeReceiver, priceOracle);
+        honeyFactory.initialize(governance, address(honey), polFeeCollector, feeReceiver, priceOracle, beacon);
         honeyFactoryReader.initialize(governance, address(honeyFactory));
     }
 }

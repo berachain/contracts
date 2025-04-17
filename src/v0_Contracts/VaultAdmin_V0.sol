@@ -6,14 +6,15 @@ import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/ac
 import { PausableUpgradeable } from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import { LibClone } from "solady/src/utils/LibClone.sol";
+import { UpgradeableBeacon } from "solady/src/utils/UpgradeableBeacon.sol";
 
-import { IHoneyErrors } from "./IHoneyErrors.sol";
+import { IHoneyErrors } from "src/honey/IHoneyErrors.sol";
 import { Utils } from "../libraries/Utils.sol";
-import { CollateralVault } from "./CollateralVault.sol";
+import { CollateralVault_V0 } from "./CollateralVault_V0.sol";
 
 /// @notice This is the admin contract that manages the vaults and fees.
 /// @author Berachain Team
-abstract contract VaultAdmin is AccessControlUpgradeable, PausableUpgradeable, UUPSUpgradeable, IHoneyErrors {
+abstract contract VaultAdmin_V0 is AccessControlUpgradeable, PausableUpgradeable, UUPSUpgradeable, IHoneyErrors {
     using Utils for bytes4;
 
     /// @notice Emitted when the fee receiver address is set.
@@ -54,7 +55,7 @@ abstract contract VaultAdmin is AccessControlUpgradeable, PausableUpgradeable, U
     address[] public registeredAssets;
 
     /// @notice Mapping of assets to their corresponding vaults.
-    mapping(address asset => CollateralVault vault) public vaults;
+    mapping(address asset => CollateralVault_V0 vault) public vaults;
 
     /// @notice Mapping of bad collateral assets.
     mapping(address asset => bool badCollateral) public isBadCollateralAsset;
@@ -79,8 +80,7 @@ abstract contract VaultAdmin is AccessControlUpgradeable, PausableUpgradeable, U
     function __VaultAdmin_init(
         address _governance,
         address _polFeeCollector,
-        address _feeReceiver,
-        address _beacon
+        address _feeReceiver
     )
         internal
         onlyInitializing
@@ -89,7 +89,7 @@ abstract contract VaultAdmin is AccessControlUpgradeable, PausableUpgradeable, U
         __Pausable_init();
         __UUPSUpgradeable_init();
 
-        __VaultAdmin_init_unchained(_governance, _polFeeCollector, _feeReceiver, _beacon);
+        __VaultAdmin_init_unchained(_governance, _polFeeCollector, _feeReceiver);
         // Allow the MANAGER role to manage the PAUSER role.
         // MANAGER role can grant and revoke access for the PAUSER role.
         _setRoleAdmin(PAUSER_ROLE, MANAGER_ROLE);
@@ -98,8 +98,7 @@ abstract contract VaultAdmin is AccessControlUpgradeable, PausableUpgradeable, U
     function __VaultAdmin_init_unchained(
         address _governance,
         address _polFeeCollector,
-        address _feeReceiver,
-        address _beacon
+        address _feeReceiver
     )
         internal
         onlyInitializing
@@ -107,9 +106,8 @@ abstract contract VaultAdmin is AccessControlUpgradeable, PausableUpgradeable, U
         if (_governance == address(0)) ZeroAddress.selector.revertWith();
         if (_polFeeCollector == address(0)) ZeroAddress.selector.revertWith();
         if (_feeReceiver == address(0)) ZeroAddress.selector.revertWith();
-        if (_beacon == address(0)) ZeroAddress.selector.revertWith();
 
-        beacon = _beacon;
+        beacon = address(new UpgradeableBeacon(_governance, address(new CollateralVault_V0())));
         _grantRole(DEFAULT_ADMIN_ROLE, _governance);
 
         feeReceiver = _feeReceiver;
@@ -163,7 +161,7 @@ abstract contract VaultAdmin is AccessControlUpgradeable, PausableUpgradeable, U
     function pauseVault(address asset) external {
         _checkRole(PAUSER_ROLE);
         _checkRegisteredAsset(asset);
-        CollateralVault(address(vaults[asset])).pause();
+        CollateralVault_V0(address(vaults[asset])).pause();
     }
 
     /// @notice Unpause the vault for a given asset.
@@ -173,23 +171,10 @@ abstract contract VaultAdmin is AccessControlUpgradeable, PausableUpgradeable, U
     function unpauseVault(address asset) external {
         _checkRole(MANAGER_ROLE);
         _checkRegisteredAsset(asset);
-        CollateralVault(address(vaults[asset])).unpause();
+        CollateralVault_V0(address(vaults[asset])).unpause();
     }
 
-    /// @notice Set the custody info for the vault.
-    /// @dev Only the default admin role can call this function.
-    /// @dev Only registered assets can be set as custody vault.
-    /// @dev Checks on zero address and input are done in the vault.
-    /// @param asset The address of the asset.
-    /// @param isCustodyVault Whether the vault is a custody vault.
-    /// @param custodyAddress The address of the custody.
-    function setCustodyInfo(address asset, bool isCustodyVault, address custodyAddress) external {
-        _checkRole(DEFAULT_ADMIN_ROLE);
-        _checkRegisteredAsset(asset);
-        vaults[asset].setCustodyInfo(isCustodyVault, custodyAddress);
-    }
-
-    function _createVault(address asset) internal returns (CollateralVault) {
+    function _createVault(address asset) internal returns (CollateralVault_V0) {
         _checkRole(DEFAULT_ADMIN_ROLE);
         // Revert if the vault for the given asset is already registered.
         if (address(vaults[asset]) != address(0)) {
@@ -205,7 +190,7 @@ abstract contract VaultAdmin is AccessControlUpgradeable, PausableUpgradeable, U
             mstore(0, shr(96, shl(96, asset)))
             salt := keccak256(0, 0x20)
         }
-        CollateralVault vault = CollateralVault(LibClone.deployDeterministicERC1967BeaconProxy(beacon, salt));
+        CollateralVault_V0 vault = CollateralVault_V0(LibClone.deployDeterministicERC1967BeaconProxy(beacon, salt));
         vault.initialize(asset, address(this));
 
         vaults[asset] = vault;

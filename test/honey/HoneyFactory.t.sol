@@ -57,23 +57,27 @@ contract HoneyFactoryTest is HoneyBaseTest {
     }
 
     function test_InitializeFactoryWithZeroAddresses() public {
+        address beacon = factory.beacon();
         HoneyFactory newFactory = HoneyFactory(LibClone.deployERC1967(address(new HoneyFactory())));
 
         // initialize with zero address governance
         vm.expectRevert(abi.encodeWithSelector(IHoneyErrors.ZeroAddress.selector));
-        newFactory.initialize(address(0), address(honey), feeReceiver, polFeeCollector, address(oracle));
+        newFactory.initialize(address(0), address(honey), feeReceiver, polFeeCollector, address(oracle), beacon);
 
         // initialize with zero address honey
         vm.expectRevert(abi.encodeWithSelector(IHoneyErrors.ZeroAddress.selector));
-        newFactory.initialize(governance, address(0), feeReceiver, polFeeCollector, address(oracle));
+        newFactory.initialize(governance, address(0), feeReceiver, polFeeCollector, address(oracle), beacon);
 
         // initialize with zero address feeReceiver
         vm.expectRevert(abi.encodeWithSelector(IHoneyErrors.ZeroAddress.selector));
-        newFactory.initialize(governance, address(honey), address(0), polFeeCollector, address(oracle));
+        newFactory.initialize(governance, address(honey), address(0), polFeeCollector, address(oracle), beacon);
 
         // initialize with zero address polFeeCollector
         vm.expectRevert(abi.encodeWithSelector(IHoneyErrors.ZeroAddress.selector));
-        newFactory.initialize(governance, address(honey), feeReceiver, address(0), address(oracle));
+        newFactory.initialize(governance, address(honey), feeReceiver, address(0), address(oracle), beacon);
+
+        vm.expectRevert(abi.encodeWithSelector(IHoneyErrors.ZeroAddress.selector));
+        newFactory.initialize(governance, address(honey), feeReceiver, polFeeCollector, address(oracle), address(0));
     }
 
     function test_Initialize_ParamsSet() public {
@@ -791,7 +795,7 @@ contract HoneyFactoryTest is HoneyBaseTest {
         _verifyOutputOfMint(dummy, dummyVault, dummyBalance, _dummyToMint, mintedHoneys);
     }
 
-    function test_mint() external {
+    function test_mint() public {
         uint256 _daiToMint = 100e18;
         uint256 mintedHoneys = (_daiToMint * daiMintRate) / 1e18;
         dai.approve(address(factory), _daiToMint);
@@ -1411,7 +1415,7 @@ contract HoneyFactoryTest is HoneyBaseTest {
         factory.liquidate(address(usdt), address(dai), daiToProvide);
     }
 
-    function test_liquidate_WhenThereIsNoSufficientBadCollateral() external {
+    function test_liquidate_WhenThereIsNoSufficientBadCollateral() public {
         vm.prank(governance);
         factory.setLiquidationEnabled(true);
 
@@ -1505,7 +1509,7 @@ contract HoneyFactoryTest is HoneyBaseTest {
         uint256 daiToProvide,
         bool depegOver
     )
-        external
+        public
     {
         vm.prank(governance);
         factory.setLiquidationEnabled(true);
@@ -1725,7 +1729,7 @@ contract HoneyFactoryTest is HoneyBaseTest {
         assertEq(dai.balanceOf(address(this)), daiBalance - daiToMint);
     }
 
-    function test_redeem() external {
+    function test_redeem() public {
         uint256 daiToMint = 100e18;
         uint256 usdtToMint = 100e6;
         uint256 mintedHoneysForDai = _factoryMint(dai, daiToMint, address(this), false);
@@ -1750,7 +1754,7 @@ contract HoneyFactoryTest is HoneyBaseTest {
         assertEq(honey.balanceOf(address(this)), mintedHoneysForDai);
     }
 
-    function test_redeem_failsWhenReferenceCollateralIsRedeemedAndExceedsRelativeCapOnOtherAssets() external {
+    function test_redeem_failsWhenReferenceCollateralIsRedeemedAndExceedsRelativeCapOnOtherAssets() public {
         // Mint the same quantity of shares for all assets
         uint256 daiToMint = 100e18;
         uint256 usdtToMint = 100e6;
@@ -2321,7 +2325,7 @@ contract HoneyFactoryTest is HoneyBaseTest {
     // because it checked the weights of all the collateral assets. It has been fixed since then.
     // NOTE: since the above mentioned fix has been implemented, we also added some enforcement
     // to the setGlobalCap; hence this test may have became obsolete.
-    function test_LoweredGlobalCapDoesNotBlockMintWithOtherAssets() external {
+    function test_LoweredGlobalCapDoesNotBlockMintWithOtherAssets() public {
         _factoryMint(dai, 40e18, msg.sender, false);
         _factoryMint(usdt, 40e6, msg.sender, false);
         _factoryMint(dummy, 20e20, msg.sender, false);
@@ -2409,9 +2413,72 @@ contract HoneyFactoryTest is HoneyBaseTest {
         factory.withdrawFee(address(usdt), feeReceiver);
     }
 
+    function test_SetCustodyInfo() public {
+        // reverts if not default admin
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IAccessControl.AccessControlUnauthorizedAccount.selector, address(this), factory.DEFAULT_ADMIN_ROLE()
+            )
+        );
+        factory.setCustodyInfo(address(usdt), true, address(this));
+
+        vm.prank(governance);
+        // reverts if not registered asset
+        vm.expectRevert(abi.encodeWithSelector(IHoneyErrors.AssetNotRegistered.selector, address(this)));
+        factory.setCustodyInfo(address(this), true, address(this));
+
+        // set the custody info
+        address custody = _setCustodyInfo(usdt, address(usdtVault));
+        (bool isCustodyVault, address custodyAddress) = usdtVault.custodyInfo();
+        assertTrue(isCustodyVault);
+        assertEq(custodyAddress, custody);
+    }
+
+    function test__MintInCustody() public {
+        address custody = _setCustodyInfo(dai, address(daiVault));
+        // mints 100 dai
+        test_mint();
+        uint256 polFeePercentage = factory.polFeeCollectorFeeRate();
+        uint256 feeShares = 100e18 - (100e18 * 0.99e18) / 1e18; // mint rate is 0.99e18
+        uint256 polFeeCollectorShares = feeShares * polFeePercentage / 1e18;
+        // amount of dai in custody should be 100e18 - (pol feeShares) as pol fee shares are instantly redeemed.
+        assertEq(dai.balanceOf(address(daiVault)), 0);
+        assertEq(dai.balanceOf(custody), 100e18 - polFeeCollectorShares);
+    }
+
+    function test_RedeemInCustody() public {
+        address custody = _setCustodyInfo(usdt, address(usdtVault));
+        test_redeem();
+        // there wont be any usdt in the custody as all is redeemed.
+        assertEq(usdt.balanceOf(custody), 0);
+    }
+
+    function test_LiquidationInCustody() public {
+        _setCustodyInfo(usdt, address(usdtVault));
+        testFuzz_liquidate_WhenBadCollateralDepeg(1e18, 1e6, 0.5e18, 0.1e18, 1e18, true);
+    }
+
+    function test_liquidate_WhenThereIsNoSufficientBadCollateralInCustody() public {
+        _setCustodyInfo(usdt, address(usdtVault));
+        test_liquidate_WhenThereIsNoSufficientBadCollateral();
+    }
+
+    function test_GlobalCapLowering_InCustody() public {
+        _setCustodyInfo(usdt, address(usdtVault));
+        test_LoweredGlobalCapDoesNotBlockMintWithOtherAssets();
+    }
+
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
     /*                          INTERNAL                          */
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
+
+    function _setCustodyInfo(ERC20 asset, address assetVault) internal returns (address custodyAddress) {
+        custodyAddress = makeAddr("custodyAddress");
+        vm.prank(custodyAddress);
+        asset.approve(address(assetVault), type(uint256).max);
+        vm.prank(governance);
+        factory.setCustodyInfo(address(asset), true, custodyAddress);
+    }
 
     function _predictVaultAddress(address asset) internal view returns (address) {
         address beacon = factory.beacon();
