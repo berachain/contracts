@@ -777,6 +777,32 @@ contract BGTTest is POLTest {
         bgt.redeem(address(this), 1 ether);
     }
 
+    /**
+     * @dev There's a potential bug in the BGT redeem function's invariant check.
+     * The current implementation may not properly verify ETH balance availability,
+     * which could lead to insufficient ETH backing for remaining tokens.
+     * 
+     * Proposed fix:
+     * function redeem(address to, uint256 amount) external {
+     *     // Check if the sender has enough unboosted balance
+     *     require(unboostedBalanceOf(msg.sender) >= amount, "Not enough unboosted balance");
+     *     
+     *     // Check if the contract has enough ETH for this redemption
+     *     require(address(this).balance >= amount, "Insufficient ETH for redemption");
+     *     
+     *     // Then check if the remaining ETH will be sufficient for remaining supply
+     *     require(address(this).balance - amount >= totalSupply() - amount, "Invariant violation");
+     *     
+     *     // Burn tokens from sender
+     *     _burn(msg.sender, amount);
+     *     
+     *     // Send ETH to the specified recipient
+     *     SafeTransferLib.safeTransferETH(to, amount);
+     *     
+     *     // Emit redemption event
+     *     emit Redeem(msg.sender, to, amount);
+     * }
+     */
     function test_Redeem_FailsIfInvariantCheckFails() public {
         testFuzz_Mint(receiverAddr, 1 ether);
         vm.deal(address(bgt), 1 ether - 1);
