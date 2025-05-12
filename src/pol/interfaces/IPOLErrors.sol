@@ -115,6 +115,8 @@ interface IPOLErrors is IStakingRewardsErrors {
     error InvariantCheckFailed();
     // Signature: 0x451fa036
     error InvalidIncentiveRate();
+    // Signature: 0xdd9df759
+    error DuplicateReceiver(address receiver);
 
     /*                         BEACON ROOTS                        */
 

@@ -207,7 +207,9 @@ contract BeraChef is IBeraChef, OwnableUpgradeable, UUPSUpgradeable {
     /// @inheritdoc IBeraChef
     function setDefaultRewardAllocation(RewardAllocation calldata ra) external onlyOwner {
         // validate if the weights are valid.
-        _validateWeights(ra.weights);
+        // use empty bytes as valPubkey for slot identifier while checking for duplicates.
+        bytes memory emptyPubkey = new bytes(0);
+        _validateWeights(emptyPubkey, ra.weights);
 
         emit SetDefaultRewardAllocation(ra);
         defaultRewardAllocation = ra;
@@ -248,7 +250,7 @@ contract BeraChef is IBeraChef, OwnableUpgradeable, UUPSUpgradeable {
         }
 
         // validate if the weights are valid.
-        _validateWeights(weights);
+        _validateWeights(valPubkey, weights);
 
         // queue the new reward allocation
         qra.startBlock = startBlock;
@@ -386,10 +388,11 @@ contract BeraChef is IBeraChef, OwnableUpgradeable, UUPSUpgradeable {
      * @notice Validates the weights of a reward allocation.
      * @param weights The weights of the reward allocation.
      */
-    function _validateWeights(Weight[] calldata weights) internal view {
+    function _validateWeights(bytes memory valPubkey, Weight[] calldata weights) internal {
         if (weights.length > maxNumWeightsPerRewardAllocation) {
             TooManyWeights.selector.revertWith();
         }
+        _checkForDuplicateReceivers(valPubkey, weights);
 
         // ensure that the total weight is 100%.
         uint96 totalWeight;
@@ -411,6 +414,36 @@ contract BeraChef is IBeraChef, OwnableUpgradeable, UUPSUpgradeable {
         }
         if (totalWeight != ONE_HUNDRED_PERCENT) {
             InvalidRewardAllocationWeights.selector.revertWith();
+        }
+    }
+
+    function _checkForDuplicateReceivers(bytes memory valPubkey, Weight[] calldata weights) internal {
+        // use pubkey as identifier for the slot
+        bytes32 slotIdentifier = keccak256(valPubkey);
+
+        for (uint256 i; i < weights.length;) {
+            address receiver = weights[i].receiver;
+            bool duplicate;
+
+            assembly ("memory-safe") {
+                // Get free memory pointer
+                let memPtr := mload(0x40)
+                // Store receiver address at the first 32 bytes position
+                mstore(memPtr, receiver)
+                // Store slot identifier at the next 32 bytes position
+                mstore(add(memPtr, 0x20), slotIdentifier)
+                // Calculate storage key
+                let storageKey := keccak256(memPtr, 0x40)
+                // Check if receiver is already seen
+                duplicate := tload(storageKey)
+                if iszero(duplicate) { tstore(storageKey, 1) }
+            }
+            if (duplicate) {
+                DuplicateReceiver.selector.revertWith(receiver);
+            }
+            unchecked {
+                ++i;
+            }
         }
     }
 

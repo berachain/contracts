@@ -30,12 +30,13 @@ contract POLPredictAddressesScript is BasePredictScript {
         // TODO: Review implementation's salts
         _predictAddress("BGT", type(BGT).creationCode, BGT_SALT);
         _predictProxyAddress("BeraChef", type(BeraChef).creationCode, 0, BERA_CHEF_SALT);
+        _predictAddress("BeraChef Impl", type(BeraChef).creationCode, 0);
         _predictProxyAddress(
             "BlockRewardController", type(BlockRewardController).creationCode, 0, BLOCK_REWARD_CONTROLLER_SALT
         );
         _predictProxyAddress("Distributor", type(Distributor).creationCode, 0, DISTRIBUTOR_SALT);
         _predictProxyAddress("RewardVaultFactory", type(RewardVaultFactory).creationCode, 0, REWARDS_FACTORY_SALT);
-        _predictAddress("RewardVault", type(RewardVault).creationCode, 0);
+        _predictAddress("RewardVault Impl", type(RewardVault).creationCode, 0);
         _predictProxyAddress("BGTStaker", type(BGTStaker).creationCode, 0, BGT_STAKER_SALT);
         _predictProxyAddress("FeeCollector", type(FeeCollector).creationCode, 0, FEE_COLLECTOR_SALT);
         _predictProxyAddress(
