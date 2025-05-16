@@ -7,11 +7,11 @@ import { PausableUpgradeable } from "@openzeppelin/contracts-upgradeable/utils/P
 import { ReentrancyGuardUpgradeable } from "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
 import { FixedPointMathLib } from "solady/src/utils/FixedPointMathLib.sol";
 
-import { Utils } from "../libraries/Utils.sol";
-import { IBeaconDeposit } from "../pol/interfaces/IBeaconDeposit.sol";
+import { Utils } from "src/libraries/Utils.sol";
+import { IBeaconDeposit } from "src/pol/interfaces/IBeaconDeposit.sol";
 import { IRewardVault_V0 } from "./interfaces/IRewardVault_V0.sol";
-import { FactoryOwnable } from "../base/FactoryOwnable.sol";
-import { StakingRewards } from "../base/StakingRewards.sol";
+import { FactoryOwnable } from "src/base/FactoryOwnable.sol";
+import { StakingRewards } from "src/base/StakingRewards.sol";
 
 /// @title Rewards Vault_V0
 /// @author Berachain Team

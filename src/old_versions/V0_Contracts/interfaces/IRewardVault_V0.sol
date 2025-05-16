@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.26;
 
-import { IPOLErrors } from "../../pol/interfaces/IPOLErrors.sol";
-import { IStakingRewards } from "../../base/IStakingRewards.sol";
+import { IPOLErrors } from "src/pol/interfaces/IPOLErrors.sol";
+import { IStakingRewards } from "src/base/IStakingRewards.sol";
 
-interface IRewardVault_V1 is IPOLErrors, IStakingRewards {
+interface IRewardVault_V0 is IPOLErrors, IStakingRewards {
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
     /*                           EVENTS                           */
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
@@ -55,10 +55,10 @@ interface IRewardVault_V1 is IPOLErrors, IStakingRewards {
     /// @param maxIncentiveTokensCount The max count of incentive tokens.
     event MaxIncentiveTokensCountUpdated(uint8 maxIncentiveTokensCount);
 
-    /// @notice Emitted when validator share of incentives are processed to the operator address of a validator.
+    /// @notice Emitted when incentives are processed for the operator of a validator.
     event IncentivesProcessed(bytes indexed pubkey, address indexed token, uint256 bgtEmitted, uint256 amount);
 
-    /// @notice Emitted when validator share of incentives fail to be processed to the operator address of a validator.
+    /// @notice Emitted when incentives fail to be processed for the operator of a validator.
     event IncentivesProcessFailed(bytes indexed pubkey, address indexed token, uint256 bgtEmitted, uint256 amount);
 
     /// @notice Emitted when incentives are added to the vault.
@@ -67,24 +67,6 @@ interface IRewardVault_V1 is IPOLErrors, IStakingRewards {
     /// @param amount The amount of the incentive.
     /// @param incentiveRate The amount of the token to incentivize per BGT emission.
     event IncentiveAdded(address indexed token, address sender, uint256 amount, uint256 incentiveRate);
-
-    /// @notice Emitted when the BGT booster share of the incentive is processed.
-    /// @param pubkey The pubkey of the validator.
-    /// @param token The address of the incentive token.
-    /// @param bgtEmitted The amount of BGT emitted by the validator.
-    /// @param amount The amount of the incentive.
-    event BGTBoosterIncentivesProcessed(
-        bytes indexed pubkey, address indexed token, uint256 bgtEmitted, uint256 amount
-    );
-
-    /// @notice Emitted when the BGT booster share of the incentive fails to be processed.
-    /// @param pubkey The pubkey of the validator.
-    /// @param token The address of the incentive token.
-    /// @param bgtEmitted The amount of BGT emitted by the validator.
-    /// @param amount The amount of the incentive.
-    event BGTBoosterIncentivesProcessFailed(
-        bytes indexed pubkey, address indexed token, uint256 bgtEmitted, uint256 amount
-    );
 
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
     /*                          GETTERS                           */

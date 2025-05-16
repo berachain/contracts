@@ -5,7 +5,7 @@ import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/ac
 import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import { LibClone } from "solady/src/utils/LibClone.sol";
 import { UpgradeableBeacon } from "solady/src/utils/UpgradeableBeacon.sol";
-import { Utils } from "../libraries/Utils.sol";
+import { Utils } from "src/libraries/Utils.sol";
 import { IRewardVaultFactory_V0 } from "./interfaces/IRewardVaultFactory_V0.sol";
 import { RewardVault_V0 } from "./RewardVault_V0.sol";
 

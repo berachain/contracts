@@ -5,7 +5,7 @@ import { PausableUpgradeable } from "@openzeppelin/contracts-upgradeable/utils/P
 import { ERC20 } from "solady/src/tokens/ERC20.sol";
 import { ERC4626 } from "solady/src/tokens/ERC4626.sol";
 
-import { Utils } from "../libraries/Utils.sol";
+import { Utils } from "src/libraries/Utils.sol";
 import { IHoneyErrors } from "src/honey/IHoneyErrors.sol";
 
 /// @notice This is the ERC4626 vault for the collateral assets to mint Honey.

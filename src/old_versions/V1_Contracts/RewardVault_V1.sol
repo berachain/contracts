@@ -7,14 +7,14 @@ import { PausableUpgradeable } from "@openzeppelin/contracts-upgradeable/utils/P
 import { ReentrancyGuardUpgradeable } from "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
 import { FixedPointMathLib } from "solady/src/utils/FixedPointMathLib.sol";
 
-import { Utils } from "../libraries/Utils.sol";
-import { IBeaconDeposit } from "../pol/interfaces/IBeaconDeposit.sol";
+import { Utils } from "src/libraries/Utils.sol";
+import { IBeaconDeposit } from "src/pol/interfaces/IBeaconDeposit.sol";
 import { IRewardVault_V1 } from "./interfaces/IRewardVault_V1.sol";
-import { FactoryOwnable } from "../base/FactoryOwnable.sol";
-import { StakingRewards } from "../base/StakingRewards.sol";
-import { IBeraChef } from "../pol/interfaces/IBeraChef.sol";
-import { IDistributor } from "../pol/interfaces/IDistributor.sol";
-import { IBGTIncentiveDistributor } from "../pol/interfaces/IBGTIncentiveDistributor.sol";
+import { FactoryOwnable } from "src/base/FactoryOwnable.sol";
+import { StakingRewards } from "src/base/StakingRewards.sol";
+import { IBeraChef } from "src/pol/interfaces/IBeraChef.sol";
+import { IDistributor } from "src/pol/interfaces/IDistributor.sol";
+import { IBGTIncentiveDistributor } from "src/pol/interfaces/IBGTIncentiveDistributor.sol";
 
 /// @title Rewards Vault
 /// @author Berachain Team

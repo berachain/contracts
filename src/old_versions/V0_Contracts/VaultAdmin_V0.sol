@@ -9,7 +9,7 @@ import { LibClone } from "solady/src/utils/LibClone.sol";
 import { UpgradeableBeacon } from "solady/src/utils/UpgradeableBeacon.sol";
 
 import { IHoneyErrors } from "src/honey/IHoneyErrors.sol";
-import { Utils } from "../libraries/Utils.sol";
+import { Utils } from "src/libraries/Utils.sol";
 import { CollateralVault_V0 } from "./CollateralVault_V0.sol";
 
 /// @notice This is the admin contract that manages the vaults and fees.

@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.26;
 
-import { IPOLErrors } from "../../pol/interfaces/IPOLErrors.sol";
+import { IPOLErrors } from "src/pol/interfaces/IPOLErrors.sol";
 
 /// @notice Interface of the BeraChef module
-interface IBeraChef_V0 is IPOLErrors {
+interface IBeraChef_V1 is IPOLErrors {
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
     /*                          STRUCTS                           */
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
@@ -26,6 +26,22 @@ interface IBeraChef_V0 is IPOLErrors {
         // the actual fraction is: percentageNumerator / ONE_HUNDRED_PERCENT
         // e.g. percentageNumerator for 50% is 5000, because 5000 / 10000 = 0.5
         uint96 percentageNumerator;
+    }
+
+    /// @notice The struct of validator queued commission rate changes on incentive tokens.
+    /// @param blockNumberLast The last block number commission rate was queued
+    /// @param commissionRate The queued commission rate to be used by the validator
+    struct QueuedCommissionRateChange {
+        uint32 blockNumberLast;
+        uint96 commissionRate;
+    }
+
+    /// @notice Commission rate of a validator on incentive tokens
+    /// @param activationBlock The block number in which the commission rate was activated
+    /// @param commissionRate The commission rate to be used by the validator
+    struct CommissionRate {
+        uint32 activationBlock;
+        uint96 commissionRate;
     }
 
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
@@ -74,6 +90,27 @@ interface IBeraChef_V0 is IPOLErrors {
      * @param rewardAllocation The default reward allocation.
      */
     event SetDefaultRewardAllocation(RewardAllocation rewardAllocation);
+
+    /**
+     * @notice Emitted when the commission change delay has been set.
+     * @param commissionChangeDelay The delay in blocks to activate a queued commission change.
+     */
+    event CommissionChangeDelaySet(uint64 commissionChangeDelay);
+
+    /**
+     * @notice Emitted when a validator's commission rate on incentive tokens has been queued.
+     * @param valPubkey The validator's pubkey.
+     * @param queuedCommissionRate The queued commission rate of the validator on the incentive tokens.
+     */
+    event QueuedValCommission(bytes indexed valPubkey, uint96 queuedCommissionRate);
+
+    /**
+     * @notice Emitted when the commission rate of a validator on incentive tokens has been set.
+     * @param valPubkey The validator's pubkey.
+     * @param oldCommissionRate The old commission rate of the validator on the incentive tokens.
+     * @param newCommissionRate The new commission rate of the validator on the incentive tokens.
+     */
+    event ValCommissionSet(bytes indexed valPubkey, uint96 oldCommissionRate, uint96 newCommissionRate);
 
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
     /*                          GETTERS                           */
@@ -129,6 +166,38 @@ interface IBeraChef_V0 is IPOLErrors {
      */
     function isReady() external view returns (bool);
 
+    /**
+     * @notice Returns the queued commission struct of a validator on an incentive tokens.
+     * @param valPubkey The validator's pubkey.
+     * @return queuedCommissionRate The queued commission struct of the validator on the incentive tokens.
+     */
+    function getValQueuedCommissionOnIncentiveTokens(bytes calldata valPubkey)
+        external
+        view
+        returns (QueuedCommissionRateChange memory);
+
+    /**
+     * @notice Returns the commission rate of a validator on an incentive tokens.
+     * @dev Default commission rate is 5% if the commission was never set.
+     * @param valPubkey The validator's pubkey.
+     * @return commissionRate The commission rate of the validator on the incentive tokens.
+     */
+    function getValCommissionOnIncentiveTokens(bytes calldata valPubkey) external view returns (uint96);
+
+    /**
+     * @notice Returns the validator's share of the incentive tokens based on the validator's commission rate.
+     * @param valPubkey The validator's pubkey.
+     * @param incentiveTokenAmount The amount of the incentive tokens.
+     * @return validatorShare The validator's share of the incentive tokens.
+     */
+    function getValidatorIncentiveTokenShare(
+        bytes calldata valPubkey,
+        uint256 incentiveTokenAmount
+    )
+        external
+        view
+        returns (uint256);
+
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
     /*                       ADMIN FUNCTIONS                      */
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
@@ -183,8 +252,32 @@ interface IBeraChef_V0 is IPOLErrors {
     )
         external;
 
-    /// @notice Activates the queued reward allocation for a validator if its ready for the current block.
-    /// @dev Should be called by the distribution contract.
-    /// @param valPubkey The validator's pubkey.
+    /**
+     * @notice Activates the queued reward allocation for a validator if its ready for the current block.
+     * @dev Should be called by the distribution contract.
+     * @param valPubkey The validator's pubkey.
+     */
     function activateReadyQueuedRewardAllocation(bytes calldata valPubkey) external;
+
+    /**
+     * @notice Sets the commission change delay.
+     * @dev Only owner can call this function.
+     * @param _commissionChangeDelay The delay in blocks to activate a queued commission change.
+     */
+    function setCommissionChangeDelay(uint64 _commissionChangeDelay) external;
+
+    /**
+     * @notice Queues a commission rate change for a validator on incentive tokens.
+     * @dev The caller of this function must be the validator operator address.
+     * @dev Revert if already a commission rate change is queued.
+     * @param valPubkey The validator's pubkey.
+     * @param commissionRate The commission rate of the validator on the incentive tokens.
+     */
+    function queueValCommission(bytes calldata valPubkey, uint96 commissionRate) external;
+
+    /**
+     * @notice Activates the queued commission rate of a validator on incentive tokens.
+     * @param valPubkey The validator's pubkey.
+     */
+    function activateQueuedValCommission(bytes calldata valPubkey) external;
 }
