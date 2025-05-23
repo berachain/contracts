@@ -84,17 +84,13 @@ abstract contract StakingTest is Test {
         assertEq(VAULT.balanceOf(address(_user)), stakeAmount - withdrawAmount);
     }
 
-    function test_SetRewardDuration_FailsIfZero() public {
-        vm.expectRevert(IStakingRewardsErrors.RewardsDurationIsZero.selector);
-        _setRewardsDuration(0);
-    }
-
     function test_SetRewardDuration() public {
         testFuzz_SetRewardDuration(1 days);
     }
 
     function testFuzz_SetRewardDuration(uint256 duration) public virtual {
-        duration = _bound(duration, 1, type(uint256).max);
+        _passCoolDownPeriod();
+        duration = _bound(duration, 3 days, 7 days);
         vm.expectEmit();
         emit IStakingRewards.RewardsDurationUpdated(duration);
         _setRewardsDuration(duration);
@@ -229,21 +225,21 @@ abstract contract StakingTest is Test {
         uint256 undistributedRewards = amount * PRECISION - VAULT.rewardRate() * VAULT.rewardsDuration();
         assertEq(VAULT.undistributedRewards(), undistributedRewards);
         vm.warp(block.timestamp + 1 days);
-        // 2 days left in the reward cycle
-        uint256 leftOver = 2 days * VAULT.rewardRate();
+        // 6 days left in the reward cycle, given rewards duration is 7 days
+        uint256 leftOver = 6 days * VAULT.rewardRate();
         undistributedRewards += leftOver;
         _withdraw(user, amount);
         // reward rate wont be set as supply is 0
         performNotify(1 ether);
         undistributedRewards += 1 ether * PRECISION;
         assertEq(VAULT.undistributedRewards(), undistributedRewards);
-        assertEq(VAULT.periodFinish(), block.timestamp + 2 days);
+        assertEq(VAULT.periodFinish(), block.timestamp + 6 days);
 
         // notify rewards again
         performNotify(1 ether);
         undistributedRewards += 1 ether * PRECISION;
         assertEq(VAULT.undistributedRewards(), undistributedRewards);
-        assertEq(VAULT.periodFinish(), block.timestamp + 2 days);
+        assertEq(VAULT.periodFinish(), block.timestamp + 6 days);
         // reward rate will be set after this
         performStake(user, amount);
         assertEq(VAULT.rewardRate(), undistributedRewards / rewardsDuration);
@@ -252,24 +248,25 @@ abstract contract StakingTest is Test {
         assertEq(VAULT.periodFinish(), block.timestamp + rewardsDuration);
 
         // test another notify rewards with empty vault after periodFinish
-        vm.warp(block.timestamp + 4 days);
+        vm.warp(block.timestamp + rewardsDuration + 1 days);
         _withdraw(user, amount);
         assertEq(VAULT.undistributedRewards(), undistributedRewards);
         performNotify(1 ether);
         undistributedRewards += 1 ether * PRECISION;
         assertEq(VAULT.undistributedRewards(), undistributedRewards);
-        // cycle should have ended 1 day ago
+        // // cycle should have ended 1 day ago
         assertEq(VAULT.periodFinish(), block.timestamp - 1 days);
     }
 
     /// @dev Changing rewards duration during reward cycle is allowed but does not change the reward rate,
     /// thus the earned amount, until a notify is performed
     function test_SetRewardsDurationDuringCycle() public virtual {
+        _passCoolDownPeriod();
         performNotify(100 ether);
         performStake(user, 100 ether);
         uint256 blockTimestamp = vm.getBlockTimestamp();
-        // reward rate is computed over default rewards duration of 3 days
-        uint256 startingRate = FixedPointMathLib.fullMulDiv(100 ether, PRECISION, 3 days);
+        // reward rate is computed over default rewards duration of 7 days
+        uint256 startingRate = FixedPointMathLib.fullMulDiv(100 ether, PRECISION, 7 days);
         assertEq(VAULT.rewardRate(), startingRate);
 
         vm.warp(blockTimestamp + 0.5 days);
@@ -302,14 +299,15 @@ abstract contract StakingTest is Test {
 
     /// @dev Changing rewards duration during reward cycle afftects users staking in different times.
     function test_SetRewardsDurationDuringCycleMultipleUsers() public virtual {
+        _passCoolDownPeriod();
         address user2 = makeAddr("user2");
         uint256 blockTimestamp = vm.getBlockTimestamp();
 
         performNotify(100 ether);
         performStake(user, 100 ether);
 
-        // default rewards duration is 3 days
-        uint256 startingRate = FixedPointMathLib.fullMulDiv(100 ether, PRECISION, 3 days);
+        // default rewards duration is 7 days
+        uint256 startingRate = FixedPointMathLib.fullMulDiv(100 ether, PRECISION, 7 days);
         vm.warp(blockTimestamp + 0.5 days);
         blockTimestamp = vm.getBlockTimestamp();
 
@@ -341,8 +339,9 @@ abstract contract StakingTest is Test {
     /// @dev Changing rewards duration during reward cycle and notifying rewards does change the earned amount
     /// according to the new rate
     function testFuzz_SetRewardsDurationDuringCycleEarned(uint256 duration, uint256 time) public {
-        duration = _bound(duration, 1, 1e6 days);
-        time = _bound(time, 1, 1e6 days);
+        _passCoolDownPeriod();
+        duration = _bound(duration, 3 days, 7 days);
+        time = _bound(time, 3 days, 7 days);
 
         performNotify(100 ether);
         performStake(user, 100 ether);
@@ -369,6 +368,13 @@ abstract contract StakingTest is Test {
     }
 
     function test_SetRewardDurationDuringCycleEarned() public virtual {
-        testFuzz_SetRewardsDurationDuringCycleEarned(3.5 days, 1 days);
+        testFuzz_SetRewardsDurationDuringCycleEarned(8 days, 1 days);
+    }
+
+    // helper function to roll forward the timestamp by 7 days period + 1
+    // in order to be able to change the reward duration on rewardVault without any delay
+    function _passCoolDownPeriod() internal {
+        // roll forward the timestamp by 7 days period + 1
+        vm.warp(block.timestamp + 7 days + 1);
     }
 }
