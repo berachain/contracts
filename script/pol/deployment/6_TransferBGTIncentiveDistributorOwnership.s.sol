@@ -8,7 +8,7 @@ import { TIMELOCK_ADDRESS } from "../../gov/GovernanceAddresses.sol";
 import { BGT_INCENTIVE_DISTRIBUTOR_ADDRESS } from "../POLAddresses.sol";
 import "../../base/Storage.sol";
 
-contract TransferPOLOwnershipScript is RBAC, BaseScript, Storage {
+contract TransferBGTIncentiveDistributorOwnershipScript is RBAC, BaseScript, Storage {
     // Placholder. Change before running the script.
     address internal constant NEW_OWNER = address(0); // TIMELOCK_ADDRESS;
 

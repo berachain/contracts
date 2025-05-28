@@ -12,6 +12,7 @@ import { Distributor } from "src/pol/rewards/Distributor.sol";
 import { BGTStaker } from "src/pol/BGTStaker.sol";
 import { FeeCollector } from "src/pol/FeeCollector.sol";
 import { BGTIncentiveDistributor } from "src/pol/rewards/BGTIncentiveDistributor.sol";
+
 import {
     WBERA_SALT,
     BGT_SALT,

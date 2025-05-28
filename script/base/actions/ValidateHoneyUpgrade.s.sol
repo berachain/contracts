@@ -17,6 +17,8 @@ contract ValidateHoneyUpgrade is Script {
 
         Options memory options; // create an empty options object.
         // check HoneyFactory safe upgrade
+        // replace these version with the latest version to avoid too many upgrade check and hence getting `MemoryOOG`
+        // error.
         options.referenceContract = "HoneyFactory_V0.sol:HoneyFactory_V0";
         Upgrades.validateUpgrade("HoneyFactory.sol", options);
         console2.log("HoneyFactory can be upgraded successfully.");

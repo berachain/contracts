@@ -117,6 +117,12 @@ interface IPOLErrors is IStakingRewardsErrors {
     error InvalidIncentiveRate();
     // Signature: 0xdd9df759
     error DuplicateReceiver(address receiver);
+    // Signature: 0xe7726b79
+    error InvalidRewardDuration();
+    // Signature: 0x91373fcd
+    error NotRewardDurationManager();
+    // Signature: 0x3a70eb50
+    error RewardDurationCoolDownPeriodNotPassed();
 
     /*                         BEACON ROOTS                        */
 

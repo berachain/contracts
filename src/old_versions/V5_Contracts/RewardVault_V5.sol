@@ -23,7 +23,7 @@ import { IBGTIncentiveDistributor } from "src/pol/interfaces/IBGTIncentiveDistri
 /// https://github.com/Synthetixio/synthetix/blob/develop/contracts/StakingRewards.sol
 /// We are using this model instead of 4626 because we want to incentivize staying in the vault for x period of time to
 /// to be considered a 'miner' and not a 'trader'.
-contract RewardVault_V4 is
+contract RewardVault_V5 is
     PausableUpgradeable,
     ReentrancyGuardUpgradeable,
     FactoryOwnable,
@@ -162,8 +162,13 @@ contract RewardVault_V4 is
 
     /// @inheritdoc IRewardVault_V3
     function recoverERC20(address tokenAddress, uint256 tokenAmount) external onlyFactoryOwner {
-        if (tokenAddress == address(stakeToken)) CannotRecoverStakingToken.selector.revertWith();
         if (incentives[tokenAddress].minIncentiveRate != 0) CannotRecoverIncentiveToken.selector.revertWith();
+        if (tokenAddress == address(stakeToken)) {
+            uint256 maxRecoveryAmount = IERC20(stakeToken).balanceOf(address(this)) - totalSupply;
+            if (tokenAmount > maxRecoveryAmount) {
+                NotEnoughBalance.selector.revertWith();
+            }
+        }
         IERC20(tokenAddress).safeTransfer(msg.sender, tokenAmount);
         emit Recovered(tokenAddress, tokenAmount);
     }
@@ -405,6 +410,10 @@ contract RewardVault_V4 is
         if (amount < minIncentiveRate) AmountLessThanMinIncentiveRate.selector.revertWith();
 
         uint256 incentiveBalance = IERC20(token).balanceOf(address(this));
+        if (token == address(stakeToken)) {
+            incentiveBalance -= totalSupply;
+        }
+
         if (amount > incentiveBalance - amountRemainingBefore) NotEnoughBalance.selector.revertWith();
 
         incentive.amountRemaining += amount;
