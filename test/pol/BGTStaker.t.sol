@@ -112,6 +112,12 @@ contract BGTStakerTest is POLTest, StakingTest {
         bgtStaker.setRewardsDuration(7 days);
     }
 
+    function test_SetRewardDuration_FailsIfZero() public {
+        vm.prank(governance);
+        vm.expectRevert(IStakingRewardsErrors.RewardsDurationIsZero.selector);
+        bgtStaker.setRewardsDuration(0);
+    }
+
     function test_RecoverERC20FailsIfNotOwner() public {
         testFuzz_RecoverERC20FailsIfNotOwner(address(this));
     }

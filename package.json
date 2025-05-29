@@ -7,8 +7,8 @@
     "url": "https://github.com/berachain"
   },
   "dependencies": {
-    "@openzeppelin/contracts": "^5.1.0",
-    "@openzeppelin/contracts-upgradeable": "^5.1.0",
+    "@openzeppelin/contracts": "5.1.0",
+    "@openzeppelin/contracts-upgradeable": "5.1.0",
     "@prb/math": "^4.0.3",
     "@pythnetwork/pyth-sdk-solidity": "^3.1.0"
   },

@@ -76,9 +76,6 @@ abstract contract POLTest is Test, Create2Deployer {
         beraChef.setCommissionChangeDelay(2 * 8191);
         beraChef.setMaxWeightPerVault(1e4);
 
-        // change rewards duration to 3 days in BGTStaker
-        bgtStaker.setRewardsDuration(3 days);
-
         // add native token to BGT for backing
         vm.deal(address(bgt), 100_000 ether);
         vm.stopPrank();

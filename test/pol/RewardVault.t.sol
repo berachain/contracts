@@ -30,6 +30,7 @@ contract RewardVaultTest is DistributorTest, StakingTest {
     address internal daiIncentiveManager = makeAddr("daiIncentiveManager");
     address internal usdtIncentiveManager = makeAddr("usdtIncentiveManager");
     address internal honeyIncentiveManager = makeAddr("honeyIncentiveManager");
+    address internal honeyVaultRewardDurationManager = makeAddr("honeyVaultRewardDurationManager");
     MockDAI internal dai = new MockDAI();
     MockUSDT internal usdt = new MockUSDT();
     PausableERC20 internal pausableERC20 = new PausableERC20();
@@ -55,8 +56,11 @@ contract RewardVaultTest is DistributorTest, StakingTest {
         factory.grantRole(vaultManagerRole, vaultManager);
 
         // only vault manager can grant the vault pauser role.
-        vm.prank(vaultManager);
+        vm.startPrank(vaultManager);
         factory.grantRole(vaultPauserRole, vaultPauser);
+        // set the reward duration manager for honey vault.
+        vault.setRewardDurationManager(honeyVaultRewardDurationManager);
+        vm.stopPrank();
     }
 
     /// @dev helper function to perform staking
@@ -82,7 +86,7 @@ contract RewardVaultTest is DistributorTest, StakingTest {
     }
 
     function _setRewardsDuration(uint256 _duration) internal override {
-        vm.prank(governance);
+        vm.prank(honeyVaultRewardDurationManager);
         vault.setRewardsDuration(_duration);
     }
 
@@ -230,9 +234,91 @@ contract RewardVaultTest is DistributorTest, StakingTest {
         vault.recoverERC20(address(stakeToken), 1 ether);
     }
 
-    function test_SetRewardDuration_FailIfNotOwner() public {
-        vm.expectRevert(abi.encodeWithSelector(FactoryOwnable.OwnableUnauthorizedAccount.selector, address(this)));
-        vault.setRewardsDuration(1 days);
+    function test_SetRewardDuration_FailIfNotManager() public {
+        vm.expectRevert(IPOLErrors.NotRewardDurationManager.selector);
+        vault.setRewardsDuration(3 days);
+
+        // fails even if factory owner tries to set the reward duration.
+        vm.prank(governance);
+        vm.expectRevert(IPOLErrors.NotRewardDurationManager.selector);
+        vault.setRewardsDuration(3 days);
+    }
+
+    function test_SetRewardDuration_FailIfInvalidDuration() public {
+        uint256 cooldownPeriod = vault.REWARD_DURATION_COOLDOWN_PERIOD();
+        // roll forward the timestamp by cooldown period + 1
+        vm.warp(block.timestamp + cooldownPeriod + 1);
+        vm.startPrank(honeyVaultRewardDurationManager);
+        vm.expectRevert(IPOLErrors.InvalidRewardDuration.selector);
+        // fails if less than 3 days.
+        vault.setRewardsDuration(3 days - 1);
+
+        // fails if more than 14 days
+        vm.expectRevert(IPOLErrors.InvalidRewardDuration.selector);
+        vault.setRewardsDuration(14 days + 1);
+        vm.stopPrank();
+    }
+
+    function test_SetRewardDuration_FailIfCoolDownPeriodNotPassed() public {
+        super.testFuzz_SetRewardDuration(6 days);
+        assertEq(vault.rewardsDuration(), 6 days);
+        // assert last reward duration change timestamp is updated.
+        assertEq(vault.lastRewardDurationChangeTimestamp(), block.timestamp);
+
+        // roll forward the timestamp by few seconds less than cool down period.
+        vm.warp(block.timestamp + vault.REWARD_DURATION_COOLDOWN_PERIOD() - 1 seconds);
+        // assert cool down period is not passed.
+        assertFalse(vault.isRewardDurationCoolDownPeriodPassed());
+
+        // Set reward duration must revert as cool down period is not passed.
+        vm.prank(honeyVaultRewardDurationManager);
+        vm.expectRevert(IPOLErrors.RewardDurationCoolDownPeriodNotPassed.selector);
+        vault.setRewardsDuration(7 days);
+    }
+
+    function test_SetRewardDuration_PostCoolDown() public {
+        super.testFuzz_SetRewardDuration(6 days);
+        assertEq(vault.rewardsDuration(), 6 days);
+        assertEq(vault.lastRewardDurationChangeTimestamp(), block.timestamp);
+
+        // roll forward the timestamp by cool down period.
+        vm.warp(block.timestamp + vault.REWARD_DURATION_COOLDOWN_PERIOD());
+        // assert cool down period is passed.
+        assertTrue(vault.isRewardDurationCoolDownPeriodPassed());
+        // Set reward duration should not revert as cool down period is passed.
+        vm.prank(honeyVaultRewardDurationManager);
+        vault.setRewardsDuration(7 days);
+        assertEq(vault.rewardsDuration(), 7 days);
+        assertEq(vault.lastRewardDurationChangeTimestamp(), block.timestamp);
+        // cool down period should kick in again.
+        assertFalse(vault.isRewardDurationCoolDownPeriodPassed());
+    }
+
+    function test_SetRewardDurationManager_FailIfNotOwner() public {
+        testFuzz_SetRewardDurationManager_FailIfNotVaultManager(address(this));
+    }
+
+    function testFuzz_SetRewardDurationManager_FailIfNotVaultManager(address caller) public {
+        vm.assume(caller != vaultManager);
+        address newRewardDurationManager = makeAddr("newRewardDurationManager");
+        vm.expectRevert(abi.encodeWithSelector(FactoryOwnable.OwnableUnauthorizedAccount.selector, caller));
+        vm.prank(caller);
+        vault.setRewardDurationManager(newRewardDurationManager);
+    }
+
+    function test_SetRewardDurationManager_FailIfZeroAddress() public {
+        vm.prank(vaultManager);
+        vm.expectRevert(IPOLErrors.ZeroAddress.selector);
+        vault.setRewardDurationManager(address(0));
+    }
+
+    function test_SetRewardDurationManager() public {
+        address newManager = makeAddr("newManager");
+        vm.prank(vaultManager);
+        vm.expectEmit();
+        emit IRewardVault.RewardDurationManagerSet(newManager, honeyVaultRewardDurationManager);
+        vault.setRewardDurationManager(newManager);
+        assertEq(vault.rewardDurationManager(), newManager);
     }
 
     function test_Pause_FailIfNotVaultPauser() public {
@@ -1155,8 +1241,10 @@ contract RewardVaultTest is DistributorTest, StakingTest {
 
     function test_UndistributedRewardsDust() public virtual {
         performNotify(100);
-        vm.prank(governance);
-        vault.setRewardsDuration(3);
+        // roll forward the timestamp by cooldown period + 1
+        vm.warp(block.timestamp + vault.REWARD_DURATION_COOLDOWN_PERIOD() + 1);
+        vm.prank(honeyVaultRewardDurationManager);
+        vault.setRewardsDuration(7 days);
 
         uint256 amount = 100;
         uint256 rewardsDuration = VAULT.rewardsDuration();

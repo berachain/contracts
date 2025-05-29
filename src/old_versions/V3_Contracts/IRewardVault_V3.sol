@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.26;
 
-import { IPOLErrors } from "./IPOLErrors.sol";
-import { IStakingRewards } from "../../base/IStakingRewards.sol";
+import { IPOLErrors } from "src/pol/interfaces/IPOLErrors.sol";
+import { IStakingRewards } from "src/base/IStakingRewards.sol";
 
-interface IRewardVault is IPOLErrors, IStakingRewards {
+interface IRewardVault_V3 is IPOLErrors, IStakingRewards {
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
     /*                           EVENTS                           */
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
@@ -86,11 +86,6 @@ interface IRewardVault is IPOLErrors, IStakingRewards {
         bytes indexed pubkey, address indexed token, uint256 bgtEmitted, uint256 amount
     );
 
-    /// @notice Emitted when the reward duration manager is set.
-    /// @param newRewardDurationManager The address of the new reward duration manager.
-    /// @param oldRewardDurationManager The address of the old reward duration manager.
-    event RewardDurationManagerSet(address indexed newRewardDurationManager, address indexed oldRewardDurationManager);
-
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
     /*                          GETTERS                           */
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
@@ -120,10 +115,6 @@ interface IRewardVault is IPOLErrors, IStakingRewards {
     /// @return The amount staked by a delegate.
     function getDelegateStake(address account, address delegate) external view returns (uint256);
 
-    /// @notice Check if the cool down period has passed.
-    /// @return True if the cool down period has passed, false otherwise.
-    function isRewardDurationCoolDownPeriodPassed() external view returns (bool);
-
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
     /*                         ADMIN                              */
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
@@ -151,8 +142,7 @@ interface IRewardVault is IPOLErrors, IStakingRewards {
     /// @param tokenAmount The amount of token to recover.
     function recoverERC20(address tokenAddress, uint256 tokenAmount) external;
 
-    /// @notice Allows the reward duration manager to update the duration of the rewards.
-    /// @dev The duration must be between `MIN_REWARD_DURATION` and `MAX_REWARD_DURATION`.
+    /// @notice Allows the factory owner to update the duration of the rewards.
     /// @param _rewardsDuration The new duration of the rewards.
     function setRewardsDuration(uint256 _rewardsDuration) external;
 
@@ -175,10 +165,6 @@ interface IRewardVault is IPOLErrors, IStakingRewards {
 
     /// @notice Allows the factory vault manager to unpause the vault.
     function unpause() external;
-
-    /// @notice Allows the factory vault manager to set the address responsible for setting the reward duration.
-    /// @param _rewardDurationManager The address of the reward duration manager.
-    function setRewardDurationManager(address _rewardDurationManager) external;
 
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
     /*                         MUTATIVE                           */

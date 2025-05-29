@@ -66,6 +66,14 @@ contract RewardVault is
     // transferFrom).
     uint256 private constant SAFE_GAS_LIMIT = 500_000;
 
+    /// @notice The minimum reward duration.
+    uint256 public constant MIN_REWARD_DURATION = 3 days;
+    /// @notice The maximum reward duration.
+    uint256 public constant MAX_REWARD_DURATION = 7 days;
+
+    /// @notice The cool down period between two consecutive reward duration changes.
+    uint256 public constant REWARD_DURATION_COOLDOWN_PERIOD = 1 days;
+
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
     /*                          STORAGE                           */
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
@@ -90,6 +98,13 @@ contract RewardVault is
     /// @notice The list of whitelisted tokens.
     address[] public whitelistedTokens;
 
+    /// @notice The address responsible for setting the reward duration.
+    /// @dev It belongs to Dapp teams to smoothen the process of setting the reward duration.
+    address public rewardDurationManager;
+
+    /// @notice The last time the reward duration was changed.
+    uint256 public lastRewardDurationChangeTimestamp;
+
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
         _disableInitializers();
@@ -108,10 +123,11 @@ contract RewardVault is
         __FactoryOwnable_init(msg.sender);
         __Pausable_init();
         __ReentrancyGuard_init();
-        __StakingRewards_init(_stakingToken, _bgt, 3 days);
+        __StakingRewards_init(_stakingToken, _bgt, 7 days);
         maxIncentiveTokensCount = 3;
         // slither-disable-next-line missing-zero-check
         distributor = _distributor;
+        lastRewardDurationChangeTimestamp = block.timestamp;
         beaconDepositContract = IBeaconDeposit(_beaconDepositContract);
         emit DistributorSet(_distributor);
         emit MaxIncentiveTokensCountUpdated(maxIncentiveTokensCount);
@@ -174,7 +190,20 @@ contract RewardVault is
     }
 
     /// @inheritdoc IRewardVault
-    function setRewardsDuration(uint256 _rewardsDuration) external onlyFactoryOwner {
+    function setRewardsDuration(uint256 _rewardsDuration) external {
+        // only allow the reward duration manager to set the reward duration.
+        if (msg.sender != rewardDurationManager) NotRewardDurationManager.selector.revertWith();
+        // check if the cool down period has passed. if not, revert.
+        if (!_isRewardDurationCoolDownPeriodPassed()) {
+            RewardDurationCoolDownPeriodNotPassed.selector.revertWith();
+        }
+        // check if the reward duration is within the allowed range.
+        if (_rewardsDuration < MIN_REWARD_DURATION || _rewardsDuration > MAX_REWARD_DURATION) {
+            InvalidRewardDuration.selector.revertWith();
+        }
+        // update the last time the reward duration was changed.
+        lastRewardDurationChangeTimestamp = block.timestamp;
+        // update the reward duration.
         _setRewardsDuration(_rewardsDuration);
     }
 
@@ -251,6 +280,13 @@ contract RewardVault is
         _unpause();
     }
 
+    /// @inheritdoc IRewardVault
+    function setRewardDurationManager(address _rewardDurationManager) external onlyFactoryVaultManager {
+        if (_rewardDurationManager == address(0)) ZeroAddress.selector.revertWith();
+        emit RewardDurationManagerSet(_rewardDurationManager, rewardDurationManager);
+        rewardDurationManager = _rewardDurationManager;
+    }
+
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
     /*                          GETTERS                           */
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
@@ -278,6 +314,11 @@ contract RewardVault is
     /// @inheritdoc IRewardVault
     function getDelegateStake(address account, address delegate) external view returns (uint256) {
         return _delegateStake[account].stakedByDelegate[delegate];
+    }
+
+    /// @inheritdoc IRewardVault
+    function isRewardDurationCoolDownPeriodPassed() external view returns (bool) {
+        return _isRewardDurationCoolDownPeriodPassed();
     }
 
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
@@ -534,5 +575,10 @@ contract RewardVault is
                 }
             }
         }
+    }
+
+    /// @dev Returns true if the cool down period has passed.
+    function _isRewardDurationCoolDownPeriodPassed() internal view returns (bool) {
+        return block.timestamp - lastRewardDurationChangeTimestamp >= REWARD_DURATION_COOLDOWN_PERIOD;
     }
 }
