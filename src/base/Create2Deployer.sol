@@ -38,6 +38,38 @@ abstract contract Create2Deployer {
         }
     }
 
+    /// @notice Deploys a contract using the _CREATE2_FACTORY with constructor arguments.
+    /// @param salt The salt to use for the deployment.
+    /// @param initCode The init code of the contract to deploy.
+    /// @param args The constructor arguments to pass to the contract.
+    /// @return addr The address of the deployed contract.
+    function deployWithCreate2WithArgs(
+        uint256 salt,
+        bytes memory initCode,
+        bytes memory args
+    )
+        internal
+        returns (address addr)
+    {
+        // Combine initCode with constructorArgs
+        bytes memory combinedCode = abi.encodePacked(initCode, args);
+
+        assembly ("memory-safe") {
+            // cache the length of the combined code
+            let length := mload(combinedCode)
+            // overwrite the length memory slot with the salt
+            mstore(combinedCode, salt)
+            // deploy the contract using the _CREATE2_FACTORY
+            if iszero(call(gas(), _CREATE2_FACTORY, 0, combinedCode, add(length, 0x20), 0, 0x14)) {
+                mstore(0, 0x30116425) // selector for DeploymentFailed()
+                revert(0x1c, 0x04)
+            }
+            addr := shr(96, mload(0))
+            // restore the length memory slot
+            mstore(combinedCode, length)
+        }
+    }
+
     /// @notice Returns the deterministic address of a contract for the given salt and init code.
     /// @dev Assumes that the contract will be deployed using `deployWithCreate2`.
     /// @param salt The salt to use for the deployment.
@@ -45,6 +77,25 @@ abstract contract Create2Deployer {
     /// @return addr The address of the deployed contract.
     function getCreate2Address(uint256 salt, bytes memory initCode) internal pure returns (address) {
         return getCreate2Address(salt, keccak256(initCode));
+    }
+
+    /// @notice Returns the deterministic address of a contract for the given salt, init code and constructor
+    /// arguments.
+    /// @dev Assumes that the contract will be deployed using `deployWithCreate2WithArgs`.
+    /// @param salt The salt to use for the deployment.
+    /// @param initCode The init code of the contract to deploy.
+    /// @param args The constructor arguments to pass to the contract.
+    /// @return addr The address of the deployed contract.
+    function getCreate2AddressWithArgs(
+        uint256 salt,
+        bytes memory initCode,
+        bytes memory args
+    )
+        internal
+        pure
+        returns (address)
+    {
+        return getCreate2Address(salt, keccak256(abi.encodePacked(initCode, args)));
     }
 
     /// @notice Returns the deterministic address of a contract for the given salt and init code.
