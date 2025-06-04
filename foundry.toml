@@ -35,9 +35,8 @@ via_ir = true
 optimizer_runs = 200
 
 [etherscan]
-bartio = {key = "verifyContract", url = "https://api.routescan.io/v2/network/testnet/evm/80084/etherscan", chain = 80084}
-bepolia = {key = "verifyContract", url = "https://api.routescan.io/v2/network/testnet/evm/80069/etherscan", chain = 80069}
 berachain = {key = "verifyContract", url = "https://api.routescan.io/v2/network/mainnet/evm/80094/etherscan", chain = 80094}
+bepolia = {key = "verifyContract", url = "https://api.routescan.io/v2/network/testnet/evm/80069/etherscan", chain = 80069}
 
 [fmt]
 bracket_spacing = true
@@ -60,6 +59,5 @@ mainnet = "https://eth-mainnet.g.alchemy.com/v2/${API_KEY_ALCHEMY}"
 optimism = "https://optimism-mainnet.infura.io/v3/${API_KEY_INFURA}"
 polygon = "https://polygon-mainnet.infura.io/v3/${API_KEY_INFURA}"
 sepolia = "https://sepolia.infura.io/v3/${API_KEY_INFURA}"
-bartio = "https://bartio.rpc.berachain.com"
 berachain = "https://rpc.berachain.com"
-bepolia = "https://rpc.bepolia.berachain.com"
+bepolia = "https://bepolia.rpc.berachain.com/"
