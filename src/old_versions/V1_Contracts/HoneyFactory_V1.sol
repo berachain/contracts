@@ -5,15 +5,15 @@ import { ERC20 } from "solady/src/tokens/ERC20.sol";
 import { ERC4626 } from "solady/src/tokens/ERC4626.sol";
 import { SafeTransferLib } from "solady/src/utils/SafeTransferLib.sol";
 
-import { IPriceOracle } from "../extras/IPriceOracle.sol";
-import { IHoneyFactory } from "./IHoneyFactory.sol";
-import { Utils } from "../libraries/Utils.sol";
-import { Honey } from "./Honey.sol";
-import { VaultAdmin, CollateralVault } from "./VaultAdmin.sol";
+import { IPriceOracle } from "src/extras/IPriceOracle.sol";
+import { IHoneyFactory } from "src/honey/IHoneyFactory.sol";
+import { Utils } from "src/libraries/Utils.sol";
+import { Honey } from "src/honey/Honey.sol";
+import { VaultAdmin, CollateralVault } from "src/honey/VaultAdmin.sol";
 
 /// @notice This is the factory contract for minting and redeeming Honey.
 /// @author Berachain Team
-contract HoneyFactory is IHoneyFactory, VaultAdmin {
+contract HoneyFactory_V1 is IHoneyFactory, VaultAdmin {
     using Utils for bytes4;
 
     /// @dev The constant representing 100% of mint/redeem rate.
@@ -507,16 +507,6 @@ contract HoneyFactory is IHoneyFactory, VaultAdmin {
             InsufficientRecapitalizeAmount.selector.revertWith(amount);
         }
 
-        // Calculate the a posteriori missing balance:
-        uint256 remainingToTarget = targetBalance - (currentBalance + amount);
-        // If the a posteriori missing balance is less than the minimum required to recapitalize,
-        // reduce the amount so that another recapitalize is still doable.
-        uint256 minAssetsForRecap = vaults[asset].convertToAssets(minSharesToRecapitalize);
-        if (remainingToTarget > 0 && remainingToTarget < minAssetsForRecap) {
-            uint256 excessAmount = minAssetsForRecap - remainingToTarget;
-            amount -= excessAmount;
-        }
-
         _approveAndDeposit(asset, amount);
 
         if (!_isCappedRelative(asset)) {
@@ -525,6 +515,7 @@ contract HoneyFactory is IHoneyFactory, VaultAdmin {
         if (!_isCappedGlobal(true, asset)) {
             ExceedGlobalCap.selector.revertWith();
         }
+
         _checkInvariants(asset);
         emit Recapitalized(asset, amount, msg.sender);
     }

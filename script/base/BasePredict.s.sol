@@ -24,4 +24,18 @@ abstract contract BasePredictScript is Script, Create2Deployer {
         address contractAddress = getCreate2Address(salt, initCode);
         console2.log(string.concat(contractName, ": "), contractAddress);
     }
+
+    /// @notice Predicts the address of a contract deployed using the CREATE2.
+    function _predictAddressWithArgs(
+        string memory contractName,
+        bytes memory initCode,
+        uint256 salt,
+        bytes memory args
+    )
+        internal
+        pure
+    {
+        address contractAddress = getCreate2AddressWithArgs(salt, initCode, args);
+        console2.log(string.concat(contractName, ": "), contractAddress);
+    }
 }

@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.26;
 
-import { Honey } from "./Honey.sol";
-
 /// @notice This is the interface of HoneyFactory.
 /// @author Berachain Team
 interface IHoneyFactory {
@@ -97,24 +95,6 @@ interface IHoneyFactory {
     /// @param amount The amount of asset provided.
     /// @param sender The account that performed the recapitalization.
     event Recapitalized(address asset, uint256 amount, address sender);
-
-    /// @notice Returns the address of the Honey token contract.
-    /// @return honey_ Address of Honey.
-    function honey() external view returns (Honey honey_);
-
-    /// @notice Returns the flag to tell if factory is forced to basket mode.
-    /// @return forcedBasketMode_ True if forced to basket mode.
-    function forcedBasketMode() external view returns (bool forcedBasketMode_);
-
-    /// @notice Returns the lower offset of the peg range for a given asset.
-    /// @param asset The address of the asset to check lower peg offset.
-    /// @return lowerPegOffset The lower peg offset.
-    function lowerPegOffsets(address asset) external view returns (uint256 lowerPegOffset);
-
-    /// @notice Returns the upper offset of the peg range for a given asset.
-    /// @param asset The address of the asset to check upper peg offset.
-    /// @return upperPegOffset The upper peg offset.
-    function upperPegOffsets(address asset) external view returns (uint256 upperPegOffset);
 
     /// @notice Mint Honey by sending ERC20 to this contract.
     /// @dev Assest must be registered and must be a good collateral.

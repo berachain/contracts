@@ -6,12 +6,12 @@ import { ERC20 } from "solady/src/tokens/ERC20.sol";
 import { ERC4626 } from "solady/src/tokens/ERC4626.sol";
 import { SafeTransferLib } from "solady/src/utils/SafeTransferLib.sol";
 
-import { Utils } from "../libraries/Utils.sol";
-import { IHoneyErrors } from "./IHoneyErrors.sol";
+import { Utils } from "src/libraries/Utils.sol";
+import { IHoneyErrors } from "src/honey/IHoneyErrors.sol";
 
 /// @notice This is the ERC4626 vault for the collateral assets to mint Honey.
 /// @author Berachain Team
-contract CollateralVault is ERC4626, PausableUpgradeable, IHoneyErrors {
+contract CollateralVault_V1 is ERC4626, PausableUpgradeable, IHoneyErrors {
     using Utils for bytes4;
 
     event CustodyInfoSet(bool indexed isCustodyVault, address indexed custodyAddress);
@@ -230,16 +230,6 @@ contract CollateralVault is ERC4626, PausableUpgradeable, IHoneyErrors {
         // 10^assetDecimals asset_wei ~ 10^vaultDecimals vault_wei.
         // asset_wei_totalAssets ~ vault_wei_totalSupply / 10**(vaultDecimals - assetDecimals)
         return _convertToAssets(totalSupply());
-    }
-
-    /// @inheritdoc ERC4626
-    function previewWithdraw(uint256 assets) public view override returns (uint256 shares) {
-        return _convertToShares(assets);
-    }
-
-    /// @inheritdoc ERC4626
-    function previewMint(uint256 shares) public view override returns (uint256 assets) {
-        return _convertToAssets(shares);
     }
 
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/

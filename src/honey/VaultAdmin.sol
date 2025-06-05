@@ -64,10 +64,11 @@ abstract contract VaultAdmin is AccessControlUpgradeable, PausableUpgradeable, U
     mapping(address receiver => mapping(address asset => uint256 collectedFee)) public collectedFees;
 
     /// @dev Stores the shares of fees for each asset that are not yet redeemed.
-    mapping(address asset => uint256 collectedFee) internal collectedAssetFees;
+    mapping(address asset => uint256 collectedFee) public collectedAssetFees;
 
     /// @dev This gap is used to prevent storage collisions.
     uint256[49] private __gap;
+
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
     /*                         INITIALIZER                        */
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/

@@ -1034,7 +1034,9 @@ contract HoneyFactoryTest is HoneyBaseTest {
                     assertEq(amounts[i], 25e6 * 1e18 / factory.mintRates(asset));
                 } else {
                     // Assert Dai amount
-                    assertEq(amounts[i], 25e18 * 1e18 / factory.mintRates(asset));
+                    // see HoneyFactoryReader.sol#L62 for +1 reason
+                    uint256 expectedAmount = 25e18 * 1e18 / factory.mintRates(asset) + 1;
+                    assertEq(amounts[i], expectedAmount);
                 }
 
                 uint256 balance = ERC20(asset).balanceOf(address(this));
@@ -1357,7 +1359,7 @@ contract HoneyFactoryTest is HoneyBaseTest {
         factory.setLiquidationEnabled(false);
 
         vm.expectRevert(IHoneyErrors.LiquidationDisabled.selector);
-        factory.liquidate(address(dai), address(usdt), 100e18);
+        factory.liquidate(address(dai), address(usdt), 100e6);
     }
 
     function test_liquidate_failsWhenBadCollateralIsNotRegistered() external {
@@ -1377,8 +1379,10 @@ contract HoneyFactoryTest is HoneyBaseTest {
 
     function test_liquidate_failsIfGoodCollateralIsNotRegistered() external {
         MockUSDT usdtNew = new MockUSDT(); // new unregistered usdt token instance
+        vm.prank(governance);
+        factory.setLiquidationEnabled(true);
         vm.expectRevert(abi.encodeWithSelector(IHoneyErrors.AssetNotRegistered.selector, address(usdtNew)));
-        factory.liquidate(address(usdt), address(usdtNew), 100e18);
+        factory.liquidate(address(usdt), address(usdtNew), 100e6);
     }
 
     function test_liquidate_failsIfGoodCollateralIsBadCollateral() external {
@@ -1387,7 +1391,7 @@ contract HoneyFactoryTest is HoneyBaseTest {
 
         // new unregistered usdt token instance
         vm.expectRevert(abi.encodeWithSelector(IHoneyErrors.AssetIsBadCollateral.selector, address(usdt)));
-        factory.liquidate(address(dai), address(usdt), 100e18);
+        factory.liquidate(address(dai), address(usdt), 100e6);
     }
 
     function test_liquidate_failsIfReferenceCollateralIsBadCollateral() external {
@@ -1398,7 +1402,7 @@ contract HoneyFactoryTest is HoneyBaseTest {
         factory.setCollateralAssetStatus(address(dai), true);
 
         vm.expectRevert(IHoneyErrors.LiquidationWithReferenceCollateral.selector);
-        factory.liquidate(address(dai), address(usdt), 100e18);
+        factory.liquidate(address(dai), address(usdt), 100e6);
     }
 
     function test_liquidate_failsWithNoAllowance() external {
@@ -1709,24 +1713,107 @@ contract HoneyFactoryTest is HoneyBaseTest {
         factory.recapitalize(address(usdt), usdtToRecapitalize);
     }
 
-    function testFuzz_recapitalize(uint256 daiToMint, uint256 daiToRecapitalize) external {
-        daiToMint = _bound(daiToMint, 1e18, daiBalance);
+    function testFuzz_recapitalize(uint256 daiCollateral, uint256 daiGifted) external {
+        daiCollateral = _bound(daiCollateral, 1e18, daiBalance); // 1–200
         // Min shares to recapitalize is 1e18, which is exactly 1 dai token (18 decimals)
-        daiToRecapitalize = _bound(daiToRecapitalize, factory.minSharesToRecapitalize(), type(uint128).max);
+        uint256 minSharesToRecapitalize = factory.minSharesToRecapitalize();
+        uint256 minBalance = daiVault.convertToAssets(minSharesToRecapitalize);
+        // Target amount to recapitalize:
+        uint256 targetBalance = _bound(daiGifted, daiBalance + 1, 2 * daiBalance);
+        // Amount of DAI provided for recapitalization:
+        // NOTE: the upper bound exceeds the target balance (with an arbitrary
+        //       amount) in order to also cover that code path.
+        daiGifted = _bound(daiGifted, minBalance, targetBalance + minBalance);
 
-        dai.mint(address(this), daiToRecapitalize);
+        // Ensure that the executor has enough DAI for the test
+        dai.mint(address(this), daiGifted);
 
-        uint256 mintedHoneysForDai = _factoryMint(dai, daiToMint, receiver, false);
-        assertEq(honey.balanceOf(address(receiver)), mintedHoneysForDai);
+        _factoryMint(dai, daiCollateral, receiver, false);
 
         vm.prank(governance);
-        factory.setRecapitalizeBalanceThreshold(address(dai), daiToMint + daiToRecapitalize);
+        factory.setRecapitalizeBalanceThreshold(address(dai), targetBalance);
+
+        uint256 vaultBalancePre = daiVault.totalAssets();
+        assertLt(vaultBalancePre, targetBalance);
+        uint256 missingBalance = targetBalance - vaultBalancePre;
+
+        uint256 userBalancePre = dai.balanceOf(address(this));
+        uint256 honeySupplyPre = honey.totalSupply();
+
+        dai.approve(address(factory), daiGifted);
+        factory.recapitalize(address(dai), daiGifted);
+
+        uint256 vaultBalancePost = daiVault.totalAssets();
+        uint256 userBalancePost = dai.balanceOf(address(this));
+        uint256 daiAccepted = userBalancePre - userBalancePost;
+        uint256 honeySupplyPost = honey.totalSupply();
+
+        // no honeys are minted during recapitalization
+        assertEq(honeySupplyPre, honeySupplyPost);
+
+        if (vaultBalancePre + daiGifted > targetBalance) {
+            // vault balance post recapitalize equal to target balance
+            assertEq(vaultBalancePost, targetBalance);
+            // not all gifted dais are used
+            assertLt(daiAccepted, daiGifted);
+            assertEq(daiAccepted, missingBalance);
+        } else if (vaultBalancePre + daiGifted == targetBalance) {
+            // vault balance post recapitalize equal to target balance
+            assertEq(vaultBalancePost, targetBalance);
+            // all gifted dais are used
+            assertEq(daiAccepted, daiGifted);
+        } else {
+            // vault balance post recapitalize less than target balance
+            assertLt(vaultBalancePost, targetBalance);
+            uint256 deficit = missingBalance - daiGifted;
+            if (deficit < minBalance) {
+                // not all gifted dais are used
+                assertLt(daiAccepted, daiGifted);
+                assertEq(daiAccepted, missingBalance - minBalance);
+                assertEq(daiGifted - daiAccepted, minBalance - deficit);
+                // the a-posteriori deficit equals the min amount to recapitalize
+                assertEq(targetBalance - vaultBalancePost, minBalance);
+            } else {
+                // all gifted dais are used
+                assertEq(daiAccepted, daiGifted);
+            }
+        }
+    }
+
+    function testFuzz_recapitalize_WhenTheLeftMissingBalanceIsLessThanMinimumSharesToRecapitalize(
+        uint256 daiToRecapitalize,
+        uint256 minSharesToRecapitalize,
+        uint256 recapitalizeBalanceThreshold
+    )
+        external
+    {
+        minSharesToRecapitalize = _bound(minSharesToRecapitalize, 1e18, type(uint64).max);
+        uint256 minBalance = daiVault.convertToAssets(minSharesToRecapitalize);
+        recapitalizeBalanceThreshold = _bound(recapitalizeBalanceThreshold, minBalance * 2, type(uint160).max);
+        daiToRecapitalize = _bound(
+            daiToRecapitalize, (recapitalizeBalanceThreshold - minBalance) + 1, recapitalizeBalanceThreshold - 1
+        );
+        dai.mint(address(this), daiToRecapitalize);
+        assertEq(dai.balanceOf(address(this)), daiToRecapitalize + daiBalance);
+
+        vm.prank(governance);
+        factory.setMinSharesToRecapitalize(minSharesToRecapitalize);
+
+        vm.prank(governance);
+        factory.setRecapitalizeBalanceThreshold(address(dai), recapitalizeBalanceThreshold);
+
+        assertLt(daiToRecapitalize, recapitalizeBalanceThreshold);
+        assertLt(recapitalizeBalanceThreshold - daiToRecapitalize, minBalance);
 
         dai.approve(address(factory), daiToRecapitalize);
         factory.recapitalize(address(dai), daiToRecapitalize);
-        assertEq(daiVault.balanceOf(address(factory)), mintedHoneysForDai + daiToRecapitalize);
-        assertEq(honey.balanceOf(address(receiver)), mintedHoneysForDai);
-        assertEq(dai.balanceOf(address(this)), daiBalance - daiToMint);
+
+        // The vault accepts only a fraction of the DAIs and leave the space for another recapitalization:
+        assertEq(daiVault.balanceOf(address(factory)), recapitalizeBalanceThreshold - minBalance);
+        // The excess amoount, over the minBalance, is left to the user:
+        uint256 excess = minBalance - (recapitalizeBalanceThreshold - daiToRecapitalize);
+        assertEq(dai.balanceOf(address(this)), daiBalance + excess);
+        assertEq(daiToRecapitalize, recapitalizeBalanceThreshold - minBalance + excess);
     }
 
     function test_redeem() public {
@@ -2111,13 +2198,6 @@ contract HoneyFactoryTest is HoneyBaseTest {
         _assertEqVaultBalance(address(dai), _daiToMint * daiMintRate / 1e18);
     }
 
-    // ToDo: Add for Basket Mode Enabled
-    function testFuzz_PreviewRequiredCollateral(uint128 _mintedHoneys) external {
-        uint256 shareReq = (uint256(_mintedHoneys) * 1e18) / daiMintRate;
-        uint256[] memory requiredCollateral = factoryReader.previewMintCollaterals(address(dai), _mintedHoneys);
-        assertEq(requiredCollateral[0], shareReq);
-    }
-
     function testFuzz_PreviewRequiredCollateralReturnsAllZeroWhenBasketModeIsEnabledWithoutAnyDeposit(
         uint256 _mintedHoneys
     )
@@ -2174,12 +2254,11 @@ contract HoneyFactoryTest is HoneyBaseTest {
                 previewAssetDecimals > 18 ? previewAssetDecimals - 18 : 18 - previewAssetDecimals;
 
             for (uint256 j = 0; j < requiredCollaterals[i].length; j++) {
-                address collateralAsset = factory.registeredAssets(j);
-                uint256 mintRate = factory.mintRates(collateralAsset);
-                uint8 collateralAssetDecimals = ERC20(collateralAsset).decimals();
+                uint256 mintRate = factory.mintRates(factory.registeredAssets(j));
+                uint8 collateralAssetDecimals = ERC20(factory.registeredAssets(j)).decimals();
 
                 // Calculate the required collateral amount in the specific asset's units
-                uint256 requiredAmount = ((_mintedHoneys * 1e18) / mintRate) * percentages[j] / 1e18;
+                uint256 requiredAmount = ((_mintedHoneys * 1e18) / mintRate + 1) * percentages[j] / 1e18;
                 requiredAmount = Utils.changeDecimals(requiredAmount, 18, collateralAssetDecimals);
 
                 // Calculate delta tolerance for approximation
@@ -2200,6 +2279,20 @@ contract HoneyFactoryTest is HoneyBaseTest {
         uint256 redeemedHoneys = (daiVault.previewWithdraw(_redeemedDai) * 1e18) / daiRedeemRate;
         (, uint256 honeyToRedeem) = factoryReader.previewRedeemHoney(address(dai), _redeemedDai);
         assertEq(honeyToRedeem, redeemedHoneys);
+    }
+
+    function testFuzz_PreviewHoneyToRedeemStartingFromWantedHoneyAmount(uint256 wantedHoney) external {
+        wantedHoney = _bound(wantedHoney, 1, type(uint128).max);
+        uint256[] memory redeemableCollaterals = factoryReader.previewRedeemCollaterals(address(dai), wantedHoney);
+        uint256 expectedDai = (wantedHoney * daiRedeemRate) / 1e18;
+        assertEq(redeemableCollaterals[0], expectedDai);
+
+        // Check if the wanted amount is the one got from Honey preview
+        (uint256[] memory collaterals, uint256 honeyObtained) =
+            factoryReader.previewRedeemHoney(address(dai), expectedDai);
+        assertEq(collaterals[0], expectedDai);
+        // Accept a wei of rounding issue
+        assertApproxEqAbs(wantedHoney, honeyObtained, 1);
     }
 
     function test_TransferOwnershipOfBeaconFailsIfNotOwner() public {

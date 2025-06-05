@@ -21,6 +21,8 @@ interface IHoneyErrors {
     error NotFactory();
     // Signature: 0xb97fded1
     error InsufficientAssets(uint256 assets, uint256 shares);
+    // Signature: 0xb0f29513
+    error InsufficientBalanceToPayPythFee();
     // Signature: 0x6ba2e418
     error AssetIsBadCollateral(address asset);
     // Signature: 0x2595dbe7

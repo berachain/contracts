@@ -5,16 +5,16 @@ import { console2 } from "forge-std/Script.sol";
 import { BaseScript } from "../../base/Base.s.sol";
 import { PythPriceOracle } from "src/extras/PythPriceOracle.sol";
 import { PYTH_PRICE_ORACLE_ADDRESS } from "../OraclesAddresses.sol";
-import { USDT_ADDRESS, USDC_ADDRESS } from "../../misc/Addresses.sol";
+import { PYUSDC_ADDRESS, USDC_ADDRESS } from "../../misc/Addresses.sol";
 
 /// @notice Creates a collateral vault for the given token.
 contract AddFeedScript is BaseScript {
     bytes32 constant USDC_PYTH_FEED = bytes32(0xeaa020c61cc479712813461ce153894a96a6c00b21ed0cfc2798d1f9a9e9c94a);
-    bytes32 constant USDT_PYTH_FEED = bytes32(0x2b89b9dc8fdf9f34709a5b106b472f0f39bb6ca9ce04b0fd7f2e971688e2e53b);
+    bytes32 constant PYUSD_PYTH_FEED = bytes32(0xc1da1b73d7f01e7ddd54b3766cf7fcd644395ad14f70aa706ec5384c59e76692);
 
     function run() public virtual broadcast {
         require(USDC_PYTH_FEED != bytes32(0), "USDC_PYTH_FEED not set");
-        require(USDT_PYTH_FEED != bytes32(0), "USDT_PYTH_FEED not set");
+        require(PYUSD_PYTH_FEED != bytes32(0), "PYUSD_PYTH_FEED not set");
         _validateCode("PythPriceOracle", PYTH_PRICE_ORACLE_ADDRESS);
         PythPriceOracle pythPriceOracle = PythPriceOracle(PYTH_PRICE_ORACLE_ADDRESS);
 
@@ -25,7 +25,7 @@ contract AddFeedScript is BaseScript {
         }
 
         setPriceFeed("USDC", USDC_ADDRESS, USDC_PYTH_FEED);
-        setPriceFeed("USDT", USDT_ADDRESS, USDT_PYTH_FEED);
+        setPriceFeed("PYUSD", PYUSDC_ADDRESS, PYUSD_PYTH_FEED);
 
         if (grantedRole) {
             pythPriceOracle.revokeRole(pythPriceOracle.MANAGER_ROLE(), msg.sender);

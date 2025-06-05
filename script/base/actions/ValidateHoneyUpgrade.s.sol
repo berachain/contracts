@@ -19,12 +19,12 @@ contract ValidateHoneyUpgrade is Script {
         // check HoneyFactory safe upgrade
         // replace these version with the latest version to avoid too many upgrade check and hence getting `MemoryOOG`
         // error.
-        options.referenceContract = "HoneyFactory_V0.sol:HoneyFactory_V0";
+        options.referenceContract = "HoneyFactory_V1.sol:HoneyFactory_V1";
         Upgrades.validateUpgrade("HoneyFactory.sol", options);
         console2.log("HoneyFactory can be upgraded successfully.");
 
         // check collateral vault safe upgrade
-        options.referenceContract = "CollateralVault_V0.sol:CollateralVault_V0";
+        options.referenceContract = "CollateralVault_V1.sol:CollateralVault_V1";
         Upgrades.validateUpgrade("CollateralVault.sol", options);
         console2.log("CollateralVault can be upgraded successfully.");
 

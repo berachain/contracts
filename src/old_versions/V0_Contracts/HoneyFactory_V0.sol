@@ -6,7 +6,7 @@ import { ERC4626 } from "solady/src/tokens/ERC4626.sol";
 import { SafeTransferLib } from "solady/src/utils/SafeTransferLib.sol";
 
 import { IPriceOracle } from "src/extras/IPriceOracle.sol";
-import { IHoneyFactory } from "src/honey/IHoneyFactory.sol";
+import { IHoneyFactory } from "./IHoneyFactory.sol";
 import { Utils } from "src/libraries/Utils.sol";
 import { Honey } from "src/honey/Honey.sol";
 import { VaultAdmin_V0 } from "./VaultAdmin_V0.sol";

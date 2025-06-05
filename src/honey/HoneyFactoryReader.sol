@@ -7,13 +7,14 @@ import { ERC4626 } from "solady/src/tokens/ERC4626.sol";
 import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
+import { IHoneyFactoryReader } from "./IHoneyFactoryReader.sol";
 import { IHoneyErrors } from "./IHoneyErrors.sol";
 import { Utils } from "../libraries/Utils.sol";
 import { HoneyFactory } from "./HoneyFactory.sol";
 
 /// @notice This is the factory contract for minting and redeeming Honey.
 /// @author Berachain Team
-contract HoneyFactoryReader is AccessControlUpgradeable, UUPSUpgradeable, IHoneyErrors {
+contract HoneyFactoryReader is AccessControlUpgradeable, UUPSUpgradeable, IHoneyFactoryReader, IHoneyErrors {
     using Utils for bytes4;
 
     /// @notice The HoneyFactory contract.
@@ -38,11 +39,8 @@ contract HoneyFactoryReader is AccessControlUpgradeable, UUPSUpgradeable, IHoney
     /*                          GETTERS                           */
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
 
-    /// @notice Computes the amount of collateral(s) to provide in order to obtain a given amount of Honey.
+    /// @inheritdoc IHoneyFactoryReader
     /// @dev `asset` param is ignored if running in basket mode.
-    /// @param asset The collateral to consider if not in basket mode.
-    /// @param honey The desired amount of honey to obtain.
-    /// @param amounts The amounts of collateral to provide.
     function previewMintCollaterals(address asset, uint256 honey) public view returns (uint256[] memory amounts) {
         (address[] memory collaterals, uint256 num) = _getCollaterals();
         amounts = new uint256[](num);
@@ -58,17 +56,17 @@ contract HoneyFactoryReader is AccessControlUpgradeable, UUPSUpgradeable, IHoney
             ERC4626 vault = honeyFactory.vaults(collaterals[i]);
             uint256 mintRate = honeyFactory.mintRates(collaterals[i]);
             uint256 shares = honey * weights[i] / mintRate;
+
+            // If the shares re-converted do not match the exact honey amount, we round up.
+            if (weights[i] > 0 && shares * mintRate / weights[i] < honey) {
+                shares++;
+            }
+
             amounts[i] = vault.convertToAssets(shares);
         }
     }
 
-    /// @notice Given one collateral, computes the obtained Honey and the amount of collaterals expected if the basket
-    /// mode is enabled.
-    /// @param asset The collateral to provide.
-    /// @param amount The desired amount of collateral to provide.
-    /// @return collaterals The amounts of collateral to provide for every asset.
-    /// @return honey The expected amount of Honey to be minted (considering also the other collaterals in basket
-    /// mode).
+    /// @inheritdoc IHoneyFactoryReader
     function previewMintHoney(
         address asset,
         uint256 amount
@@ -85,11 +83,8 @@ contract HoneyFactoryReader is AccessControlUpgradeable, UUPSUpgradeable, IHoney
         }
     }
 
-    /// @notice Computes the obtaineable amount of collateral(s) given an amount of Honey.
+    /// @inheritdoc IHoneyFactoryReader
     /// @dev `asset` param is ignored if running in basket mode.
-    /// @param asset The collateral to obtain if not in basket mode.
-    /// @param honey The amount of honey provided.
-    /// @return collaterals The amounts of collateral to obtain.
     function previewRedeemCollaterals(
         address asset,
         uint256 honey
@@ -115,11 +110,7 @@ contract HoneyFactoryReader is AccessControlUpgradeable, UUPSUpgradeable, IHoney
         }
     }
 
-    /// @notice Given one desired collateral, computes the Honey to provide.
-    /// @param asset The collateral to obtain.
-    /// @param amount The desired amount of collateral to obtain.
-    /// @return collaterals The amounts of obtainable collaterals.
-    /// @return honey The amount of Honey to be provided.
+    /// @inheritdoc IHoneyFactoryReader
     /// @dev If the basket mode is enabled, the required Honey amount will provide also other collaterals beside
     /// required `amount` of `asset`.
     function previewRedeemHoney(
@@ -226,6 +217,9 @@ contract HoneyFactoryReader is AccessControlUpgradeable, UUPSUpgradeable, IHoney
 
         // Otherwise, compute the scaled amounts of all the collaterals in order to match wanted `amount` for `asset`.
         uint256[] memory weights = honeyFactory.getWeights();
+        if (weights[refAssetIndex] == 0) {
+            return res;
+        }
         uint8 decimals = ERC20(asset).decimals();
         uint256 refAmount = Utils.changeDecimals(amount, decimals, 18);
         refAmount = refAmount * 1e18 / weights[refAssetIndex];
