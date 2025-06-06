@@ -15,10 +15,11 @@ contract POLDeployer is Create2Deployer {
     uint8 internal constant maxNumWeightsPerRewardAllocation = 10;
 
     /// @dev Generalized Index of the pubkey of the first validator (validator index of 0) in the registry of the
-    /// beacon state in the beacon block on the Deneb beacon fork on Berachain.
-    uint64 internal constant ZERO_VALIDATOR_PUBKEY_G_INDEX = 3_254_554_418_216_960;
+    /// beacon state in the beacon block on the Electra beacon fork on Berachain.
+    uint64 internal constant ZERO_VALIDATOR_PUBKEY_G_INDEX = 6_350_779_162_034_176;
 
-    /// @dev Generalized Index of the proposer index in the beacon block on the Deneb beacon fork on Berachain.
+    /// @dev Generalized Index of the proposer index in the beacon block on both the Deneb and Electra beacon forks
+    /// on Berachain.
     uint64 internal constant PROPOSER_INDEX_G_INDEX = 9;
 
     /// @notice The address of the BeaconDeposit contract.

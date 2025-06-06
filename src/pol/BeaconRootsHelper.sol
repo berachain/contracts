@@ -55,11 +55,11 @@ abstract contract BeaconRootsHelper is IPOLErrors {
 
     /// @notice Generalized Index of the pubkey of the first validator (validator index of 0) in the registry of the
     /// beacon state in the beacon block.
-    /// @dev In the Deneb beacon fork on Berachain, this should be 3254554418216960.
+    /// @dev In the Electra beacon fork on Berachain, this should be 6350779162034176.
     uint64 public zeroValidatorPubkeyGIndex;
 
     /// @notice Generalized Index of the proposer index in the beacon block.
-    /// @dev In the Deneb beacon fork on Berachain, this should be 9.
+    /// @dev In the both the Deneb and Electra beacon forks on Berachain, this should be 9.
     uint64 public proposerIndexGIndex;
 
     /// @dev Storage gap for future upgrades.

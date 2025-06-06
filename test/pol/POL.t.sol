@@ -22,11 +22,13 @@ abstract contract POLTest is Test, Create2Deployer {
     uint64 internal constant DISTRIBUTE_FOR_TIMESTAMP = 1_234_567_890;
     uint256 internal constant PAYOUT_AMOUNT = 1e18;
     uint64 internal constant HISTORY_BUFFER_LENGTH = 8191;
-    uint64 internal constant ZERO_VALIDATOR_PUBKEY_G_INDEX = 3_254_554_418_216_960;
+    uint64 internal constant ZERO_VALIDATOR_PUBKEY_G_INDEX_DENEB = 3_254_554_418_216_960;
+    uint64 internal constant ZERO_VALIDATOR_PUBKEY_G_INDEX_ELECTRA = 6_350_779_162_034_176;
     uint64 internal constant PROPOSER_INDEX_G_INDEX = 9;
     address internal governance = makeAddr("governance");
     // beacon deposit address defined in the contract.
     address internal beaconDepositContract = 0x4242424242424242424242424242424242424242;
+    WBERA internal wbera = WBERA(payable(0x6969696969696969696969696969696969696969));
     address internal operator = makeAddr("operator");
     address internal bgtIncentiveReceiverManager = makeAddr("bgtIncentiveReceiverManager");
 
@@ -49,7 +51,6 @@ abstract contract POLTest is Test, Create2Deployer {
     Distributor internal distributor;
     POLDeployer internal polDeployer;
     BGTFeeDeployer internal feeDeployer;
-    WBERA internal wbera;
     address internal bgtIncentiveDistributor;
 
     /// @dev A function invoked before each test case is run.
@@ -57,14 +58,15 @@ abstract contract POLTest is Test, Create2Deployer {
         // read in proof data
         valData = abi.decode(
             stdJson.parseRaw(
-                vm.readFile(string.concat(vm.projectRoot(), "/test/pol/fixtures/validator_data_proofs.json")), "$"
+                vm.readFile(string.concat(vm.projectRoot(), "/test/pol/fixtures/validator_data_proofs_electra.json")),
+                "$"
             ),
             (ValData)
         );
 
         deployPOL(governance);
 
-        wbera = new WBERA();
+        deployCodeTo("WBERA.sol", address(wbera));
         deployBGTFees(governance);
 
         vm.startPrank(governance);

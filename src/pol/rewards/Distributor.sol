@@ -85,13 +85,13 @@ contract Distributor is
     function _authorizeUpgrade(address newImplementation) internal override onlyRole(DEFAULT_ADMIN_ROLE) { }
 
     /// @dev This is necessary to call when the beacon chain hard forks (and specifically the underlying structure of
-    /// beacon state is modified).
+    /// beacon block header is modified).
     function setZeroValidatorPubkeyGIndex(uint64 _zeroValidatorPubkeyGIndex) public override onlyRole(MANAGER_ROLE) {
         super.setZeroValidatorPubkeyGIndex(_zeroValidatorPubkeyGIndex);
     }
 
     /// @dev This is necessary to call when the beacon chain hard forks (and specifically the underlying structure of
-    /// beacon state is modified).
+    /// beacon block header is modified).
     function setProposerIndexGIndex(uint64 _proposerIndexGIndex) public override onlyRole(MANAGER_ROLE) {
         super.setProposerIndexGIndex(_proposerIndexGIndex);
     }

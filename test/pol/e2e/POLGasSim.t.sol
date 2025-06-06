@@ -31,7 +31,8 @@ contract POLGasSimulationSimple is GovernanceBaseTest {
         // Read in proof data.
         valData = abi.decode(
             stdJson.parseRaw(
-                vm.readFile(string.concat(vm.projectRoot(), "/test/pol/fixtures/validator_data_proofs.json")), "$"
+                vm.readFile(string.concat(vm.projectRoot(), "/test/pol/fixtures/validator_data_proofs_electra.json")),
+                "$"
             ),
             (ValData)
         );

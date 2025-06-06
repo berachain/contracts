@@ -84,7 +84,7 @@ contract DistributorTest is BeaconRootsHelperTest {
             address(bgt),
             address(blockRewardController),
             governance,
-            ZERO_VALIDATOR_PUBKEY_G_INDEX,
+            ZERO_VALIDATOR_PUBKEY_G_INDEX_ELECTRA,
             PROPOSER_INDEX_G_INDEX
         );
     }
