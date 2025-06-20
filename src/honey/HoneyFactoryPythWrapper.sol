@@ -117,48 +117,6 @@ contract HoneyFactoryPythWrapper is IHoneyFactoryPythWrapper, IHoneyErrors {
         _refundAnyLeftover(asset);
     }
 
-    /// @inheritdoc IHoneyFactoryPythWrapper
-    /// @dev Implementation is copied 1:1 from HoneyFactory to not edit the original contract.
-    function isBasketModeEnabled(bool isMint, uint256[] memory prices) public view returns (bool basketMode) {
-        IHoneyFactory factory_ = IHoneyFactory(factory);
-        VaultAdmin v = VaultAdmin(factory);
-        uint256 registeredAssetsLen = v.numRegisteredAssets();
-
-        if (factory_.forcedBasketMode()) return true;
-
-        for (uint256 i = 0; i < registeredAssetsLen; i++) {
-            address asset = v.registeredAssets(i);
-            bool isPegged_ = isPegged(asset, prices[i]);
-
-            if (isMint) {
-                if (isPegged_ && !v.isBadCollateralAsset(asset)) {
-                    // Basket mode should be disabled. It means there is a good collateral.
-                    return false;
-                }
-            } else if (!isPegged_) {
-                // If the not pegged asset is a bad collateral and its vault doesn't have shares
-                // we can ignore it because it means it has been fully liquidated.
-                uint256 sharesWithoutFees = v.vaults(asset).balanceOf(factory) - v.collectedAssetFees(asset);
-                bool usedAsCollateral = sharesWithoutFees > 0;
-
-                if (!usedAsCollateral) {
-                    continue;
-                }
-                return true;
-            }
-        }
-
-        // When is mint and there is no asset that disable basket mode, return true.
-        // When is redeem and there is no asset that enable basket mode, return false.
-        return isMint ? true : false;
-    }
-
-    /// @inheritdoc IHoneyFactoryPythWrapper
-    function isPegged(address asset, uint256 price) public view returns (bool) {
-        return (1e18 - IHoneyFactory(factory).lowerPegOffsets(asset) <= price)
-            && (price <= 1e18 + IHoneyFactory(factory).upperPegOffsets(asset));
-    }
-
     ///////// INTERNAL /////////
 
     function _updatePyth(bytes[] memory updateData) internal {

@@ -28,6 +28,11 @@ contract ValidateHoneyUpgrade is Script {
         Upgrades.validateUpgrade("CollateralVault.sol", options);
         console2.log("CollateralVault can be upgraded successfully.");
 
+        // check HoneyFactoryReader safe upgrade
+        options.referenceContract = "HoneyFactoryReader_V0.sol:HoneyFactoryReader_V0";
+        Upgrades.validateUpgrade("HoneyFactoryReader.sol", options);
+        console2.log("HoneyFactoryReader can be upgraded successfully.");
+
         vm.stopBroadcast();
     }
 }

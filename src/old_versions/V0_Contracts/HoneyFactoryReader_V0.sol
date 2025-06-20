@@ -7,20 +7,19 @@ import { ERC4626 } from "solady/src/tokens/ERC4626.sol";
 import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
-import { IHoneyFactoryReader } from "./IHoneyFactoryReader.sol";
-import { IHoneyErrors } from "./IHoneyErrors.sol";
-import { Utils } from "../libraries/Utils.sol";
-import { HoneyFactory } from "./HoneyFactory.sol";
+import { IHoneyFactoryReader_V0 } from "./interfaces/IHoneyFactoryReader_V0.sol";
+import { IHoneyErrors } from "src/honey/IHoneyErrors.sol";
+import { Utils } from "src/libraries/Utils.sol";
+import { HoneyFactory } from "src/honey/HoneyFactory.sol";
 
 /// @notice This is the factory contract for minting and redeeming Honey.
 /// @author Berachain Team
-contract HoneyFactoryReader is AccessControlUpgradeable, UUPSUpgradeable, IHoneyFactoryReader, IHoneyErrors {
+contract HoneyFactoryReader_V0 is AccessControlUpgradeable, UUPSUpgradeable, IHoneyFactoryReader_V0, IHoneyErrors {
     using Utils for bytes4;
 
     /// @notice The HoneyFactory contract.
     HoneyFactory public honeyFactory;
 
-    /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
         _disableInitializers();
     }
@@ -40,187 +39,13 @@ contract HoneyFactoryReader is AccessControlUpgradeable, UUPSUpgradeable, IHoney
     /*                          GETTERS                           */
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
 
-    /// @inheritdoc IHoneyFactoryReader
+    /// @inheritdoc IHoneyFactoryReader_V0
     /// @dev `asset` param is ignored if running in basket mode.
-    function previewMintCollaterals(address asset, uint256 honey) external view returns (uint256[] memory amounts) {
-        bool basketMode = honeyFactory.isBasketModeEnabled(true);
-
-        amounts = _previewMintCollaterals(asset, honey, basketMode);
-    }
-
-    /// @inheritdoc IHoneyFactoryReader
-    /// @dev `asset` param is ignored if running in basket mode.
-    function previewMintCollateralsWithPrices(
-        address asset,
-        uint256 honey,
-        uint256[] memory prices
-    )
-        external
-        view
-        returns (uint256[] memory amounts)
-    {
-        bool basketMode = isBasketModeEnabledWithPrices(true, prices);
-
-        amounts = _previewMintCollaterals(asset, honey, basketMode);
-    }
-
-    /// @inheritdoc IHoneyFactoryReader
-    function previewMintHoney(
-        address asset,
-        uint256 amount
-    )
-        external
-        view
-        returns (uint256[] memory collaterals, uint256 honey)
-    {
-        bool basketMode = honeyFactory.isBasketModeEnabled(true);
-
-        (collaterals, honey) = _previewMintHoney(asset, amount, basketMode);
-    }
-
-    /// @inheritdoc IHoneyFactoryReader
-    function previewMintHoneyWithPrices(
-        address asset,
-        uint256 amount,
-        uint256[] memory prices
-    )
-        external
-        view
-        returns (uint256[] memory collaterals, uint256 honey)
-    {
-        bool basketMode = isBasketModeEnabledWithPrices(true, prices);
-
-        (collaterals, honey) = _previewMintHoney(asset, amount, basketMode);
-    }
-
-    /// @inheritdoc IHoneyFactoryReader
-    /// @dev `asset` param is ignored if running in basket mode.
-    function previewRedeemCollaterals(
-        address asset,
-        uint256 honey
-    )
-        external
-        view
-        returns (uint256[] memory collaterals)
-    {
-        bool basketMode = honeyFactory.isBasketModeEnabled(false);
-
-        collaterals = _previewRedeemCollaterals(asset, honey, basketMode);
-    }
-
-    /// @inheritdoc IHoneyFactoryReader
-    /// @dev `asset` param is ignored if running in basket mode.
-    function previewRedeemCollateralsWithPrices(
-        address asset,
-        uint256 honey,
-        uint256[] memory prices
-    )
-        external
-        view
-        returns (uint256[] memory collaterals)
-    {
-        bool basketMode = isBasketModeEnabledWithPrices(false, prices);
-
-        collaterals = _previewRedeemCollaterals(asset, honey, basketMode);
-    }
-
-    /// @inheritdoc IHoneyFactoryReader
-    /// @dev If the basket mode is enabled, the required Honey amount will provide also other collaterals beside
-    /// required `amount` of `asset`.
-    function previewRedeemHoney(
-        address asset,
-        uint256 amount
-    )
-        external
-        view
-        returns (uint256[] memory collaterals, uint256 honey)
-    {
-        bool basketMode = honeyFactory.isBasketModeEnabled(false);
-
-        (collaterals, honey) = _previewRedeemHoney(asset, amount, basketMode);
-    }
-
-    /// @inheritdoc IHoneyFactoryReader
-    /// @dev If the basket mode is enabled, the required Honey amount will provide also other collaterals beside
-    /// required `amount` of `asset`.
-    function previewRedeemHoneyWithPrices(
-        address asset,
-        uint256 amount,
-        uint256[] memory prices
-    )
-        external
-        view
-        returns (uint256[] memory collaterals, uint256 honey)
-    {
-        bool basketMode = isBasketModeEnabledWithPrices(false, prices);
-
-        (collaterals, honey) = _previewRedeemHoney(asset, amount, basketMode);
-    }
-
-    /// @inheritdoc IHoneyFactoryReader
-    /// @dev Implementation is copied 1:1 from HoneyFactory to not edit the original contract.
-    function isBasketModeEnabledWithPrices(
-        bool isMint,
-        uint256[] memory prices
-    )
-        public
-        view
-        returns (bool basketMode)
-    {
-        uint256 registeredAssetsLen = honeyFactory.numRegisteredAssets();
-
-        if (honeyFactory.forcedBasketMode()) return true;
-
-        for (uint256 i = 0; i < registeredAssetsLen; i++) {
-            address asset = honeyFactory.registeredAssets(i);
-            bool isPegged_ = isPeggedWithPrice(asset, prices[i]);
-
-            if (isMint) {
-                if (isPegged_ && !honeyFactory.isBadCollateralAsset(asset)) {
-                    // Basket mode should be disabled. It means there is a good collateral.
-                    return false;
-                }
-            } else if (!isPegged_) {
-                // If the not pegged asset is a bad collateral and its vault doesn't have shares
-                // we can ignore it because it means it has been fully liquidated.
-                uint256 sharesWithoutFees = honeyFactory.vaults(asset).balanceOf(address(honeyFactory))
-                    - honeyFactory.collectedAssetFees(asset);
-                bool usedAsCollateral = sharesWithoutFees > 0;
-
-                if (!usedAsCollateral) {
-                    continue;
-                }
-                return true;
-            }
-        }
-
-        // When is mint and there is no asset that disable basket mode, return true.
-        // When is redeem and there is no asset that enable basket mode, return false.
-        return isMint ? true : false;
-    }
-
-    /// @inheritdoc IHoneyFactoryReader
-    function isPeggedWithPrice(address asset, uint256 price) public view returns (bool) {
-        return (1e18 - honeyFactory.lowerPegOffsets(asset) <= price)
-            && (price <= 1e18 + honeyFactory.upperPegOffsets(asset));
-    }
-
-    /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
-    /*                     INTERNAL FUNCTIONS                     */
-    /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
-
-    function _previewMintCollaterals(
-        address asset,
-        uint256 honey,
-        bool basketMode
-    )
-        internal
-        view
-        returns (uint256[] memory amounts)
-    {
+    function previewMintCollaterals(address asset, uint256 honey) public view returns (uint256[] memory amounts) {
         (address[] memory collaterals, uint256 num) = _getCollaterals();
         amounts = new uint256[](num);
         uint256[] memory weights = honeyFactory.getWeights();
+        bool basketMode = honeyFactory.isBasketModeEnabled(true);
         for (uint256 i = 0; i < num; i++) {
             if (!basketMode && collaterals[i] != asset) {
                 continue;
@@ -241,15 +66,16 @@ contract HoneyFactoryReader is AccessControlUpgradeable, UUPSUpgradeable, IHoney
         }
     }
 
-    function _previewMintHoney(
+    /// @inheritdoc IHoneyFactoryReader_V0
+    function previewMintHoney(
         address asset,
-        uint256 amount,
-        bool basketMode
+        uint256 amount
     )
-        internal
+        external
         view
         returns (uint256[] memory collaterals, uint256 honey)
     {
+        bool basketMode = honeyFactory.isBasketModeEnabled(true);
         collaterals = _getWeightedCollaterals(asset, amount, basketMode);
         (address[] memory assets, uint256 num) = _getCollaterals();
         for (uint256 i = 0; i < num; i++) {
@@ -257,18 +83,20 @@ contract HoneyFactoryReader is AccessControlUpgradeable, UUPSUpgradeable, IHoney
         }
     }
 
-    function _previewRedeemCollaterals(
+    /// @inheritdoc IHoneyFactoryReader_V0
+    /// @dev `asset` param is ignored if running in basket mode.
+    function previewRedeemCollaterals(
         address asset,
-        uint256 honey,
-        bool basketMode
+        uint256 honey
     )
-        internal
+        external
         view
         returns (uint256[] memory collaterals)
     {
         (address[] memory assets, uint256 num) = _getCollaterals();
         collaterals = new uint256[](num);
 
+        bool basketMode = honeyFactory.isBasketModeEnabled(false);
         if (!basketMode) {
             (uint256 refAssetIndex,) = _getIndexOfAsset(assets, num, asset);
             collaterals[refAssetIndex] = _previewRedeem(asset, honey);
@@ -282,21 +110,28 @@ contract HoneyFactoryReader is AccessControlUpgradeable, UUPSUpgradeable, IHoney
         }
     }
 
-    function _previewRedeemHoney(
+    /// @inheritdoc IHoneyFactoryReader_V0
+    /// @dev If the basket mode is enabled, the required Honey amount will provide also other collaterals beside
+    /// required `amount` of `asset`.
+    function previewRedeemHoney(
         address asset,
-        uint256 amount,
-        bool basketMode
+        uint256 amount
     )
-        internal
+        external
         view
         returns (uint256[] memory collaterals, uint256 honey)
     {
+        bool basketMode = honeyFactory.isBasketModeEnabled(false);
         collaterals = _getWeightedCollaterals(asset, amount, basketMode);
         (address[] memory assets, uint256 num) = _getCollaterals();
         for (uint256 i = 0; i < num; i++) {
             honey += _previewHoneyToRedeem(assets[i], collaterals[i]);
         }
     }
+
+    /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
+    /*                     INTERNAL FUNCTIONS                     */
+    /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
 
     /// @notice Get the amount of Honey that can be minted with the given ERC20.
     /// @param asset The ERC20 to mint with.

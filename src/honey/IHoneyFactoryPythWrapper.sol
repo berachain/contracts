@@ -69,15 +69,4 @@ interface IHoneyFactoryPythWrapper {
     /// @param asset The ERC20 asset to recapitalize.
     /// @param amount The amount provided.
     function recapitalize(bytes[] calldata updateData, address asset, uint256 amount) external payable;
-
-    /// @notice HoneyFactory isBasketModeEnabled with externally provided price.
-    /// @param isMint True if checking basket mode for minting.
-    /// @param prices The prices assumed to be valid.
-    function isBasketModeEnabled(bool isMint, uint256[] memory prices) external returns (bool basketMode);
-
-    /// @notice HoneyFactory isPegged with externally provided price.
-    /// @param asset The asset to check.
-    /// @param price The price assumed to be valid.
-    /// @return true if the asset is pegged.
-    function isPegged(address asset, uint256 price) external returns (bool);
 }
