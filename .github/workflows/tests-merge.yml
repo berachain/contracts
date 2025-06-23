@@ -1,0 +1,36 @@
+name: Tests-Merge
+
+on:
+  push:
+    branches:
+      - main
+      - devel
+      - bepolia
+
+jobs:
+  test:
+    runs-on:
+      labels: berachain-devnet-gha-runner
+    timeout-minutes: 30
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+
+      - name: Install Bun
+        uses: oven-sh/setup-bun@v1
+
+      - name: Install the Node.js dependencies
+        run: bun install
+
+      - name: Generate a fuzz seed that changes weekly to avoid burning through RPC allowance
+        run: echo "FOUNDRY_FUZZ_SEED=$(echo $(($EPOCHSECONDS - $EPOCHSECONDS % 604800)))" >> $GITHUB_ENV
+
+      - name: Run tests
+        run: forge test
+        env:
+          FOUNDRY_PROFILE: ci

@@ -1,0 +1,56 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - devel
+      - bepolia
+
+jobs:
+  ci:
+    runs-on:
+      labels: berachain-devnet-gha-runner
+    strategy:
+      matrix:
+        include:
+          - job_name: lint
+            command: bun run lint
+            summary: "## Lint result"
+          - job_name: build
+            command: forge build
+            summary: "## Build result"
+          - job_name: coverage
+            command: forge coverage --fuzz-runs 256 --report lcov --report-file ./test-forge-cover.txt
+            summary: "## Coverage result"
+    name: ${{ matrix.job_name }}
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+
+      - name: Install Bun
+        uses: oven-sh/setup-bun@v1
+
+      - name: Install the Node.js dependencies
+        run: bun install
+
+      - name: Execute Job Command
+        run: ${{ matrix.command }}
+
+      - name: Add Job Summary
+        run: |
+          echo ${{ matrix.summary }} >> $GITHUB_STEP_SUMMARY
+          echo "✅ Passed" >> $GITHUB_STEP_SUMMARY
+
+      - if: ${{ matrix.job_name == 'coverage' }}
+        name: Upload coverage reports to Codecov
+        uses: codecov/codecov-action@v2
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./test-forge-cover.txt
