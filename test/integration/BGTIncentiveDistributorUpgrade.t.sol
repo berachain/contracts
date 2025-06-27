@@ -125,12 +125,12 @@ contract BGTIncentiveDistributorUpgradeTest is Create2Deployer, BGTIncentiveDist
         assertEq(BeraChef(BERACHEF_ADDRESS).getValCommissionOnIncentiveTokens(pubkey), 1);
 
         vm.prank(operator);
-        // queue new commission rate of 100%
-        BeraChef(BERACHEF_ADDRESS).queueValCommission(pubkey, 1e4);
+        // queue new commission rate of 20%
+        BeraChef(BERACHEF_ADDRESS).queueValCommission(pubkey, 0.2e4);
 
         // check the queued commission
         queuedCommission = BeraChef(BERACHEF_ADDRESS).getValQueuedCommissionOnIncentiveTokens(pubkey);
-        assertEq(queuedCommission.commissionRate, 1e4);
+        assertEq(queuedCommission.commissionRate, 0.2e4);
         assertEq(queuedCommission.blockNumberLast, block.number);
 
         // will revert if try to activate the queue before the delay
@@ -139,17 +139,17 @@ contract BGTIncentiveDistributorUpgradeTest is Create2Deployer, BGTIncentiveDist
 
         vm.roll(vm.getBlockNumber() + (2 * 8191));
         vm.expectEmit(true, true, true, true);
-        emit IBeraChef.ValCommissionSet(pubkey, 1, 1e4);
+        emit IBeraChef.ValCommissionSet(pubkey, 1, 0.2e4);
         BeraChef(BERACHEF_ADDRESS).activateQueuedValCommission(pubkey);
         // check the new commission
-        assertEq(BeraChef(BERACHEF_ADDRESS).getValCommissionOnIncentiveTokens(pubkey), 1e4);
+        assertEq(BeraChef(BERACHEF_ADDRESS).getValCommissionOnIncentiveTokens(pubkey), 0.2e4);
 
         // new 0 commission rate
         vm.prank(operator);
         BeraChef(BERACHEF_ADDRESS).queueValCommission(pubkey, 0);
         vm.roll(vm.getBlockNumber() + (2 * 8191));
         vm.expectEmit(true, true, true, true);
-        emit IBeraChef.ValCommissionSet(pubkey, 1e4, 0);
+        emit IBeraChef.ValCommissionSet(pubkey, 0.2e4, 0);
         BeraChef(BERACHEF_ADDRESS).activateQueuedValCommission(pubkey);
         // should allow to set commission to 0.
         // default 5% commission applies only if no custom commission has been set.

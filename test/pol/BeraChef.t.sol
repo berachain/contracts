@@ -684,7 +684,7 @@ contract BeraChefTest is POLTest {
     }
 
     function testFuzz_QueueValCommission(uint256 commission) public {
-        commission = bound(commission, 1, 1e4); // capped at 100%
+        commission = bound(commission, 1, 0.2e4); // capped at 20%
         vm.prank(operator);
         vm.expectEmit();
         emit IBeraChef.QueuedValCommission(valData.pubkey, uint96(commission));
@@ -699,13 +699,14 @@ contract BeraChefTest is POLTest {
         testFuzz_QueueValCommission(2e3);
         vm.prank(operator);
         vm.expectRevert(IPOLErrors.CommissionChangeAlreadyQueued.selector);
-        beraChef.queueValCommission(valData.pubkey, uint96(1e4));
+        beraChef.queueValCommission(valData.pubkey, uint96(0.2e4));
     }
 
-    function test_QueueValCommission_FailIfCommissionMoreThanHundredPercent() public {
+    function test_QueueValCommission_FailIfCommissionHigherThanMax() public {
+        uint96 maxCommissionRate = beraChef.MAX_COMMISSION_RATE();
         vm.prank(operator);
         vm.expectRevert(IPOLErrors.InvalidCommissionValue.selector);
-        beraChef.queueValCommission(valData.pubkey, uint96(1e4 + 1));
+        beraChef.queueValCommission(valData.pubkey, maxCommissionRate + 1);
     }
 
     function test_QueueValCommission_FailIfCallerNotOperator() public {

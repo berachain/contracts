@@ -32,6 +32,9 @@ contract BeraChef is IBeraChef, OwnableUpgradeable, UUPSUpgradeable {
     /// @dev With 2 second block time, this is ~30 days.
     uint64 public constant MAX_REWARD_ALLOCATION_BLOCK_DELAY = 1_315_000;
 
+    /// @dev Represents the maximum commission rate per validator, set to 20%.
+    uint96 public constant MAX_COMMISSION_RATE = 0.2e4;
+
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
     /*                          STORAGE                           */
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
@@ -266,7 +269,7 @@ contract BeraChef is IBeraChef, OwnableUpgradeable, UUPSUpgradeable {
 
     /// @inheritdoc IBeraChef
     function queueValCommission(bytes calldata valPubkey, uint96 commissionRate) external onlyOperator(valPubkey) {
-        if (commissionRate > ONE_HUNDRED_PERCENT) {
+        if (commissionRate > MAX_COMMISSION_RATE) {
             InvalidCommissionValue.selector.revertWith();
         }
         QueuedCommissionRateChange storage qcr = valQueuedCommission[valPubkey];
@@ -491,6 +494,11 @@ contract BeraChef is IBeraChef, OwnableUpgradeable, UUPSUpgradeable {
         CommissionRate memory operatorCommission = valCommission[valPubkey];
         // If the operator commission was never set, default is 5%.
         if (operatorCommission.activationBlock == 0) return DEFAULT_COMMISSION_RATE;
+        // If the operator commission has been set to a value greater than the maximum allowed
+        // return the maximum commission value.
+        if (operatorCommission.commissionRate > MAX_COMMISSION_RATE) {
+            return MAX_COMMISSION_RATE;
+        }
         return operatorCommission.commissionRate;
     }
 }

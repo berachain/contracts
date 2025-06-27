@@ -941,7 +941,7 @@ contract RewardVaultTest is DistributorTest, StakingTest {
     }
 
     function testFuzz_ProcessIncentivesWithNonZeroCommission(uint256 bgtEmitted, uint256 commission) public {
-        commission = bound(commission, 1, 1e4); // capped at 100%
+        commission = bound(commission, 1, 0.2e4); // capped at 20%
         bgtEmitted = bound(bgtEmitted, 0, 1000 * 1e18);
 
         // adds 100 dai, 100 honey incentive with rate 200 * 1e18.
