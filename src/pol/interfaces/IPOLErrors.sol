@@ -121,6 +121,10 @@ interface IPOLErrors is IStakingRewardsErrors {
     error InvalidRewardDuration();
     // Signature: 0x91373fcd
     error NotRewardDurationManager();
+    // Signature: 0xfb89696d
+    error NotRewardVaultManager();
+    // Signature: 0x4c168419
+    error DurationChangeNotAllowed();
     // Signature: 0x3a70eb50
     error RewardDurationCoolDownPeriodNotPassed();
 

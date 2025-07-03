@@ -75,7 +75,7 @@ contract BGTStakerTest is POLTest, StakingTest {
         timestamp += 617_501;
         vm.warp(timestamp);
 
-        uint256 earned = VAULT.earned(user);
+        uint256 earned = bgtStaker.earned(user);
         vm.prank(user);
         uint256 rewards = bgtStaker.getReward();
         assertEq(earned, rewards);
@@ -99,6 +99,128 @@ contract BGTStakerTest is POLTest, StakingTest {
 
     function test_OwnerIsGovernance() public view {
         assertEq(bgtStaker.owner(), governance);
+    }
+
+    function test_SetRewardDuration() public {
+        testFuzz_SetRewardDuration(1 days);
+    }
+
+    function testFuzz_SetRewardDuration(uint256 duration) public {
+        duration = _bound(duration, 3 days, 7 days);
+        vm.expectEmit();
+        emit IStakingRewards.RewardsDurationUpdated(duration);
+        _setRewardsDuration(duration);
+        assertEq(bgtStaker.rewardsDuration(), duration);
+    }
+
+    /// @dev Changing rewards duration during reward cycle is allowed but does not change the reward rate,
+    /// thus the earned amount, until a notify is performed
+    function test_SetRewardsDurationDuringCycle() public {
+        performNotify(100 ether);
+        performStake(user, 100 ether);
+        uint256 blockTimestamp = vm.getBlockTimestamp();
+        // reward rate is computed over default rewards duration of 7 days
+        uint256 startingRate = FixedPointMathLib.fullMulDiv(100 ether, PRECISION, 7 days);
+        assertEq(bgtStaker.rewardRate(), startingRate);
+
+        vm.warp(blockTimestamp + 0.5 days);
+        blockTimestamp = vm.getBlockTimestamp();
+        assertApproxEqAbs(bgtStaker.earned(user), FixedPointMathLib.fullMulDiv(startingRate, 0.5 days, PRECISION), 1e2);
+
+        // changing rewards duration is allowed during reward cycle
+        _setRewardsDuration(4 days);
+        assertEq(bgtStaker.rewardsDuration(), 4 days);
+
+        // does not affect reward rate and thus user earned amount...
+        assertEq(bgtStaker.rewardRate(), startingRate);
+        vm.warp(blockTimestamp + 0.5 days);
+        blockTimestamp = vm.getBlockTimestamp();
+        assertApproxEqAbs(bgtStaker.earned(user), FixedPointMathLib.fullMulDiv(startingRate, 1 days, PRECISION), 1e2);
+
+        // ... until a new amount is notified to the vault
+        performNotify(100 ether);
+
+        uint256 leftOver = 100 ether * PRECISION - startingRate * 1 days;
+        uint256 newRate = (100 ether * PRECISION + leftOver) / 4 days;
+        assertEq(bgtStaker.rewardRate(), newRate);
+
+        vm.warp(blockTimestamp + 1 days);
+        blockTimestamp = vm.getBlockTimestamp();
+        uint256 expectedEarned = FixedPointMathLib.fullMulDiv(startingRate, 1 days, PRECISION)
+            + FixedPointMathLib.fullMulDiv(newRate, 1 days, PRECISION);
+        assertApproxEqAbs(bgtStaker.earned(user), expectedEarned, 2e2);
+    }
+
+    /// @dev Changing rewards duration during reward cycle afftects users staking in different times.
+    function test_SetRewardsDurationDuringCycleMultipleUsers() public {
+        address user2 = makeAddr("user2");
+        uint256 blockTimestamp = vm.getBlockTimestamp();
+
+        performNotify(100 ether);
+        performStake(user, 100 ether);
+
+        // default rewards duration is 7 days
+        uint256 startingRate = FixedPointMathLib.fullMulDiv(100 ether, PRECISION, 7 days);
+        vm.warp(blockTimestamp + 0.5 days);
+        blockTimestamp = vm.getBlockTimestamp();
+
+        _setRewardsDuration(4 days);
+
+        // user staking after _setRewardsDuration is still earning at the same rate until a new notify
+        performStake(user2, 100 ether);
+        vm.warp(blockTimestamp + 0.5 days);
+        blockTimestamp = vm.getBlockTimestamp();
+
+        performNotify(100 ether);
+
+        uint256 leftOver = 100 ether - FixedPointMathLib.fullMulDiv(startingRate, 1 days, PRECISION);
+        uint256 newRate = FixedPointMathLib.fullMulDiv(100 ether + leftOver, PRECISION, 4 days);
+
+        vm.warp(blockTimestamp + 1 days);
+        blockTimestamp = vm.getBlockTimestamp();
+        uint256 userExpectedEarned = FixedPointMathLib.fullMulDiv(startingRate, 0.5 days, PRECISION)
+            + FixedPointMathLib.fullMulDiv(startingRate, 0.5 days, PRECISION) / 2
+            + FixedPointMathLib.fullMulDiv(newRate, 1 days, PRECISION) / 2;
+
+        uint256 user2ExpectedEarned = FixedPointMathLib.fullMulDiv(startingRate, 0.5 days, PRECISION) / 2
+            + FixedPointMathLib.fullMulDiv(newRate, 1 days, PRECISION) / 2;
+
+        assertApproxEqAbs(bgtStaker.earned(user), userExpectedEarned, 5e2);
+        assertApproxEqAbs(bgtStaker.earned(user2), user2ExpectedEarned, 5e2);
+    }
+
+    function test_SetRewardDurationDuringCycleEarned() public {
+        testFuzz_SetRewardsDurationDuringCycleEarned(8 days, 1 days);
+    }
+
+    /// @dev Changing rewards duration during reward cycle and notifying rewards does change the earned amount
+    /// according to the new rate
+    function testFuzz_SetRewardsDurationDuringCycleEarned(uint256 duration, uint256 time) public {
+        duration = _bound(duration, 3 days, 7 days);
+        time = _bound(time, 3 days, 7 days);
+
+        performNotify(100 ether);
+        performStake(user, 100 ether);
+
+        uint256 rate = bgtStaker.rewardRate();
+        vm.warp(block.timestamp + 1 days);
+
+        _setRewardsDuration(duration);
+        performNotify(100 ether);
+        uint256 newRate = bgtStaker.rewardRate();
+
+        vm.warp(block.timestamp + time);
+
+        if (time >= duration) {
+            assertApproxEqAbs(bgtStaker.earned(user), 200 ether, 5e3);
+        } else {
+            assertApproxEqAbs(
+                bgtStaker.earned(user),
+                FixedPointMathLib.fullMulDiv(rate, 1 days, PRECISION)
+                    + FixedPointMathLib.fullMulDiv(newRate, time, PRECISION),
+                1e4
+            );
+        }
     }
 
     function test_SetRewardDurationFailsIfNotOwner() public {

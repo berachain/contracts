@@ -7,14 +7,14 @@ import { PausableUpgradeable } from "@openzeppelin/contracts-upgradeable/utils/P
 import { ReentrancyGuardUpgradeable } from "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
 import { FixedPointMathLib } from "solady/src/utils/FixedPointMathLib.sol";
 
-import { Utils } from "../../libraries/Utils.sol";
-import { IBeaconDeposit } from "../interfaces/IBeaconDeposit.sol";
-import { IRewardVault } from "../interfaces/IRewardVault.sol";
-import { FactoryOwnable } from "../../base/FactoryOwnable.sol";
-import { StakingRewards } from "../../base/StakingRewards.sol";
-import { IBeraChef } from "../interfaces/IBeraChef.sol";
-import { IDistributor } from "../interfaces/IDistributor.sol";
-import { IBGTIncentiveDistributor } from "../interfaces/IBGTIncentiveDistributor.sol";
+import { Utils } from "src/libraries/Utils.sol";
+import { IBeaconDeposit } from "src/pol/interfaces/IBeaconDeposit.sol";
+import { IRewardVault_V6 } from "./IRewardVault_V6.sol";
+import { FactoryOwnable } from "src/base/FactoryOwnable.sol";
+import { StakingRewards } from "src/base/StakingRewards.sol";
+import { IBeraChef } from "src/pol/interfaces/IBeraChef.sol";
+import { IDistributor } from "src/pol/interfaces/IDistributor.sol";
+import { IBGTIncentiveDistributor } from "src/pol/interfaces/IBGTIncentiveDistributor.sol";
 
 /// @title Rewards Vault
 /// @author Berachain Team
@@ -23,12 +23,12 @@ import { IBGTIncentiveDistributor } from "../interfaces/IBGTIncentiveDistributor
 /// https://github.com/Synthetixio/synthetix/blob/develop/contracts/StakingRewards.sol
 /// We are using this model instead of 4626 because we want to incentivize staying in the vault for x period of time to
 /// to be considered a 'miner' and not a 'trader'.
-contract RewardVault is
+contract RewardVault_V6 is
     PausableUpgradeable,
     ReentrancyGuardUpgradeable,
     FactoryOwnable,
     StakingRewards,
-    IRewardVault
+    IRewardVault_V6
 {
     using Utils for bytes4;
     using SafeERC20 for IERC20;
@@ -71,6 +71,9 @@ contract RewardVault is
     /// @notice The maximum reward duration.
     uint256 public constant MAX_REWARD_DURATION = 7 days;
 
+    /// @notice The cool down period between two consecutive reward duration changes.
+    uint256 public constant REWARD_DURATION_COOLDOWN_PERIOD = 1 days;
+
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
     /*                          STORAGE                           */
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
@@ -95,34 +98,19 @@ contract RewardVault is
     /// @notice The list of whitelisted tokens.
     address[] public whitelistedTokens;
 
-    /// @notice The address authorized to manage reward vault operations and configurations.
-    /// @dev This role is typically assigned to dApp teams to enable them to configure reward distribution parameters.
-    address public rewardVaultManager;
+    /// @notice The address responsible for setting the reward duration.
+    /// @dev It belongs to Dapp teams to smoothen the process of setting the reward duration.
+    address public rewardDurationManager;
 
-    // deprecated
-    uint256 private _lastRewardDurationChangeTimestamp;
-
-    /// @notice The target rewards per second, scaled by PRECISION.
-    /// @dev This acts as both a maximum and a target rate. When the calculated reward rate exceeds this value,
-    /// the duration is dynamically adjusted to achieve this target rate, but never goes below MIN_REWARD_DURATION.
-    /// This prevents the issue where a spike in rewards would permanently expand the duration, causing subsequent
-    /// smaller rewards to be spread over longer periods with very low rates.
-    uint256 public targetRewardsPerSecond;
-
-    /// @notice The pending rewards duration.
-    /// @dev Comes into effect during the next `notifyRewardAmount` call.
-    uint256 public pendingRewardsDuration;
-
-    /// @notice The reward duration in case targetRewardsPerSecond is not met.
-    /// @dev must be between MIN_REWARD_DURATION and MAX_REWARD_DURATION and can be set only by reward vault manager.
-    uint256 public minRewardDurationForTargetRate;
+    /// @notice The last time the reward duration was changed.
+    uint256 public lastRewardDurationChangeTimestamp;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
         _disableInitializers();
     }
 
-    /// @inheritdoc IRewardVault
+    /// @inheritdoc IRewardVault_V6
     function initialize(
         address _beaconDepositContract,
         address _bgt,
@@ -139,6 +127,7 @@ contract RewardVault is
         maxIncentiveTokensCount = 3;
         // slither-disable-next-line missing-zero-check
         distributor = _distributor;
+        lastRewardDurationChangeTimestamp = block.timestamp;
         beaconDepositContract = IBeaconDeposit(_beaconDepositContract);
         emit DistributorSet(_distributor);
         emit MaxIncentiveTokensCountUpdated(maxIncentiveTokensCount);
@@ -170,29 +159,24 @@ contract RewardVault is
         _;
     }
 
-    modifier onlyRewardVaultManager() {
-        if (msg.sender != rewardVaultManager) NotRewardVaultManager.selector.revertWith();
-        _;
-    }
-
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
     /*                       ADMIN FUNCTIONS                      */
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
 
-    /// @inheritdoc IRewardVault
+    /// @inheritdoc IRewardVault_V6
     function setDistributor(address _rewardDistribution) external onlyFactoryOwner {
         if (_rewardDistribution == address(0)) ZeroAddress.selector.revertWith();
         distributor = _rewardDistribution;
         emit DistributorSet(_rewardDistribution);
     }
 
-    /// @inheritdoc IRewardVault
+    /// @inheritdoc IRewardVault_V6
     function notifyRewardAmount(bytes calldata pubkey, uint256 reward) external onlyDistributor {
         _notifyRewardAmount(reward);
         _processIncentives(pubkey, reward);
     }
 
-    /// @inheritdoc IRewardVault
+    /// @inheritdoc IRewardVault_V6
     function recoverERC20(address tokenAddress, uint256 tokenAmount) external onlyFactoryOwner {
         if (incentives[tokenAddress].minIncentiveRate != 0) CannotRecoverIncentiveToken.selector.revertWith();
         if (tokenAddress == address(stakeToken)) {
@@ -205,56 +189,25 @@ contract RewardVault is
         emit Recovered(tokenAddress, tokenAmount);
     }
 
-    /// @inheritdoc IRewardVault
-    function setRewardsDuration(uint256 _rewardsDuration) external onlyRewardVaultManager {
-        // protocol must not have switched to targetRewardsPerSecond logic.
-        if (targetRewardsPerSecond != 0) DurationChangeNotAllowed.selector.revertWith();
+    /// @inheritdoc IRewardVault_V6
+    function setRewardsDuration(uint256 _rewardsDuration) external {
+        // only allow the reward duration manager to set the reward duration.
+        if (msg.sender != rewardDurationManager) NotRewardDurationManager.selector.revertWith();
+        // check if the cool down period has passed. if not, revert.
+        if (!_isRewardDurationCoolDownPeriodPassed()) {
+            RewardDurationCoolDownPeriodNotPassed.selector.revertWith();
+        }
         // check if the reward duration is within the allowed range.
         if (_rewardsDuration < MIN_REWARD_DURATION || _rewardsDuration > MAX_REWARD_DURATION) {
             InvalidRewardDuration.selector.revertWith();
         }
-        // store the pending rewards duration.
-        pendingRewardsDuration = _rewardsDuration;
+        // update the last time the reward duration was changed.
+        lastRewardDurationChangeTimestamp = block.timestamp;
+        // update the reward duration.
+        _setRewardsDuration(_rewardsDuration);
     }
 
-    /// @inheritdoc IRewardVault
-    function setTargetRewardsPerSecond(uint256 _targetRewardsPerSecond) external onlyRewardVaultManager {
-        // set the `minRewardDurationForTargetRate` to `MIN_REWARD_DURATION` if it is not set.
-        if (minRewardDurationForTargetRate == 0) {
-            minRewardDurationForTargetRate = MIN_REWARD_DURATION;
-            emit MinRewardDurationForTargetRateUpdated(MIN_REWARD_DURATION, 0);
-        }
-        // if we are setting target rate to 0, this means we are switching back to duration based distribution
-        // in duration based distribution, duration must be within the allowed range.
-        // duration will never go below `MIN_REWARD_DURATION` as `minRewardDurationForTargetRate` can never be less
-        // than `MIN_REWARD_DURATION`.
-        // so we need to check if current duration is higher than `MAX_REWARD_DURATION`, if yes, set it to
-        // `MAX_REWARD_DURATION`.
-        if (_targetRewardsPerSecond == 0 && rewardsDuration > MAX_REWARD_DURATION) {
-            pendingRewardsDuration = MAX_REWARD_DURATION;
-        }
-
-        emit TargetRewardsPerSecondUpdated(_targetRewardsPerSecond, targetRewardsPerSecond);
-        targetRewardsPerSecond = _targetRewardsPerSecond;
-    }
-
-    /// @inheritdoc IRewardVault
-    function setMinRewardDurationForTargetRate(uint256 _minRewardDurationForTargetRate)
-        external
-        onlyRewardVaultManager
-    {
-        // check if the reward duration is within the allowed range.
-        if (
-            _minRewardDurationForTargetRate < MIN_REWARD_DURATION
-                || _minRewardDurationForTargetRate > MAX_REWARD_DURATION
-        ) {
-            InvalidRewardDuration.selector.revertWith();
-        }
-        emit MinRewardDurationForTargetRateUpdated(_minRewardDurationForTargetRate, minRewardDurationForTargetRate);
-        minRewardDurationForTargetRate = _minRewardDurationForTargetRate;
-    }
-
-    /// @inheritdoc IRewardVault
+    /// @inheritdoc IRewardVault_V6
     function whitelistIncentiveToken(
         address token,
         uint256 minIncentiveRate,
@@ -283,7 +236,7 @@ contract RewardVault is
         emit IncentiveTokenWhitelisted(token, minIncentiveRate, manager);
     }
 
-    /// @inheritdoc IRewardVault
+    /// @inheritdoc IRewardVault_V6
     function removeIncentiveToken(address token) external onlyFactoryVaultManager onlyWhitelistedToken(token) {
         delete incentives[token];
         // delete the token from the list.
@@ -291,7 +244,7 @@ contract RewardVault is
         emit IncentiveTokenRemoved(token);
     }
 
-    /// @inheritdoc IRewardVault
+    /// @inheritdoc IRewardVault_V6
     function updateIncentiveManager(
         address token,
         address newManager
@@ -308,7 +261,7 @@ contract RewardVault is
         emit IncentiveManagerChanged(token, newManager, currentManager);
     }
 
-    /// @inheritdoc IRewardVault
+    /// @inheritdoc IRewardVault_V6
     function setMaxIncentiveTokensCount(uint8 _maxIncentiveTokensCount) external onlyFactoryOwner {
         if (_maxIncentiveTokensCount < whitelistedTokens.length) {
             InvalidMaxIncentiveTokensCount.selector.revertWith();
@@ -317,62 +270,67 @@ contract RewardVault is
         emit MaxIncentiveTokensCountUpdated(_maxIncentiveTokensCount);
     }
 
-    /// @inheritdoc IRewardVault
+    /// @inheritdoc IRewardVault_V6
     function pause() external onlyFactoryVaultPauser {
         _pause();
     }
 
-    /// @inheritdoc IRewardVault
+    /// @inheritdoc IRewardVault_V6
     function unpause() external onlyFactoryVaultManager {
         _unpause();
     }
 
-    /// @inheritdoc IRewardVault
-    function setRewardVaultManager(address _rewardVaultManager) external onlyFactoryVaultManager {
-        if (_rewardVaultManager == address(0)) ZeroAddress.selector.revertWith();
-        emit RewardVaultManagerSet(_rewardVaultManager, rewardVaultManager);
-        rewardVaultManager = _rewardVaultManager;
+    /// @inheritdoc IRewardVault_V6
+    function setRewardDurationManager(address _rewardDurationManager) external onlyFactoryVaultManager {
+        if (_rewardDurationManager == address(0)) ZeroAddress.selector.revertWith();
+        emit RewardDurationManagerSet(_rewardDurationManager, rewardDurationManager);
+        rewardDurationManager = _rewardDurationManager;
     }
 
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
     /*                          GETTERS                           */
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
 
-    /// @inheritdoc IRewardVault
+    /// @inheritdoc IRewardVault_V6
     function operator(address account) external view returns (address) {
         return _operators[account];
     }
 
-    /// @inheritdoc IRewardVault
+    /// @inheritdoc IRewardVault_V6
     function getWhitelistedTokensCount() external view returns (uint256) {
         return whitelistedTokens.length;
     }
 
-    /// @inheritdoc IRewardVault
+    /// @inheritdoc IRewardVault_V6
     function getWhitelistedTokens() public view returns (address[] memory) {
         return whitelistedTokens;
     }
 
-    /// @inheritdoc IRewardVault
+    /// @inheritdoc IRewardVault_V6
     function getTotalDelegateStaked(address account) external view returns (uint256) {
         return _delegateStake[account].delegateTotalStaked;
     }
 
-    /// @inheritdoc IRewardVault
+    /// @inheritdoc IRewardVault_V6
     function getDelegateStake(address account, address delegate) external view returns (uint256) {
         return _delegateStake[account].stakedByDelegate[delegate];
+    }
+
+    /// @inheritdoc IRewardVault_V6
+    function isRewardDurationCoolDownPeriodPassed() external view returns (bool) {
+        return _isRewardDurationCoolDownPeriodPassed();
     }
 
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
     /*                          WRITES                            */
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
 
-    /// @inheritdoc IRewardVault
+    /// @inheritdoc IRewardVault_V6
     function stake(uint256 amount) external nonReentrant whenNotPaused {
         _stake(msg.sender, amount);
     }
 
-    /// @inheritdoc IRewardVault
+    /// @inheritdoc IRewardVault_V6
     function delegateStake(address account, uint256 amount) external nonReentrant whenNotPaused {
         if (msg.sender == account) NotDelegate.selector.revertWith();
 
@@ -389,12 +347,12 @@ contract RewardVault is
         emit DelegateStaked(account, msg.sender, amount);
     }
 
-    /// @inheritdoc IRewardVault
+    /// @inheritdoc IRewardVault_V6
     function withdraw(uint256 amount) external nonReentrant checkSelfStakedBalance(msg.sender, amount) {
         _withdraw(msg.sender, amount);
     }
 
-    /// @inheritdoc IRewardVault
+    /// @inheritdoc IRewardVault_V6
     function delegateWithdraw(address account, uint256 amount) external nonReentrant {
         if (msg.sender == account) NotDelegate.selector.revertWith();
 
@@ -410,7 +368,7 @@ contract RewardVault is
         emit DelegateWithdrawn(account, msg.sender, amount);
     }
 
-    /// @inheritdoc IRewardVault
+    /// @inheritdoc IRewardVault_V6
     function getReward(
         address account,
         address recipient
@@ -423,7 +381,7 @@ contract RewardVault is
         return _getReward(account, recipient);
     }
 
-    /// @inheritdoc IRewardVault
+    /// @inheritdoc IRewardVault_V6
     function exit(address recipient) external nonReentrant {
         // self-staked amount
         uint256 amount = _accountInfo[msg.sender].balance - _delegateStake[msg.sender].delegateTotalStaked;
@@ -431,13 +389,13 @@ contract RewardVault is
         _getReward(msg.sender, recipient);
     }
 
-    /// @inheritdoc IRewardVault
+    /// @inheritdoc IRewardVault_V6
     function setOperator(address _operator) external {
         _operators[msg.sender] = _operator;
         emit OperatorSet(msg.sender, _operator);
     }
 
-    /// @inheritdoc IRewardVault
+    /// @inheritdoc IRewardVault_V6
     function addIncentive(
         address token,
         uint256 amount,
@@ -481,7 +439,7 @@ contract RewardVault is
         emit IncentiveAdded(token, msg.sender, amount, incentive.incentiveRate);
     }
 
-    /// @inheritdoc IRewardVault
+    /// @inheritdoc IRewardVault_V6
     function accountIncentives(address token, uint256 amount) external nonReentrant onlyWhitelistedToken(token) {
         Incentive storage incentive = incentives[token];
         (uint256 minIncentiveRate, uint256 incentiveRateStored, uint256 amountRemainingBefore, address manager) =
@@ -619,37 +577,8 @@ contract RewardVault is
         }
     }
 
-    function _setRewardRate() internal override {
-        // if the pending rewards duration is 0, use the current rewards duration,
-        // otherwise use the pending rewards duration.
-        uint256 _rewardsDuration = pendingRewardsDuration == 0 ? rewardsDuration : pendingRewardsDuration;
-        // clear the pending rewards duration.
-        pendingRewardsDuration = 0;
-        uint256 _targetRewardsPerSecond = targetRewardsPerSecond; // cache storage read
-        uint256 _rewardRate = undistributedRewards / _rewardsDuration;
-
-        if (_targetRewardsPerSecond > 0) {
-            // Always try to achieve the target rate by adjusting duration
-            uint256 targetDuration = undistributedRewards / _targetRewardsPerSecond;
-
-            // Ensure the duration doesn't go below the minimum
-            if (targetDuration < minRewardDurationForTargetRate) {
-                // If we can't achieve the target rate within min duration,
-                // calculate the rate based on minimum duration
-                _rewardRate = undistributedRewards / minRewardDurationForTargetRate;
-                targetDuration = minRewardDurationForTargetRate;
-            } else {
-                // Use the target rate and update duration
-                _rewardRate = _targetRewardsPerSecond;
-            }
-            _rewardsDuration = targetDuration;
-        }
-        // update the rewards duration if it has changed
-        if (_rewardsDuration != rewardsDuration) {
-            _setRewardsDuration(_rewardsDuration);
-        }
-        rewardRate = _rewardRate;
-        periodFinish = block.timestamp + _rewardsDuration;
-        undistributedRewards -= _rewardRate * _rewardsDuration;
+    /// @dev Returns true if the cool down period has passed.
+    function _isRewardDurationCoolDownPeriodPassed() internal view returns (bool) {
+        return block.timestamp - lastRewardDurationChangeTimestamp >= REWARD_DURATION_COOLDOWN_PERIOD;
     }
 }

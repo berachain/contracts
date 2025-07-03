@@ -15,13 +15,15 @@ contract ValidatePOLUpgrade is Script {
         // @custom:oz-upgrades-from ContractV1
         // or `referenceContract` should be specified in the Options object.
 
-        // Check BeraChef safe upgrade
         Options memory options; // create an empty options object.
-        // replace these version with the latest version to avoid too many upgrade check and hence getting `MemoryOOG`
-        // error.
-        options.referenceContract = "RewardVault_V5.sol:RewardVault_V5";
+        // Allow state variable renaming.
+        options.unsafeAllowRenames = true;
+        // replace these version with the latest version to avoid too many upgrade check
+        // and hence getting `MemoryOOG` error.
+        options.referenceContract = "RewardVault_V6.sol:RewardVault_V6";
+
         Upgrades.validateUpgrade("RewardVault.sol", options);
-        console2.log("RewardVault V6 can be upgraded successfully.");
+        console2.log("RewardVault can be upgraded successfully.");
 
         // Check RewardVaultFactory safe upgrade
         options.referenceContract = "RewardVaultFactory_V0.sol:RewardVaultFactory_V0";

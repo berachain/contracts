@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.26;
 
-import { IPOLErrors } from "./IPOLErrors.sol";
-import { IStakingRewards } from "../../base/IStakingRewards.sol";
+import { IPOLErrors } from "src/pol/interfaces/IPOLErrors.sol";
+import { IStakingRewards } from "src/base/IStakingRewards.sol";
 
-interface IRewardVault is IPOLErrors, IStakingRewards {
+interface IRewardVault_V6 is IPOLErrors, IStakingRewards {
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
     /*                           EVENTS                           */
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
@@ -86,22 +86,10 @@ interface IRewardVault is IPOLErrors, IStakingRewards {
         bytes indexed pubkey, address indexed token, uint256 bgtEmitted, uint256 amount
     );
 
-    /// @notice Emitted when the target rewards per second is updated.
-    /// @param newTargetRewardsPerSecond The new target rewards per second.
-    /// @param oldTargetRewardsPerSecond The old target rewards per second.
-    event TargetRewardsPerSecondUpdated(uint256 newTargetRewardsPerSecond, uint256 oldTargetRewardsPerSecond);
-
-    /// @notice Emitted when the reward vault manager is set.
-    /// @param newRewardVaultManager The address of the new reward vault manager.
-    /// @param oldRewardVaultManager The address of the old reward vault manager.
-    event RewardVaultManagerSet(address indexed newRewardVaultManager, address indexed oldRewardVaultManager);
-
-    /// @notice Emitted when the min reward duration for target rate is updated.
-    /// @param newMinRewardDurationForTargetRate The new min reward duration for target rate.
-    /// @param oldMinRewardDurationForTargetRate The old min reward duration for target rate.
-    event MinRewardDurationForTargetRateUpdated(
-        uint256 newMinRewardDurationForTargetRate, uint256 oldMinRewardDurationForTargetRate
-    );
+    /// @notice Emitted when the reward duration manager is set.
+    /// @param newRewardDurationManager The address of the new reward duration manager.
+    /// @param oldRewardDurationManager The address of the old reward duration manager.
+    event RewardDurationManagerSet(address indexed newRewardDurationManager, address indexed oldRewardDurationManager);
 
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
     /*                          GETTERS                           */
@@ -132,6 +120,10 @@ interface IRewardVault is IPOLErrors, IStakingRewards {
     /// @return The amount staked by a delegate.
     function getDelegateStake(address account, address delegate) external view returns (uint256);
 
+    /// @notice Check if the cool down period has passed.
+    /// @return True if the cool down period has passed, false otherwise.
+    function isRewardDurationCoolDownPeriodPassed() external view returns (bool);
+
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
     /*                         ADMIN                              */
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
@@ -159,28 +151,10 @@ interface IRewardVault is IPOLErrors, IStakingRewards {
     /// @param tokenAmount The amount of token to recover.
     function recoverERC20(address tokenAddress, uint256 tokenAmount) external;
 
-    /// @notice Allows the reward vault manager to update the duration of the rewards.
-    /// @dev Only allowed if targetRewardsPerSecond is not set.
+    /// @notice Allows the reward duration manager to update the duration of the rewards.
     /// @dev The duration must be between `MIN_REWARD_DURATION` and `MAX_REWARD_DURATION`.
-    /// @dev New duration is stored as pending rewards duration and is applied on the next `notifyRewardAmount` call.
     /// @param _rewardsDuration The new duration of the rewards.
     function setRewardsDuration(uint256 _rewardsDuration) external;
-
-    /// @notice Sets the target rewards per second rate.
-    /// @dev This rate acts as both a maximum and a target. When rewards exceed this rate, the duration is
-    /// dynamically adjusted to achieve this target rate while respecting MIN_REWARD_DURATION constraints.
-    /// This prevents permanent duration expansion from reward spikes that would cause subsequent smaller
-    /// rewards to be distributed at very low rates.
-    /// @dev Min reward duration for target rate gets set to `MIN_REWARD_DURATION` if it is not set.
-    /// @dev Allows resetting the target rewards per second to 0 to enable duration based distribution.
-    /// @param _targetRewardsPerSecond The new target rewards per second, scaled by PRECISION.
-    function setTargetRewardsPerSecond(uint256 _targetRewardsPerSecond) external;
-
-    /// @notice Allows the reward vault manager to set the min reward duration for target rate.
-    /// @dev This duration is used in case target rewards per second is not met.
-    /// @dev The duration must be between `MIN_REWARD_DURATION` and `MAX_REWARD_DURATION`.
-    /// @param _minRewardDurationForTargetRate The new min reward duration for target rate.
-    function setMinRewardDurationForTargetRate(uint256 _minRewardDurationForTargetRate) external;
 
     /// @notice Allows the factory owner to whitelist a token to incentivize with.
     /// @param token The address of the token to whitelist.
@@ -202,9 +176,9 @@ interface IRewardVault is IPOLErrors, IStakingRewards {
     /// @notice Allows the factory vault manager to unpause the vault.
     function unpause() external;
 
-    /// @notice Allows the factory vault manager to set the address responsible for managing the reward vault.
-    /// @param _rewardVaultManager The address of the reward vault manager.
-    function setRewardVaultManager(address _rewardVaultManager) external;
+    /// @notice Allows the factory vault manager to set the address responsible for setting the reward duration.
+    /// @param _rewardDurationManager The address of the reward duration manager.
+    function setRewardDurationManager(address _rewardDurationManager) external;
 
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
     /*                         MUTATIVE                           */

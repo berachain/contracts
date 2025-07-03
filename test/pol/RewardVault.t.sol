@@ -9,6 +9,7 @@ import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.s
 import { PausableUpgradeable } from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 
 import { FactoryOwnable } from "src/base/FactoryOwnable.sol";
+import { RewardVault } from "src/pol/rewards/RewardVault.sol";
 import { IRewardVault, IPOLErrors } from "src/pol/interfaces/IRewardVault.sol";
 import { IStakingRewards, IStakingRewardsErrors } from "src/base/IStakingRewards.sol";
 import { POLTest } from "./POL.t.sol";
@@ -30,7 +31,7 @@ contract RewardVaultTest is DistributorTest, StakingTest {
     address internal daiIncentiveManager = makeAddr("daiIncentiveManager");
     address internal usdtIncentiveManager = makeAddr("usdtIncentiveManager");
     address internal honeyIncentiveManager = makeAddr("honeyIncentiveManager");
-    address internal honeyVaultRewardDurationManager = makeAddr("honeyVaultRewardDurationManager");
+    address internal honeyVaultManager = makeAddr("honeyVaultManager");
     MockDAI internal dai = new MockDAI();
     MockUSDT internal usdt = new MockUSDT();
     PausableERC20 internal pausableERC20 = new PausableERC20();
@@ -58,8 +59,8 @@ contract RewardVaultTest is DistributorTest, StakingTest {
         // only vault manager can grant the vault pauser role.
         vm.startPrank(vaultManager);
         factory.grantRole(vaultPauserRole, vaultPauser);
-        // set the reward duration manager for honey vault.
-        vault.setRewardDurationManager(honeyVaultRewardDurationManager);
+        // set the reward vault manager for honey vault.
+        vault.setRewardVaultManager(honeyVaultManager);
         vm.stopPrank();
     }
 
@@ -86,7 +87,7 @@ contract RewardVaultTest is DistributorTest, StakingTest {
     }
 
     function _setRewardsDuration(uint256 _duration) internal override {
-        vm.prank(honeyVaultRewardDurationManager);
+        vm.prank(honeyVaultManager);
         vault.setRewardsDuration(_duration);
     }
 
@@ -106,7 +107,7 @@ contract RewardVaultTest is DistributorTest, StakingTest {
 
         // Approve the vault to spend honey tokens on behalf of the user
         vm.prank(_user);
-        honey.approve(address(VAULT), _amount);
+        honey.approve(address(vault), _amount);
 
         // Stake the tokens in the vault
         vm.expectEmit();
@@ -157,9 +158,6 @@ contract RewardVaultTest is DistributorTest, StakingTest {
 
         vm.expectRevert();
         vault.recoverERC20(address(honey), 255);
-
-        vm.expectRevert();
-        vault.setRewardsDuration(255);
 
         vm.expectRevert();
         vault.pause();
@@ -234,21 +232,145 @@ contract RewardVaultTest is DistributorTest, StakingTest {
         vault.recoverERC20(address(stakeToken), 1 ether);
     }
 
+    function test_SetRewardDuration() public {
+        testFuzz_SetRewardDuration(1 days);
+    }
+
+    function testFuzz_SetRewardDuration(uint256 duration) public {
+        duration = _bound(duration, 3 days, 7 days);
+        // should store the new duration as pending rewards duration
+        _setRewardsDuration(duration);
+        assertEq(vault.pendingRewardsDuration(), duration);
+        assertEq(vault.rewardsDuration(), 7 days);
+    }
+
+    /// @dev Changing rewards duration during reward cycle is allowed and is stored as pending rewards duration,
+    /// thus not changing the reward rate and hence the earned amount, until a notify is performed
+    function test_SetRewardsDurationDuringCycle() public {
+        performNotify(100 ether);
+        performStake(user, 100 ether);
+        uint256 blockTimestamp = vm.getBlockTimestamp();
+        // reward rate is computed over default rewards duration of 7 days
+        uint256 startingRate = FixedPointMathLib.fullMulDiv(100 ether, PRECISION, 7 days);
+        assertEq(vault.rewardRate(), startingRate);
+
+        vm.warp(blockTimestamp + 0.5 days);
+        blockTimestamp = vm.getBlockTimestamp();
+        assertApproxEqAbs(vault.earned(user), FixedPointMathLib.fullMulDiv(startingRate, 0.5 days, PRECISION), 1e2);
+
+        // changing rewards duration is allowed during reward cycle
+        _setRewardsDuration(4 days);
+        assertEq(vault.pendingRewardsDuration(), 4 days);
+        assertEq(vault.rewardsDuration(), 7 days);
+
+        // does not affect reward rate and thus user earned amount...
+        assertEq(vault.rewardRate(), startingRate);
+        vm.warp(blockTimestamp + 0.5 days);
+        blockTimestamp = vm.getBlockTimestamp();
+        assertApproxEqAbs(vault.earned(user), FixedPointMathLib.fullMulDiv(startingRate, 1 days, PRECISION), 1e2);
+
+        // ... until a new amount is notified to the vault
+        performNotify(100 ether);
+        // pending rewards duration should be cleared
+        assertEq(vault.pendingRewardsDuration(), 0);
+        // rewards duration should be updated
+        assertEq(vault.rewardsDuration(), 4 days);
+
+        uint256 leftOver = 100 ether * PRECISION - startingRate * 1 days;
+        uint256 newRate = (100 ether * PRECISION + leftOver) / 4 days;
+        assertEq(vault.rewardRate(), newRate);
+
+        vm.warp(blockTimestamp + 1 days);
+        blockTimestamp = vm.getBlockTimestamp();
+        uint256 expectedEarned = FixedPointMathLib.fullMulDiv(startingRate, 1 days, PRECISION)
+            + FixedPointMathLib.fullMulDiv(newRate, 1 days, PRECISION);
+        assertApproxEqAbs(vault.earned(user), expectedEarned, 2e2);
+    }
+
+    /// @dev Changing rewards duration during reward cycle afftects users staking in different times.
+    function test_SetRewardsDurationDuringCycleMultipleUsers() public {
+        address user2 = makeAddr("user2");
+        uint256 blockTimestamp = vm.getBlockTimestamp();
+
+        performNotify(100 ether);
+        performStake(user, 100 ether);
+
+        // default rewards duration is 7 days
+        uint256 startingRate = FixedPointMathLib.fullMulDiv(100 ether, PRECISION, 7 days);
+        vm.warp(blockTimestamp + 0.5 days);
+        blockTimestamp = vm.getBlockTimestamp();
+
+        _setRewardsDuration(4 days);
+
+        // user staking after _setRewardsDuration is still earning at the same rate until a new notify
+        performStake(user2, 100 ether);
+        vm.warp(blockTimestamp + 0.5 days);
+        blockTimestamp = vm.getBlockTimestamp();
+
+        performNotify(100 ether);
+
+        uint256 leftOver = 100 ether - FixedPointMathLib.fullMulDiv(startingRate, 1 days, PRECISION);
+        uint256 newRate = FixedPointMathLib.fullMulDiv(100 ether + leftOver, PRECISION, 4 days);
+
+        vm.warp(blockTimestamp + 1 days);
+        blockTimestamp = vm.getBlockTimestamp();
+        uint256 userExpectedEarned = FixedPointMathLib.fullMulDiv(startingRate, 0.5 days, PRECISION)
+            + FixedPointMathLib.fullMulDiv(startingRate, 0.5 days, PRECISION) / 2
+            + FixedPointMathLib.fullMulDiv(newRate, 1 days, PRECISION) / 2;
+
+        uint256 user2ExpectedEarned = FixedPointMathLib.fullMulDiv(startingRate, 0.5 days, PRECISION) / 2
+            + FixedPointMathLib.fullMulDiv(newRate, 1 days, PRECISION) / 2;
+
+        assertApproxEqAbs(vault.earned(user), userExpectedEarned, 5e2);
+        assertApproxEqAbs(vault.earned(user2), user2ExpectedEarned, 5e2);
+    }
+
+    function test_SetRewardDurationDuringCycleEarned() public {
+        testFuzz_SetRewardsDurationDuringCycleEarned(8 days, 1 days);
+    }
+
+    /// @dev Changing rewards duration during reward cycle and notifying rewards does change the earned amount
+    /// according to the new rate
+    function testFuzz_SetRewardsDurationDuringCycleEarned(uint256 duration, uint256 time) public {
+        duration = _bound(duration, 3 days, 7 days);
+        time = _bound(time, 3 days, 7 days);
+
+        performNotify(100 ether);
+        performStake(user, 100 ether);
+
+        uint256 rate = vault.rewardRate();
+        vm.warp(block.timestamp + 1 days);
+
+        _setRewardsDuration(duration);
+        performNotify(100 ether);
+        uint256 newRate = vault.rewardRate();
+
+        vm.warp(block.timestamp + time);
+
+        if (time >= duration) {
+            assertApproxEqAbs(vault.earned(user), 200 ether, 5e3);
+        } else {
+            assertApproxEqAbs(
+                vault.earned(user),
+                FixedPointMathLib.fullMulDiv(rate, 1 days, PRECISION)
+                    + FixedPointMathLib.fullMulDiv(newRate, time, PRECISION),
+                1e4
+            );
+        }
+    }
+
     function test_SetRewardDuration_FailIfNotManager() public {
-        vm.expectRevert(IPOLErrors.NotRewardDurationManager.selector);
+        vm.expectRevert(IPOLErrors.NotRewardVaultManager.selector);
         vault.setRewardsDuration(3 days);
 
         // fails even if factory owner tries to set the reward duration.
         vm.prank(governance);
-        vm.expectRevert(IPOLErrors.NotRewardDurationManager.selector);
+        vm.expectRevert(IPOLErrors.NotRewardVaultManager.selector);
         vault.setRewardsDuration(3 days);
     }
 
     function test_SetRewardDuration_FailIfInvalidDuration() public {
-        uint256 cooldownPeriod = vault.REWARD_DURATION_COOLDOWN_PERIOD();
-        // roll forward the timestamp by cooldown period + 1
-        vm.warp(block.timestamp + cooldownPeriod + 1);
-        vm.startPrank(honeyVaultRewardDurationManager);
+        vm.startPrank(honeyVaultManager);
         vm.expectRevert(IPOLErrors.InvalidRewardDuration.selector);
         // fails if less than 3 days.
         vault.setRewardsDuration(3 days - 1);
@@ -259,66 +381,71 @@ contract RewardVaultTest is DistributorTest, StakingTest {
         vm.stopPrank();
     }
 
-    function test_SetRewardDuration_FailIfCoolDownPeriodNotPassed() public {
-        super.testFuzz_SetRewardDuration(6 days);
-        assertEq(vault.rewardsDuration(), 6 days);
-        // assert last reward duration change timestamp is updated.
-        assertEq(vault.lastRewardDurationChangeTimestamp(), block.timestamp);
-
-        // roll forward the timestamp by few seconds less than cool down period.
-        vm.warp(block.timestamp + vault.REWARD_DURATION_COOLDOWN_PERIOD() - 1 seconds);
-        // assert cool down period is not passed.
-        assertFalse(vault.isRewardDurationCoolDownPeriodPassed());
-
-        // Set reward duration must revert as cool down period is not passed.
-        vm.prank(honeyVaultRewardDurationManager);
-        vm.expectRevert(IPOLErrors.RewardDurationCoolDownPeriodNotPassed.selector);
+    function test_SetRewardDuration_FailIfTargetRewardsPerSecondIsSet() public {
+        testFuzz_SetTargetRewardsPerSecond(1e36);
+        vm.prank(honeyVaultManager);
+        vm.expectRevert(IPOLErrors.DurationChangeNotAllowed.selector);
         vault.setRewardsDuration(7 days);
     }
 
-    function test_SetRewardDuration_PostCoolDown() public {
-        super.testFuzz_SetRewardDuration(6 days);
-        assertEq(vault.rewardsDuration(), 6 days);
-        assertEq(vault.lastRewardDurationChangeTimestamp(), block.timestamp);
-
-        // roll forward the timestamp by cool down period.
-        vm.warp(block.timestamp + vault.REWARD_DURATION_COOLDOWN_PERIOD());
-        // assert cool down period is passed.
-        assertTrue(vault.isRewardDurationCoolDownPeriodPassed());
-        // Set reward duration should not revert as cool down period is passed.
-        vm.prank(honeyVaultRewardDurationManager);
-        vault.setRewardsDuration(7 days);
-        assertEq(vault.rewardsDuration(), 7 days);
-        assertEq(vault.lastRewardDurationChangeTimestamp(), block.timestamp);
-        // cool down period should kick in again.
-        assertFalse(vault.isRewardDurationCoolDownPeriodPassed());
-    }
-
-    function test_SetRewardDurationManager_FailIfNotOwner() public {
-        testFuzz_SetRewardDurationManager_FailIfNotVaultManager(address(this));
-    }
-
-    function testFuzz_SetRewardDurationManager_FailIfNotVaultManager(address caller) public {
+    function testFuzz_SetRewardVaultManager_FailIfNotVaultManager(address caller) public {
         vm.assume(caller != vaultManager);
-        address newRewardDurationManager = makeAddr("newRewardDurationManager");
+        address newRewardVaultManager = makeAddr("newRewardVaultManager");
         vm.expectRevert(abi.encodeWithSelector(FactoryOwnable.OwnableUnauthorizedAccount.selector, caller));
         vm.prank(caller);
-        vault.setRewardDurationManager(newRewardDurationManager);
+        vault.setRewardVaultManager(newRewardVaultManager);
     }
 
-    function test_SetRewardDurationManager_FailIfZeroAddress() public {
+    function test_SetRewardVaultManager_FailIfZeroAddress() public {
         vm.prank(vaultManager);
         vm.expectRevert(IPOLErrors.ZeroAddress.selector);
-        vault.setRewardDurationManager(address(0));
+        vault.setRewardVaultManager(address(0));
     }
 
-    function test_SetRewardDurationManager() public {
+    function test_SetRewardVaultManager() public {
         address newManager = makeAddr("newManager");
         vm.prank(vaultManager);
         vm.expectEmit();
-        emit IRewardVault.RewardDurationManagerSet(newManager, honeyVaultRewardDurationManager);
-        vault.setRewardDurationManager(newManager);
-        assertEq(vault.rewardDurationManager(), newManager);
+        emit IRewardVault.RewardVaultManagerSet(newManager, honeyVaultManager);
+        vault.setRewardVaultManager(newManager);
+        assertEq(vault.rewardVaultManager(), newManager);
+    }
+
+    function test_SetTargetRewardsPerSecond_FailIfNotRewardVaultManager() public {
+        vm.expectRevert(IPOLErrors.NotRewardVaultManager.selector);
+        vault.setTargetRewardsPerSecond(1e36);
+
+        // fails even if factory owner tries to set the reward duration.
+        vm.prank(governance);
+        vm.expectRevert(IPOLErrors.NotRewardVaultManager.selector);
+        vault.setTargetRewardsPerSecond(1e36);
+    }
+
+    function test_SetTargetRewardsPerSecond_AllowResettingToZero() public {
+        vm.startPrank(honeyVaultManager);
+        vault.setTargetRewardsPerSecond(1e36);
+        assertEq(vault.targetRewardsPerSecond(), 1e36);
+        vm.expectEmit();
+        emit IRewardVault.TargetRewardsPerSecondUpdated(0, 1e36);
+        vault.setTargetRewardsPerSecond(0);
+        assertEq(vault.targetRewardsPerSecond(), 0);
+        vm.stopPrank();
+    }
+
+    function test_SetTargetRewardsPerSecond() public {
+        // set max rewards per second as 1 BGT per second.
+        testFuzz_SetTargetRewardsPerSecond(1e36);
+    }
+
+    function testFuzz_SetTargetRewardsPerSecond(uint256 _targetRewardsPerSecond) public {
+        _targetRewardsPerSecond = bound(_targetRewardsPerSecond, 1, type(uint256).max);
+        vm.prank(honeyVaultManager);
+        vm.expectEmit();
+        emit IRewardVault.TargetRewardsPerSecondUpdated(_targetRewardsPerSecond, 0);
+        emit IRewardVault.MinRewardDurationForTargetRateUpdated(3 days, 0);
+        vault.setTargetRewardsPerSecond(_targetRewardsPerSecond);
+        assertEq(vault.targetRewardsPerSecond(), _targetRewardsPerSecond);
+        assertEq(vault.minRewardDurationForTargetRate(), 3 days);
     }
 
     function test_Pause_FailIfNotVaultPauser() public {
@@ -1239,21 +1366,16 @@ contract RewardVaultTest is DistributorTest, StakingTest {
         assertEq(vault.getWhitelistedTokensCount(), count - 1);
     }
 
-    function test_UndistributedRewardsDust() public virtual {
+    function test_UndistributedRewardsDust() public {
         performNotify(100);
-        // roll forward the timestamp by cooldown period + 1
-        vm.warp(block.timestamp + vault.REWARD_DURATION_COOLDOWN_PERIOD() + 1);
-        vm.prank(honeyVaultRewardDurationManager);
-        vault.setRewardsDuration(7 days);
-
         uint256 amount = 100;
-        uint256 rewardsDuration = VAULT.rewardsDuration();
+        uint256 rewardsDuration = vault.rewardsDuration();
 
         vm.warp(block.timestamp + rewardsDuration);
         performStake(user, amount);
 
         // check that math of the rewards is correct with given PRECISION
-        assertEq(VAULT.undistributedRewards() + VAULT.rewardRate() * VAULT.rewardsDuration(), amount * PRECISION);
+        assertEq(vault.undistributedRewards() + vault.rewardRate() * vault.rewardsDuration(), amount * PRECISION);
     }
 
     function test_PauseFailWithVaultManager() public {
@@ -1364,5 +1486,559 @@ contract RewardVaultTest is DistributorTest, StakingTest {
 
         (,, amountRemaining,) = vault.incentives(stakeToken);
         assertEq(amountRemaining, 600e18);
+    }
+
+    /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
+    /*                    TARGET RATE TESTS                       */
+    /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
+
+    function test_SetMinRewardDurationForTargetRate_FailIfNotRewardVaultManager() public {
+        vm.expectRevert(abi.encodeWithSelector(IPOLErrors.NotRewardVaultManager.selector));
+        vault.setMinRewardDurationForTargetRate(3 days);
+    }
+
+    function test_SetMinRewardDurationForTargetRate_FailIfInvalidDuration() public {
+        vm.startPrank(honeyVaultManager);
+        vm.expectRevert(abi.encodeWithSelector(IPOLErrors.InvalidRewardDuration.selector));
+        vault.setMinRewardDurationForTargetRate(1 days);
+        vm.expectRevert(abi.encodeWithSelector(IPOLErrors.InvalidRewardDuration.selector));
+        vault.setMinRewardDurationForTargetRate(8 days);
+    }
+
+    function test_SetMinRewardDurationForTargetRate() public {
+        testFuzz_SetMinRewardDurationForTargetRate(5 days);
+    }
+
+    function testFuzz_SetMinRewardDurationForTargetRate(uint256 minRewardDurationForTargetRate) public {
+        uint256 oldMinRewardDurationForTargetRate = vault.minRewardDurationForTargetRate();
+        minRewardDurationForTargetRate = bound(minRewardDurationForTargetRate, 3 days, 7 days);
+        vm.prank(honeyVaultManager);
+        vm.expectEmit();
+        emit IRewardVault.MinRewardDurationForTargetRateUpdated(
+            minRewardDurationForTargetRate, oldMinRewardDurationForTargetRate
+        );
+        vault.setMinRewardDurationForTargetRate(minRewardDurationForTargetRate);
+        assertEq(vault.minRewardDurationForTargetRate(), minRewardDurationForTargetRate);
+    }
+
+    function test_TargetRate_NotAppliedWhenTargetRewardsPerSecondIsZero() public {
+        // Set targetRewardsPerSecond to 0 (default)
+        assertEq(vault.targetRewardsPerSecond(), 0);
+
+        // Add a large reward amount that would normally exceed any reasonable cap
+        uint256 largeReward = 1000 ether;
+        performNotify(largeReward);
+
+        // Stake to trigger reward rate calculation
+        performStake(user, 100 ether);
+
+        // Reward rate should be calculated normally without target rate adjustment
+        uint256 expectedRewardRate = largeReward * PRECISION / vault.rewardsDuration();
+        assertEq(vault.rewardRate(), expectedRewardRate);
+        assertEq(vault.rewardsDuration(), 7 days);
+    }
+
+    function test_TargetRate_AppliedWhenExceedsTargetRewardsPerSecond() public {
+        // Set a target rewards per second
+        uint256 targetRewardsPerSecond = 1e36; // 1 BGT per second, with precision
+        testFuzz_SetTargetRewardsPerSecond(targetRewardsPerSecond);
+
+        // Add a reward amount that would result in a rate higher than the target
+        uint256 rewardAmount = (targetRewardsPerSecond * vault.rewardsDuration() * 2) / PRECISION; // 2x the target
+        performNotify(rewardAmount);
+
+        // Stake to trigger reward rate calculation
+        performStake(user, 100 ether);
+
+        // Reward rate should be set to target rate
+        assertEq(vault.rewardRate(), targetRewardsPerSecond);
+
+        // Rewards duration should be extended to accommodate the target rate
+        uint256 expectedDuration = rewardAmount * PRECISION / targetRewardsPerSecond;
+        assertEq(vault.rewardsDuration(), expectedDuration);
+        assertEq(vault.periodFinish(), block.timestamp + expectedDuration);
+    }
+
+    function test_TargetRate_AppliedWhenBelowTargetRewardsPerSecond() public {
+        // Set a target rewards per second
+        uint256 targetRewardsPerSecond = 10e36; // 10 BGT per second, with precision
+        testFuzz_SetTargetRewardsPerSecond(targetRewardsPerSecond);
+
+        // Add a reward amount that would result in a rate below the target
+        uint256 rewardAmount = (targetRewardsPerSecond * vault.rewardsDuration()) / (2 * PRECISION); // 0.5x the target
+        performNotify(rewardAmount);
+
+        // Stake to trigger reward rate calculation
+        performStake(user, 100 ether);
+
+        // Reward rate should be adjusted to target rate and duration shortened
+        assertEq(vault.rewardRate(), targetRewardsPerSecond);
+        uint256 expectedDuration = rewardAmount * PRECISION / targetRewardsPerSecond;
+        assertEq(vault.rewardsDuration(), expectedDuration);
+        assertEq(vault.rewardsDuration(), 7 days / 2);
+    }
+
+    function test_TargetRate_MinimumDurationEnforcement() public {
+        // Set a very high target rate that would require duration < minRewardDurationForTargetRate
+        uint256 targetRewardsPerSecond = 1000e36; // 1000 BGT per second, with precision
+        testFuzz_SetTargetRewardsPerSecond(targetRewardsPerSecond);
+
+        // Add a small reward amount
+        uint256 rewardAmount = 1 ether; // 1 BGT
+        performNotify(rewardAmount);
+
+        // Stake to trigger reward rate calculation
+        performStake(user, 100 ether);
+
+        // Duration should be clamped to minRewardDurationForTargetRate
+        uint256 minRewardDurationForTargetRate = vault.minRewardDurationForTargetRate();
+        assertEq(vault.rewardsDuration(), minRewardDurationForTargetRate);
+
+        // Reward rate should be calculated based on minRewardDurationForTargetRate, not target rate
+        uint256 expectedRewardRate = rewardAmount * PRECISION / minRewardDurationForTargetRate;
+        assertEq(vault.rewardRate(), expectedRewardRate);
+        assertLt(vault.rewardRate(), targetRewardsPerSecond);
+    }
+
+    function test_TargetRate_WithMultipleNotifications() public {
+        // Set a target rewards per second
+        uint256 targetRewardsPerSecond = 1e36; // 1 BGT per second, with precision
+        testFuzz_SetTargetRewardsPerSecond(targetRewardsPerSecond);
+
+        // First notification - should be adjusted to target rate
+        uint256 firstReward = (targetRewardsPerSecond * vault.rewardsDuration() * 2) / PRECISION;
+        performNotify(firstReward);
+        performStake(user, 100 ether);
+
+        assertEq(vault.rewardRate(), targetRewardsPerSecond);
+        uint256 firstDuration = vault.rewardsDuration();
+        assertEq(firstDuration, 2 * 7 days);
+
+        // Second notification during active period - should extend duration
+        vm.warp(block.timestamp + 1 days);
+        uint256 secondReward = (targetRewardsPerSecond * vault.rewardsDuration()) / PRECISION;
+        performNotify(secondReward);
+
+        // Reward rate should remain at target
+        assertEq(vault.rewardRate(), targetRewardsPerSecond);
+        // Duration should be extended
+        assertGt(vault.rewardsDuration(), firstDuration);
+    }
+
+    function test_TargetRate_AfterPeriodFinish() public {
+        // Set a target rewards per second
+        uint256 targetRewardsPerSecond = 1e36; // 1 BGT per second, with precision
+        testFuzz_SetTargetRewardsPerSecond(targetRewardsPerSecond);
+
+        // First notification - should be adjusted to target rate
+        uint256 firstReward = (targetRewardsPerSecond * vault.rewardsDuration() * 2) / PRECISION;
+        performNotify(firstReward);
+        performStake(user, 100 ether);
+
+        assertEq(vault.rewardRate(), targetRewardsPerSecond);
+        uint256 firstDuration = vault.rewardsDuration();
+
+        // Wait for period to finish (but not too long to avoid timestamp overflow)
+        vm.warp(block.timestamp + firstDuration + 1 days);
+
+        // Second notification after period finish - should be adjusted to target rate again
+        uint256 secondReward = (targetRewardsPerSecond * vault.rewardsDuration() * 3) / PRECISION;
+        performNotify(secondReward);
+
+        // Reward rate should be set to target rate again
+        assertEq(vault.rewardRate(), targetRewardsPerSecond);
+        uint256 expectedDuration = secondReward * PRECISION / targetRewardsPerSecond;
+        assertEq(vault.rewardsDuration(), expectedDuration);
+        assertEq(firstDuration, 2 * 7 days);
+        assertEq(vault.rewardsDuration(), 3 * firstDuration);
+        assertEq(vault.rewardsDuration(), 3 * 2 * 7 days);
+    }
+
+    function test_TargetRate_WithZeroTotalSupply() public {
+        // Set a target rewards per second
+        uint256 targetRewardsPerSecond = 1e36; // 1 BGT per second, with precision
+        testFuzz_SetTargetRewardsPerSecond(targetRewardsPerSecond);
+
+        // Add rewards but don't stake yet
+        uint256 rewardAmount = (targetRewardsPerSecond * vault.rewardsDuration() * 2) / PRECISION;
+        performNotify(rewardAmount);
+
+        // Reward rate should not be set until first stake
+        assertEq(vault.rewardRate(), 0);
+
+        // Now stake to trigger reward rate calculation
+        performStake(user, 100 ether);
+
+        // Reward rate should be set to target rate
+        assertEq(vault.rewardRate(), targetRewardsPerSecond);
+    }
+
+    function test_TargetRate_WithdrawAndRestake() public {
+        // Set a target rewards per second
+        uint256 targetRewardsPerSecond = 1e36; // 1 BGT per second, with precision
+        testFuzz_SetTargetRewardsPerSecond(targetRewardsPerSecond);
+
+        // Add rewards and stake
+        uint256 rewardAmount = (targetRewardsPerSecond * vault.rewardsDuration() * 2) / PRECISION;
+        performNotify(rewardAmount);
+        performStake(user, 100 ether);
+
+        assertEq(vault.rewardRate(), targetRewardsPerSecond);
+
+        // Withdraw all tokens
+        _withdraw(user, 100 ether);
+
+        // Add more rewards
+        performNotify(rewardAmount);
+
+        // Stake again
+        performStake(user, 100 ether);
+
+        // Reward rate should be recalculated and set to target rate
+        uint256 totalRewards = rewardAmount * 2;
+        uint256 expectedDuration = totalRewards * PRECISION / targetRewardsPerSecond;
+        assertEq(vault.rewardRate(), targetRewardsPerSecond);
+        assertEq(vault.rewardsDuration(), expectedDuration);
+    }
+
+    function testFuzz_TargetRate(
+        uint256 targetRewardsPerSecond,
+        uint256 rewardAmount,
+        uint256 minRewardDurationForTargetRate
+    )
+        public
+    {
+        // Bound the parameters to reasonable values
+        targetRewardsPerSecond = bound(targetRewardsPerSecond, 1e33, 1e39); // 0.001 to 1000 BGT per second, with
+            // precision
+        rewardAmount = bound(rewardAmount, 1e18, 1e25); // 1 to 10M BGT
+        minRewardDurationForTargetRate = bound(minRewardDurationForTargetRate, 3 days, 7 days);
+
+        // Set target rewards per second
+        testFuzz_SetTargetRewardsPerSecond(targetRewardsPerSecond);
+        testFuzz_SetMinRewardDurationForTargetRate(minRewardDurationForTargetRate);
+
+        // Add rewards and stake
+        performNotify(rewardAmount);
+        performStake(user, 100 ether);
+
+        // Calculate expected duration to achieve target rate
+        uint256 expectedDuration = rewardAmount * PRECISION / targetRewardsPerSecond;
+
+        if (expectedDuration >= minRewardDurationForTargetRate) {
+            // Should achieve target rate
+            assertEq(vault.rewardRate(), targetRewardsPerSecond);
+            assertEq(vault.rewardsDuration(), expectedDuration);
+        } else {
+            // Should be clamped to minimum duration
+            assertEq(vault.rewardsDuration(), minRewardDurationForTargetRate);
+            uint256 expectedRewardRate = rewardAmount * PRECISION / minRewardDurationForTargetRate;
+            assertEq(vault.rewardRate(), expectedRewardRate);
+            assertLt(vault.rewardRate(), targetRewardsPerSecond);
+        }
+    }
+
+    function test_TargetRate_EdgeCase_TargetRewardsPerSecondEqualsCalculatedRate() public {
+        // Set target rewards per second to exactly match the calculated rate
+        uint256 rewardAmount = 7 ether; // 7 BGT over 7 days = 1 BGT per day
+        uint256 targetRewardsPerSecond = rewardAmount * PRECISION / vault.rewardsDuration();
+
+        testFuzz_SetTargetRewardsPerSecond(targetRewardsPerSecond);
+
+        // Add rewards and stake
+        performNotify(rewardAmount);
+        performStake(user, 100 ether);
+
+        // Reward rate should be exactly at the target
+        assertEq(vault.rewardRate(), targetRewardsPerSecond);
+        assertEq(vault.rewardsDuration(), 7 days);
+    }
+
+    function test_TargetRate_UndistributedRewardsAccounting() public {
+        uint256 targetRewardsPerSecond = 1e36; // 1 BGT per second, with precision
+        // Set a target rate that would require very short duration for small rewards
+        testFuzz_SetTargetRewardsPerSecond(targetRewardsPerSecond);
+
+        // Add rewards that would exceed the target
+        uint256 rewardAmount = (targetRewardsPerSecond * vault.rewardsDuration() * 2) / PRECISION;
+        performNotify(rewardAmount);
+
+        uint256 undistributedBefore = vault.undistributedRewards();
+
+        // Stake to trigger reward rate calculation
+        performStake(user, 100 ether);
+
+        // Check that undistributed rewards are properly accounted for
+        // using the targetRewardsPerSecond as rewardRate
+        uint256 undistributedAfter = vault.undistributedRewards();
+        uint256 expectedDeduction = targetRewardsPerSecond * vault.rewardsDuration();
+
+        assertEq(undistributedBefore - undistributedAfter, expectedDeduction);
+    }
+
+    function test_TargetRate_WithVeryHighRewardAmount() public {
+        uint256 targetRewardsPerSecond = 1e36; // 1 BGT per second, with precision
+        // Set a target rate that would require very short duration for small rewards
+        testFuzz_SetTargetRewardsPerSecond(targetRewardsPerSecond);
+
+        // Add an extremely high reward amount
+        uint256 rewardAmount = type(uint256).max / PRECISION - 1; // Near maximum
+        performNotify(rewardAmount);
+
+        // Stake to trigger reward rate calculation
+        performStake(user, 100 ether);
+
+        // Should be set to target rate
+        assertEq(vault.rewardRate(), targetRewardsPerSecond);
+
+        // Duration should be very long but finite
+        assertGt(vault.rewardsDuration(), 7 days);
+        assertLt(vault.rewardsDuration(), type(uint256).max);
+    }
+
+    function test_TargetRate_SmallRewardsRespectMinimumDuration() public {
+        uint256 targetRewardsPerSecond = 1e36; // 1 BGT per second
+        // Set a target rate that would require very short duration for small rewards
+        testFuzz_SetTargetRewardsPerSecond(targetRewardsPerSecond);
+
+        // Add a very small reward
+        uint256 smallReward = 0.1 ether; // 0.1 BGT
+        performNotify(smallReward);
+        performStake(user, 100 ether);
+
+        // Duration should be clamped to minRewardDurationForTargetRate
+        uint256 minRewardDurationForTargetRate = vault.minRewardDurationForTargetRate();
+        assertEq(vault.rewardsDuration(), minRewardDurationForTargetRate);
+
+        // Rate should be calculated based on minimum duration
+        uint256 expectedRate = smallReward * PRECISION / minRewardDurationForTargetRate;
+        assertEq(vault.rewardRate(), expectedRate);
+        assertLt(vault.rewardRate(), targetRewardsPerSecond);
+    }
+
+    function test_TargetRate_MediumRewardsClampedToMinimumDuration() public {
+        uint256 targetRewardsPerSecond = 1e36; // 1 BGT per second
+        // Set a target rate with minRewardDurationForTargetRate set to 3 days
+        testFuzz_SetTargetRewardsPerSecond(targetRewardsPerSecond);
+        // change minRewardDurationForTargetRate to 5 days
+        testFuzz_SetMinRewardDurationForTargetRate(5 days);
+
+        // Add a reward that would require duration < minRewardDurationForTargetRate
+        // 400000 BGT at 1 BGT/second = 400000 seconds = ~4.6 days < minRewardDurationForTargetRate
+        uint256 mediumReward = 400_000 ether; // 400000 BGT
+        performNotify(mediumReward);
+        performStake(user, 100 ether);
+
+        // Duration should be clamped to minRewardDurationForTargetRate
+        assertEq(vault.rewardsDuration(), 5 days);
+
+        // Rate should be calculated based on minimum duration, not target rate
+        uint256 expectedRate = mediumReward * PRECISION / 5 days;
+        assertEq(vault.rewardRate(), expectedRate);
+        assertLt(vault.rewardRate(), targetRewardsPerSecond);
+    }
+
+    function test_TargetRate_LargeRewardsAchieveTargetRate() public {
+        uint256 targetRewardsPerSecond = 1e36; // 1 BGT per second
+        // Set a target rate with minRewardDurationForTargetRate set to 3 days
+        testFuzz_SetTargetRewardsPerSecond(targetRewardsPerSecond);
+
+        // Add a large reward that can achieve target rate within reasonable duration
+        // 1 BGT per second * 3 days = 1 * 259200 = 259,200 BGT minimum to achieve target rate
+        // Let's use 1,000,000 BGT which will take 1,000,000 seconds = ~11.6 days
+        uint256 largeReward = 1_000_000 ether; // 1M BGT
+        performNotify(largeReward);
+        performStake(user, 100 ether);
+
+        // Should achieve target rate
+        assertEq(vault.rewardRate(), targetRewardsPerSecond);
+
+        // Duration should be calculated to achieve target rate
+        uint256 expectedDuration = largeReward * PRECISION / targetRewardsPerSecond;
+        assertApproxEqAbs(vault.rewardsDuration(), expectedDuration, 10);
+        uint256 minRewardDurationForTargetRate = vault.minRewardDurationForTargetRate();
+        // must always be greater than minRewardDurationForTargetRate
+        assertGt(vault.rewardsDuration(), minRewardDurationForTargetRate);
+    }
+
+    function test_TargetRate_SwitchBackToDurationBasedDistribution() public {
+        // Step 1: Start with duration-based distribution (default state)
+        assertEq(vault.targetRewardsPerSecond(), 0);
+        assertEq(vault.rewardsDuration(), 7 days);
+
+        // Step 2: Switch to target rate-based distribution
+        uint256 targetRewardsPerSecond = 1e36; // 1 BGT per second, with precision
+        testFuzz_SetTargetRewardsPerSecond(targetRewardsPerSecond);
+        assertEq(vault.targetRewardsPerSecond(), targetRewardsPerSecond);
+
+        // Step 3: Verify that setRewardsDuration is blocked when target rate is active
+        vm.prank(honeyVaultManager);
+        vm.expectRevert(IPOLErrors.DurationChangeNotAllowed.selector);
+        vault.setRewardsDuration(5 days);
+
+        // Step 4: Switch back to duration-based distribution by setting target rate to 0
+        vm.prank(honeyVaultManager);
+        vm.expectEmit();
+        emit IRewardVault.TargetRewardsPerSecondUpdated(0, targetRewardsPerSecond);
+        vault.setTargetRewardsPerSecond(0);
+        assertEq(vault.targetRewardsPerSecond(), 0);
+
+        // Step 5: Verify that setRewardsDuration is now allowed again
+        vm.prank(honeyVaultManager);
+        vault.setRewardsDuration(5 days);
+        // should be stored as pending rewards duration
+        assertEq(vault.pendingRewardsDuration(), 5 days);
+
+        // Step 6: Test reward distribution behavior in duration-based mode
+        uint256 rewardAmount = 100 ether;
+        performNotify(rewardAmount);
+        performStake(user, 100 ether);
+        // pending rewards duration should be cleared
+        assertEq(vault.pendingRewardsDuration(), 0);
+        // rewards duration should be updated
+        assertEq(vault.rewardsDuration(), 5 days);
+
+        // Reward rate should be calculated based on duration, not target rate
+        uint256 expectedRewardRate = rewardAmount * PRECISION / 5 days;
+        assertApproxEqAbs(vault.rewardRate(), expectedRewardRate, 10);
+        assertEq(vault.rewardsDuration(), 5 days);
+        assertEq(vault.periodFinish(), block.timestamp + 5 days);
+    }
+
+    function test_TargetRate_SwitchBackToDurationBasedDistribution_WithActiveRewards() public {
+        // Step 1: Start with target rate-based distribution
+        uint256 targetRewardsPerSecond = 1e36; // 1 BGT per second, with precision
+        testFuzz_SetTargetRewardsPerSecond(targetRewardsPerSecond);
+
+        // Step 2: Add rewards and stake to activate target rate logic
+        uint256 rewardAmount = (targetRewardsPerSecond * vault.rewardsDuration() * 2) / PRECISION;
+        performNotify(rewardAmount);
+        performStake(user, 100 ether);
+
+        // Verify target rate is being applied
+        assertEq(vault.rewardRate(), targetRewardsPerSecond);
+        assertEq(vault.rewardsDuration(), 14 days); // Duration should be extended for target rate
+
+        // Step 3: Switch back to duration-based distribution
+        vm.prank(honeyVaultManager);
+        vault.setTargetRewardsPerSecond(0);
+        assertEq(vault.targetRewardsPerSecond(), 0);
+        // duration should be reset to 7 days as current duration was 14 days in target rate mode
+        // and stored as pending rewards duration
+        assertEq(vault.pendingRewardsDuration(), 7 days);
+        assertEq(vault.rewardsDuration(), 14 days);
+
+        // Step 4: Add more rewards - should now use duration-based calculation
+        vm.warp(block.timestamp + 1 days);
+        uint256 additionalReward = 50 ether;
+        performNotify(additionalReward);
+        // pending rewards duration should be cleared
+        assertEq(vault.pendingRewardsDuration(), 0);
+        // rewards duration should be updated
+        assertEq(vault.rewardsDuration(), 7 days);
+
+        // left over rewards from the previous period
+        uint256 leftOverRewards = targetRewardsPerSecond * 13 days + vault.undistributedRewards();
+
+        // Reward rate should be recalculated based on duration, not target rate
+        uint256 expectedRewardRate = (additionalReward * PRECISION + leftOverRewards) / 7 days;
+        assertApproxEqAbs(vault.rewardRate(), expectedRewardRate, 10);
+        assertEq(vault.rewardsDuration(), 7 days);
+    }
+
+    function test_TargetRate_SwitchBackToDurationBasedDistribution_WithCustomDuration() public {
+        // Step 1: Set a custom duration first
+        vm.prank(honeyVaultManager);
+        vault.setRewardsDuration(6 days);
+        assertEq(vault.pendingRewardsDuration(), 6 days);
+        assertEq(vault.rewardsDuration(), 7 days);
+
+        // Step 2: Switch to target rate-based distribution
+        uint256 targetRewardsPerSecond = 1e36; // 1 BGT per second, with precision
+        testFuzz_SetTargetRewardsPerSecond(targetRewardsPerSecond);
+
+        // Step 3: Add rewards to activate target rate logic
+        uint256 rewardAmount = (targetRewardsPerSecond * 6 days * 2) / PRECISION;
+        performNotify(rewardAmount);
+        performStake(user, 100 ether);
+        // pending rewards duration should be cleared
+        assertEq(vault.pendingRewardsDuration(), 0);
+        // Verify target rate is being applied and duration is extended
+        assertEq(vault.rewardRate(), targetRewardsPerSecond);
+        // rewards duration should be updated to pending rewards duration
+        // i.e 6 days but due to target mode, it will be extended to 12 days to achieve target rate.
+        assertEq(vault.rewardsDuration(), 12 days);
+
+        // Step 4: Switch back to duration-based distribution
+        vm.prank(honeyVaultManager);
+        vault.setTargetRewardsPerSecond(0);
+        // duration should be reset to 7 days as current duration was 12 days in target rate mode
+        // and stored as pending rewards duration
+        assertEq(vault.pendingRewardsDuration(), 7 days);
+        assertEq(vault.rewardsDuration(), 12 days);
+
+        // Step 5: Set a new custom duration
+        vm.prank(honeyVaultManager);
+        // should again update the pending rewards duration to 4 days
+        vault.setRewardsDuration(4 days);
+        assertEq(vault.pendingRewardsDuration(), 4 days);
+        assertEq(vault.rewardsDuration(), 12 days);
+
+        vm.warp(block.timestamp + 1 days);
+
+        // Step 6: Add rewards - should use the new custom duration
+        uint256 newReward = 200 ether;
+        performNotify(newReward);
+        // pending rewards duration should be cleared
+        assertEq(vault.pendingRewardsDuration(), 0);
+        // rewards duration should be updated
+        assertEq(vault.rewardsDuration(), 4 days);
+
+        // left over rewards from the previous period, period left is 11 days
+        uint256 leftOverRewards = targetRewardsPerSecond * 11 days + vault.undistributedRewards();
+
+        // Reward rate should be calculated based on the new custom duration
+        uint256 expectedRewardRate = (newReward * PRECISION + leftOverRewards) / 4 days;
+        assertApproxEqAbs(vault.rewardRate(), expectedRewardRate, 10);
+        assertEq(vault.rewardsDuration(), 4 days);
+    }
+
+    function test_TargetRate_SwitchBackToDurationBasedDistribution_MultipleSwitches() public {
+        // Step 1: Start with duration-based
+        assertEq(vault.targetRewardsPerSecond(), 0);
+
+        // Step 2: Switch to target rate
+        uint256 targetRewardsPerSecond = 1e36;
+        testFuzz_SetTargetRewardsPerSecond(targetRewardsPerSecond);
+
+        // Step 3: Switch back to duration-based
+        vm.prank(honeyVaultManager);
+        vault.setTargetRewardsPerSecond(0);
+
+        // Step 4: Switch to target rate again
+        vm.prank(honeyVaultManager);
+        vault.setTargetRewardsPerSecond(targetRewardsPerSecond);
+
+        // Step 5: Switch back to duration-based again
+        vm.prank(honeyVaultManager);
+        vault.setTargetRewardsPerSecond(0);
+
+        // Step 6: Verify duration-based functionality works
+        vm.prank(honeyVaultManager);
+        vault.setRewardsDuration(5 days);
+        assertEq(vault.pendingRewardsDuration(), 5 days);
+        assertEq(vault.rewardsDuration(), 7 days);
+
+        // Step 7: Test reward distribution
+        uint256 rewardAmount = 100 ether;
+        performNotify(rewardAmount);
+        performStake(user, 100 ether);
+        // pending rewards duration should be cleared
+        assertEq(vault.pendingRewardsDuration(), 0);
+        // rewards duration should be updated
+        assertEq(vault.rewardsDuration(), 5 days);
+
+        uint256 expectedRewardRate = rewardAmount * PRECISION / 5 days;
+        assertApproxEqAbs(vault.rewardRate(), expectedRewardRate, 10);
     }
 }
