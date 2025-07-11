@@ -16,6 +16,7 @@ import { WBERA } from "src/WBERA.sol";
 import { Create2Deployer } from "src/base/Create2Deployer.sol";
 import { BeaconDepositMock } from "test/mock/pol/BeaconDepositMock.sol";
 import { BGTIncentiveDistributor } from "src/pol/rewards/BGTIncentiveDistributor.sol";
+import { BGTIncentiveDistributorDeployer } from "src/pol/BGTIncentiveDistributorDeployer.sol";
 
 abstract contract POLTest is Test, Create2Deployer {
     uint256 internal constant TEST_BGT_PER_BLOCK = 5 ether;
@@ -89,9 +90,10 @@ abstract contract POLTest is Test, Create2Deployer {
     }
 
     function deployBGTIncentiveDistributor(address owner) internal {
-        address bgtIncentiveDistributorImpl = deployWithCreate2(0, type(BGTIncentiveDistributor).creationCode);
-        bgtIncentiveDistributor = (deployProxyWithCreate2(bgtIncentiveDistributorImpl, 0));
-        BGTIncentiveDistributor(bgtIncentiveDistributor).initialize(owner);
+        BGTIncentiveDistributorDeployer bgtIncentiveDistributorDeployer = new BGTIncentiveDistributorDeployer(owner, 1);
+
+        bgtIncentiveDistributor = address(bgtIncentiveDistributorDeployer.bgtIncentiveDistributor());
+
         bytes32 managerRole = BGTIncentiveDistributor(bgtIncentiveDistributor).MANAGER_ROLE();
         vm.prank(owner);
         BGTIncentiveDistributor(bgtIncentiveDistributor).grantRole(managerRole, bgtIncentiveReceiverManager);

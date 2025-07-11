@@ -41,7 +41,7 @@ contract POLPredictAddressesScript is BasePredictScript {
         _predictProxyAddress("BGTStaker", type(BGTStaker).creationCode, 0, BGT_STAKER_SALT);
         _predictProxyAddress("FeeCollector", type(FeeCollector).creationCode, 0, FEE_COLLECTOR_SALT);
         _predictProxyAddress(
-            "BGTIncentiveDistributor", type(BGTIncentiveDistributor).creationCode, 0, BGT_INCENTIVE_DISTRIBUTOR_SALT
+            "BGTIncentiveDistributor", type(BGTIncentiveDistributor).creationCode, 1, BGT_INCENTIVE_DISTRIBUTOR_SALT
         );
     }
 }

@@ -27,6 +27,7 @@ contract DeployTokenScript is BaseScript {
         address usdc = address(new USDC());
         console2.log("USDC deployed at: ", usdc);
     }
+
     function deployBST(uint256 index) public broadcast {
         string memory name = string.concat("Bepolia Staking Token ", vm.toString(index));
         string memory symbol = string.concat("BST-", vm.toString(index));

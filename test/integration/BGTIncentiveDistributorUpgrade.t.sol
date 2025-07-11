@@ -14,7 +14,7 @@ import { IDistributor } from "src/pol/interfaces/IDistributor.sol";
 import { MockHoney } from "../mock/honey/MockHoney.sol";
 import { RewardVaultFactory } from "src/pol/rewards/RewardVaultFactory.sol";
 import { BGTIncentiveDistributor } from "src/pol/rewards/BGTIncentiveDistributor.sol";
-import { BGTIncentiveDistributorDeployer } from "script/pol/logic/BGTIncentiveDistributorDeployer.sol";
+import { BGTIncentiveDistributorDeployer } from "src/pol/BGTIncentiveDistributorDeployer.sol";
 
 import {
     BGT_ADDRESS,
@@ -28,7 +28,7 @@ import {
 import { BGT_INCENTIVE_DISTRIBUTOR_SALT } from "script/pol/POLSalts.sol";
 
 /// @title BGTIncentiveDistributorUpgradeTest
-contract BGTIncentiveDistributorUpgradeTest is Create2Deployer, BGTIncentiveDistributorDeployer, Test {
+contract BGTIncentiveDistributorUpgradeTest is Create2Deployer, Test {
     address safeOwner = 0xD13948F99525FB271809F45c268D72a3C00a568D;
     // pubkey of BicroStrategy validator, distribution at block 2286450
     // https://berascan.com/tx/0x16592f3381629cea5ada0b1c6fedf98f92088cbe32430cb6067a0b32aa102610
@@ -53,7 +53,9 @@ contract BGTIncentiveDistributorUpgradeTest is Create2Deployer, BGTIncentiveDist
 
     function test_Upgrade() public {
         // Deploy BGTIncentiveDistributor
-        address bgtIncentiveDistributor = deployBGTIncentiveDistributor(safeOwner, BGT_INCENTIVE_DISTRIBUTOR_SALT);
+        BGTIncentiveDistributorDeployer bgtIncentiveDistributorDeployer =
+            new BGTIncentiveDistributorDeployer(safeOwner, BGT_INCENTIVE_DISTRIBUTOR_SALT);
+        address bgtIncentiveDistributor = address(bgtIncentiveDistributorDeployer.bgtIncentiveDistributor());
         // should be deployed at the precomputed address
         // This check will only pass if code compiled with deploy profile,
         //commenting it as CI does not compile with deploy profile.
