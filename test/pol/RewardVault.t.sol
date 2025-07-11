@@ -538,6 +538,12 @@ contract RewardVaultTest is DistributorTest, StakingTest {
         assertEq(vault.getDelegateStake(user, operator2), 100 ether);
     }
 
+    function test_GetRewardFailsIfPaused() public {
+        test_Pause();
+        vm.expectRevert(abi.encodeWithSelector(PausableUpgradeable.EnforcedPause.selector));
+        vault.getReward(user, user);
+    }
+
     function test_GetRewardWithDelegateStake() public {
         test_Distribute();
         // operator staking on behalf of user.
@@ -569,6 +575,12 @@ contract RewardVaultTest is DistributorTest, StakingTest {
         vm.prank(otherUser);
         vm.expectRevert(IPOLErrors.NotOperator.selector);
         vault.getReward(user, user);
+    }
+
+    function test_DelegateWithdrawFailsIfPaused() public {
+        test_Pause();
+        vm.expectRevert(abi.encodeWithSelector(PausableUpgradeable.EnforcedPause.selector));
+        vault.delegateWithdraw(user, 100 ether);
     }
 
     function test_DelegateWithdrawFailsIfNotDelegate() public {
@@ -706,6 +718,12 @@ contract RewardVaultTest is DistributorTest, StakingTest {
         assertEq(bgt.balanceOf(otherUser), initialRewardBalance + userRewards);
         // Verify user's balance in the vault is `delegateStake`.
         assertEq(vault.balanceOf(user), delegateStake);
+    }
+
+    function test_ExitFailsIfPaused() public {
+        test_Pause();
+        vm.expectRevert(abi.encodeWithSelector(PausableUpgradeable.EnforcedPause.selector));
+        vault.exit(user);
     }
 
     function test_ExitWithZeroBalance() public {
@@ -1287,6 +1305,13 @@ contract RewardVaultTest is DistributorTest, StakingTest {
         // No tokens should be transferred for malicious incentive token
         assertEq(pausableERC20.balanceOf(bgtIncentiveDistributor), 0);
         assertEq(pausableERC20.balanceOf(address(operator)), 0);
+    }
+
+    function test_WithdrawFailsIfPaused() public {
+        performStake(address(this), 100 ether);
+        test_Pause();
+        vm.expectRevert(abi.encodeWithSelector(PausableUpgradeable.EnforcedPause.selector));
+        vault.withdraw(100 ether);
     }
 
     function test_Withdraw_FailsIfInsufficientSelfStake() public {

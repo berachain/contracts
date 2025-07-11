@@ -175,7 +175,7 @@ contract UtilsTest is Test {
         vm.assume(to != address(0));
         vm.assume(to != address(this));
 
-        _exeedGasLimitToken.setLoopCount(1e4);
+        _exeedGasLimitToken.setLoopCount(1e5);
         _exeedGasLimitToken.mint(address(this), 2e18);
 
         uint256 gas = gasleft();
