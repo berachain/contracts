@@ -10,7 +10,7 @@ on:
 jobs:
   test:
     runs-on:
-      labels: gha-runner-amd64-large
+      labels: gha-runner-amd64-medium
     timeout-minutes: 30
     steps:
       - name: Check out the repo
@@ -32,5 +32,3 @@ jobs:
 
       - name: Run tests
         run: forge test
-        env:
-          FOUNDRY_PROFILE: ci
