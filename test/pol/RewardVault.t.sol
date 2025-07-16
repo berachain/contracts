@@ -11,6 +11,7 @@ import { PausableUpgradeable } from "@openzeppelin/contracts-upgradeable/utils/P
 import { FactoryOwnable } from "src/base/FactoryOwnable.sol";
 import { RewardVault } from "src/pol/rewards/RewardVault.sol";
 import { IRewardVault, IPOLErrors } from "src/pol/interfaces/IRewardVault.sol";
+import { IRewardVaultFactory } from "src/pol/interfaces/IRewardVaultFactory.sol";
 import { IStakingRewards, IStakingRewardsErrors } from "src/base/IStakingRewards.sol";
 import { POLTest } from "./POL.t.sol";
 import { DistributorTest } from "./Distributor.t.sol";
@@ -2065,5 +2066,58 @@ contract RewardVaultTest is DistributorTest, StakingTest {
 
         uint256 expectedRewardRate = rewardAmount * PRECISION / 5 days;
         assertApproxEqAbs(vault.rewardRate(), expectedRewardRate, 10);
+    }
+
+    function test_IncentiveFeesOnAdd() public {
+        address collector = makeAddr("collector");
+        uint256 feeRate = 1000; // 10%
+        _setIncentiveFeeRatAndCollector(feeRate, collector);
+
+        uint256 incentiveAmount = 500 * 1e18;
+        _addIncentiveToken(address(dai), daiIncentiveManager, incentiveAmount, 100 * 1e18);
+
+        // check the incentive fees
+        uint256 expectedFeeAmount = incentiveAmount * feeRate / 10_000;
+        (,, uint256 amountRemaining,) = vault.incentives(address(dai));
+
+        assertEq(expectedFeeAmount, IERC20(address(dai)).balanceOf(collector));
+        assertEq(incentiveAmount - expectedFeeAmount, IERC20(address(dai)).balanceOf(address(vault)));
+        assertEq(incentiveAmount - expectedFeeAmount, amountRemaining);
+    }
+
+    function test_IncentiveFeesOnAccount() public {
+        address collector = makeAddr("collector");
+        uint256 feeRate = 1000; // 10%
+        _setIncentiveFeeRatAndCollector(feeRate, collector);
+
+        uint256 incentiveAmount = 500 * 1e18;
+        _transferAndAccountIncentives(address(dai), daiIncentiveManager, incentiveAmount);
+
+        // check the incentive fees
+        uint256 expectedFeeAmount = incentiveAmount * feeRate / 10_000;
+        (,, uint256 amountRemaining,) = vault.incentives(address(dai));
+
+        assertEq(expectedFeeAmount, IERC20(address(dai)).balanceOf(collector));
+        assertEq(incentiveAmount - expectedFeeAmount, IERC20(address(dai)).balanceOf(address(vault)));
+        assertEq(incentiveAmount - expectedFeeAmount, amountRemaining);
+    }
+
+    function _transferAndAccountIncentives(address token, address manager, uint256 amount) internal {
+        testFuzz_WhitelistIncentiveToken(token, manager);
+        deal(token, address(vault), dai.balanceOf(address(vault)) + amount);
+
+        vm.startPrank(manager);
+        vault.accountIncentives(address(dai), amount);
+    }
+
+    function _setIncentiveFeeRatAndCollector(uint256 rate, address collector) internal {
+        vm.startPrank(governance);
+        IRewardVaultFactory factory = IRewardVaultFactory(vault.factory());
+
+        factory.setBGTIncentiveFeeRate(rate);
+        factory.setBGTIncentiveFeeCollector(collector);
+        vm.stopPrank();
+        assertEq(factory.bgtIncentiveFeeRate(), rate);
+        assertEq(factory.bgtIncentiveFeeCollector(), collector);
     }
 }

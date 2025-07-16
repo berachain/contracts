@@ -61,6 +61,8 @@ interface IPOLErrors is IStakingRewardsErrors {
     error CommissionNotQueuedOrDelayNotPassed();
     // Signature: 0xc1abde53
     error InvalidCommissionChangeDelay();
+    // Signature: 0x716e870e
+    error InvalidIncentiveFeeRate();
 
     /*                   BLOCK REWARD CONTROLLLER                  */
 
@@ -190,4 +192,17 @@ interface IPOLErrors is IStakingRewardsErrors {
     error InsufficientIncentiveTokens();
     // Signature: 0xc1ab6dc1
     error InvalidToken();
+
+    /*                        WBERA STAKER VAULT                  */
+
+    // Signature: 0x35898e6e
+    error InsufficientNativeValue();
+    // Signature: 0x0f2ca6e7
+    error WithdrawalNotReady();
+    // Signature: 0x30466bc7
+    error UnauthorizedETHTransfer();
+    // Signature: 0xc1a2e9a3
+    error WithdrawalNotRequested();
+    // Signature: 0xfb52063b
+    error WithdrawalAlreadyRequested();
 }

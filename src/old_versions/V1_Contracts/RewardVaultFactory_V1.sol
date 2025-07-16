@@ -5,14 +5,14 @@ import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/ac
 import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import { LibClone } from "solady/src/utils/LibClone.sol";
 import { UpgradeableBeacon } from "solady/src/utils/UpgradeableBeacon.sol";
-import { Utils } from "../../libraries/Utils.sol";
-import { IRewardVaultFactory } from "../interfaces/IRewardVaultFactory.sol";
-import { RewardVault } from "./RewardVault.sol";
+import { Utils } from "src/libraries/Utils.sol";
+import { IRewardVaultFactory_V1 } from "./interfaces/IRewardVaultFactory_V1.sol";
+import { RewardVault_V6 } from "../V6_Contracts/RewardVault_V6.sol";
 
 /// @title RewardVaultFactory
 /// @author Berachain Team
 /// @notice Factory contract for creating RewardVaults and keeping track of them.
-contract RewardVaultFactory is IRewardVaultFactory, AccessControlUpgradeable, UUPSUpgradeable {
+contract RewardVaultFactory_V1 is IRewardVaultFactory_V1, AccessControlUpgradeable, UUPSUpgradeable {
     using Utils for bytes4;
 
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
@@ -24,12 +24,6 @@ contract RewardVaultFactory is IRewardVaultFactory, AccessControlUpgradeable, UU
 
     /// @notice The VAULT PAUSER role.
     bytes32 public constant VAULT_PAUSER_ROLE = keccak256("VAULT_PAUSER_ROLE");
-
-    /// @notice Maximum fee rate in basis points (100%).
-    uint256 private constant MAX_INC_FEE_RATE = 10_000;
-
-    /// @notice 100% constant in basis points.
-    uint256 private constant ONE_HUNDRED_PERCENT = 10_000;
 
     /// @notice The beacon address.
     address public beacon;
@@ -52,12 +46,6 @@ contract RewardVaultFactory is IRewardVaultFactory, AccessControlUpgradeable, UU
     /// @notice The address of the BGTIncentiveDistributor contract to receive
     /// the BGT booster share of the incentive tokens.
     address public bgtIncentiveDistributor;
-
-    /// @notice Fee rate on incentives in basis points (e.g., 100 = 1%).
-    uint256 public bgtIncentiveFeeRate;
-
-    /// @notice The address of the BGTIncentiveFeeCollector contract to receive fees.
-    address public bgtIncentiveFeeCollector;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -96,32 +84,18 @@ contract RewardVaultFactory is IRewardVaultFactory, AccessControlUpgradeable, UU
 
     function _authorizeUpgrade(address newImplementation) internal override onlyRole(DEFAULT_ADMIN_ROLE) { }
 
-    /// @inheritdoc IRewardVaultFactory
+    /// @inheritdoc IRewardVaultFactory_V1
     function setBGTIncentiveDistributor(address _bgtIncentiveDistributor) external onlyRole(DEFAULT_ADMIN_ROLE) {
         if (_bgtIncentiveDistributor == address(0)) ZeroAddress.selector.revertWith();
         emit BGTIncentiveDistributorSet(_bgtIncentiveDistributor, bgtIncentiveDistributor);
         bgtIncentiveDistributor = _bgtIncentiveDistributor;
     }
 
-    /// @inheritdoc IRewardVaultFactory
-    function setBGTIncentiveFeeRate(uint256 _bgtIncentiveFeeRate) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        if (_bgtIncentiveFeeRate > MAX_INC_FEE_RATE) InvalidIncentiveFeeRate.selector.revertWith();
-        emit IncentiveFeeRateUpdated(_bgtIncentiveFeeRate, bgtIncentiveFeeRate);
-        bgtIncentiveFeeRate = _bgtIncentiveFeeRate;
-    }
-
-    /// @inheritdoc IRewardVaultFactory
-    function setBGTIncentiveFeeCollector(address _bgtIncentiveFeeCollector) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        if (_bgtIncentiveFeeCollector == address(0)) ZeroAddress.selector.revertWith();
-        emit IncentiveFeeCollectorUpdated(_bgtIncentiveFeeCollector, bgtIncentiveFeeCollector);
-        bgtIncentiveFeeCollector = _bgtIncentiveFeeCollector;
-    }
-
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
     /*                        VAULT CREATION                      */
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
 
-    /// @inheritdoc IRewardVaultFactory
+    /// @inheritdoc IRewardVaultFactory_V1
     function createRewardVault(address stakingToken) external returns (address) {
         address cachedAddress = getVault[stakingToken];
         if (cachedAddress != address(0)) return cachedAddress;
@@ -143,7 +117,7 @@ contract RewardVaultFactory is IRewardVaultFactory, AccessControlUpgradeable, UU
         emit VaultCreated(stakingToken, vault);
 
         // Initialize the vault.
-        RewardVault(vault).initialize(beaconDepositContract, bgt, distributor, stakingToken);
+        RewardVault_V6(vault).initialize(beaconDepositContract, bgt, distributor, stakingToken);
 
         return vault;
     }
@@ -152,7 +126,7 @@ contract RewardVaultFactory is IRewardVaultFactory, AccessControlUpgradeable, UU
     /*                          READS                             */
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
 
-    /// @inheritdoc IRewardVaultFactory
+    /// @inheritdoc IRewardVaultFactory_V1
     function predictRewardVaultAddress(address stakingToken) external view returns (address) {
         bytes32 salt;
         assembly ("memory-safe") {
@@ -162,13 +136,8 @@ contract RewardVaultFactory is IRewardVaultFactory, AccessControlUpgradeable, UU
         return LibClone.predictDeterministicAddressERC1967BeaconProxy(beacon, salt, address(this));
     }
 
-    /// @inheritdoc IRewardVaultFactory
+    /// @inheritdoc IRewardVaultFactory_V1
     function allVaultsLength() external view returns (uint256) {
         return allVaults.length;
-    }
-
-    /// @inheritdoc IRewardVaultFactory
-    function getIncentiveFeeAmount(uint256 incentiveAmount) external view returns (uint256) {
-        return (incentiveAmount * bgtIncentiveFeeRate) / ONE_HUNDRED_PERCENT;
     }
 }

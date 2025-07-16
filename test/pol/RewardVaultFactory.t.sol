@@ -175,4 +175,64 @@ contract RewardVaultFactoryTest is POLTest {
         factory.grantRole(VAULT_PAUSER_ROLE, newVaultPauser);
         assert(factory.hasRole(VAULT_PAUSER_ROLE, newVaultPauser));
     }
+
+    function test_SetBGTIncentiveFeeRate_FailIfNotAdmin() public {
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IAccessControl.AccessControlUnauthorizedAccount.selector, address(this), factory.DEFAULT_ADMIN_ROLE()
+            )
+        );
+        factory.setBGTIncentiveFeeRate(1000);
+    }
+
+    function test_SetBGTIncentiveFeeRate_FailInvalidRate() public {
+        vm.prank(governance);
+        vm.expectRevert(abi.encodeWithSelector(IPOLErrors.InvalidIncentiveFeeRate.selector));
+        factory.setBGTIncentiveFeeRate(10_001);
+    }
+
+    function testFuzz_SetBGTIncentiveFeeRate(uint256 rate) public {
+        rate = bound(rate, 0, 7000);
+        assertEq(0, factory.bgtIncentiveFeeRate());
+        vm.prank(governance);
+        vm.expectEmit(true, true, true, true);
+        emit IRewardVaultFactory.IncentiveFeeRateUpdated(rate, 0);
+        factory.setBGTIncentiveFeeRate(rate);
+        assertEq(rate, factory.bgtIncentiveFeeRate());
+    }
+
+    function test_SetBGTIncentiveFeeCollector_FailIfNotAdmin() public {
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IAccessControl.AccessControlUnauthorizedAccount.selector, address(this), factory.DEFAULT_ADMIN_ROLE()
+            )
+        );
+        factory.setBGTIncentiveFeeCollector(address(this));
+    }
+
+    function test_SetBGTIncentiveFeeCollector_FailIfZero() public {
+        vm.prank(governance);
+        vm.expectRevert(abi.encodeWithSelector(IPOLErrors.ZeroAddress.selector));
+        factory.setBGTIncentiveFeeCollector(address(0));
+    }
+
+    function testFuzz_SetBGTIncentiveFeeCollector(uint256 collectorInt) public {
+        collectorInt = bound(collectorInt, 1, type(uint160).max);
+        address collector = address(uint160(collectorInt));
+        assertEq(address(0), factory.bgtIncentiveFeeCollector());
+        vm.prank(governance);
+        vm.expectEmit(true, true, true, true);
+        emit IRewardVaultFactory.IncentiveFeeCollectorUpdated(collector, address(0));
+        factory.setBGTIncentiveFeeCollector(collector);
+        assertEq(collector, factory.bgtIncentiveFeeCollector());
+    }
+
+    function testFuzz_GetIncentiveFeeAmount(uint256 rate, uint256 incentiveAmount) public {
+        incentiveAmount = bound(incentiveAmount, 1, type(uint256).max / 10_000);
+        testFuzz_SetBGTIncentiveFeeRate(rate);
+        rate = factory.bgtIncentiveFeeRate();
+
+        uint256 feeAmount = factory.getIncentiveFeeAmount(incentiveAmount);
+        assertEq(rate * incentiveAmount / 10_000, feeAmount);
+    }
 }

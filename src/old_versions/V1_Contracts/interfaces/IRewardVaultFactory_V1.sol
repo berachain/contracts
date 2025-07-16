@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.26;
 
-import { IPOLErrors } from "../interfaces/IPOLErrors.sol";
+import { IPOLErrors } from "src/pol/interfaces/IPOLErrors.sol";
 
-interface IRewardVaultFactory is IPOLErrors {
+interface IRewardVaultFactory_V1 is IPOLErrors {
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
-    /*                          EVENTS                            */
+    /*                          EVENTS                             */
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
 
     /**
@@ -24,20 +24,6 @@ interface IRewardVaultFactory is IPOLErrors {
         address indexed newBGTIncentiveDistributor, address indexed oldBGTIncentiveDistributor
     );
 
-    /**
-     * @notice Emitted when the incentive fee percentage is updated.
-     * @param newValue The new rate (in basis points).
-     * @param oldValue The old rate (in basis points).
-     */
-    event IncentiveFeeRateUpdated(uint256 newValue, uint256 oldValue);
-
-    /**
-     * @notice Emitted when the incentive fee collector address is updated.
-     * @param newAddress The new address for incentive fees.
-     * @param oldAddress The old address for incentive fees.
-     */
-    event IncentiveFeeCollectorUpdated(address newAddress, address oldAddress);
-
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
     /*                          ADMIN                             */
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
@@ -48,20 +34,6 @@ interface IRewardVaultFactory is IPOLErrors {
      * @param _bgtIncentiveDistributor The address of the new BGTIncentiveDistributor contract.
      */
     function setBGTIncentiveDistributor(address _bgtIncentiveDistributor) external;
-
-    /**
-     * @notice Sets the incentives fee rate.
-     * @dev Only callable by the admin.
-     * @param _bgtIncentiveFeeRate The new value for the rate (in basis points).
-     */
-    function setBGTIncentiveFeeRate(uint256 _bgtIncentiveFeeRate) external;
-
-    /**
-     * @notice Sets the BGTIncentiveDistributor contract.
-     * @dev Only callable by the admin.
-     * @param _bgtIncentiveFeeCollector The address of the new BGTIncentiveFeeCollector contract.
-     */
-    function setBGTIncentiveFeeCollector(address _bgtIncentiveFeeCollector) external;
 
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
     /*                         VAULT CREATION                     */
@@ -116,23 +88,4 @@ interface IRewardVaultFactory is IPOLErrors {
      * @return The address of the reward vault.
      */
     function predictRewardVaultAddress(address stakingToken) external view returns (address);
-
-    /**
-     * @notice Gets the value of the incentive fee rate.
-     * @return The rate (in basis points).
-     */
-    function bgtIncentiveFeeRate() external view returns (uint256);
-
-    /**
-     * @notice Gets the address of the incentive fee collector.
-     * @return The address of the BGTIncentiveFeeCollector contract.
-     */
-    function bgtIncentiveFeeCollector() external view returns (address);
-
-    /**
-     * @notice Applies the fee percentage on the incentive amount.
-     * @param incentiveAmount The amount of incentive tokens.
-     * @return The fee amount.
-     */
-    function getIncentiveFeeAmount(uint256 incentiveAmount) external view returns (uint256);
 }

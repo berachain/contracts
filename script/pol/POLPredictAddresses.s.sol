@@ -11,6 +11,8 @@ import { BlockRewardController } from "src/pol/rewards/BlockRewardController.sol
 import { Distributor } from "src/pol/rewards/Distributor.sol";
 import { BGTStaker } from "src/pol/BGTStaker.sol";
 import { FeeCollector } from "src/pol/FeeCollector.sol";
+import { WBERAStakerVault } from "src/pol/WBERAStakerVault.sol";
+import { BGTIncentiveFeeCollector } from "src/pol/BGTIncentiveFeeCollector.sol";
 import { BGTIncentiveDistributor } from "src/pol/rewards/BGTIncentiveDistributor.sol";
 
 import {
@@ -22,7 +24,9 @@ import {
     REWARDS_FACTORY_SALT,
     BGT_STAKER_SALT,
     FEE_COLLECTOR_SALT,
-    BGT_INCENTIVE_DISTRIBUTOR_SALT
+    BGT_INCENTIVE_DISTRIBUTOR_SALT,
+    WBERA_STAKER_VAULT_SALT,
+    BGT_INCENTIVE_FEE_COLLECTOR_SALT
 } from "./POLSalts.sol";
 
 contract POLPredictAddressesScript is BasePredictScript {
@@ -36,6 +40,7 @@ contract POLPredictAddressesScript is BasePredictScript {
             "BlockRewardController", type(BlockRewardController).creationCode, 0, BLOCK_REWARD_CONTROLLER_SALT
         );
         _predictProxyAddress("Distributor", type(Distributor).creationCode, 0, DISTRIBUTOR_SALT);
+        _predictAddress("RewardVaultFactory Impl", type(RewardVaultFactory).creationCode, 0);
         _predictProxyAddress("RewardVaultFactory", type(RewardVaultFactory).creationCode, 0, REWARDS_FACTORY_SALT);
         _predictAddress("RewardVault Impl", type(RewardVault).creationCode, 0);
         _predictProxyAddress("BGTStaker", type(BGTStaker).creationCode, 0, BGT_STAKER_SALT);
@@ -43,5 +48,14 @@ contract POLPredictAddressesScript is BasePredictScript {
         _predictProxyAddress(
             "BGTIncentiveDistributor", type(BGTIncentiveDistributor).creationCode, 1, BGT_INCENTIVE_DISTRIBUTOR_SALT
         );
+        _predictAddress("BGT Incentive Fee Collector Impl", type(BGTIncentiveFeeCollector).creationCode, 0);
+        _predictProxyAddress(
+            "BGT Incentive Fee Collector",
+            type(BGTIncentiveFeeCollector).creationCode,
+            0,
+            BGT_INCENTIVE_FEE_COLLECTOR_SALT
+        );
+        _predictAddress("WBERA Staker Vault Impl", type(WBERAStakerVault).creationCode, 0);
+        _predictProxyAddress("WBERA Staker Vault", type(WBERAStakerVault).creationCode, 0, WBERA_STAKER_VAULT_SALT);
     }
 }

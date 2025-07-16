@@ -15,6 +15,7 @@ import { StakingRewards } from "../../base/StakingRewards.sol";
 import { IBeraChef } from "../interfaces/IBeraChef.sol";
 import { IDistributor } from "../interfaces/IDistributor.sol";
 import { IBGTIncentiveDistributor } from "../interfaces/IBGTIncentiveDistributor.sol";
+import { IRewardVaultFactory } from "../interfaces/IRewardVaultFactory.sol";
 
 /// @title Rewards Vault
 /// @author Berachain Team
@@ -463,8 +464,12 @@ contract RewardVault is
         // The incentive rate should be greater than or equal to the `minIncentiveRate`.
         if (incentiveRate < minIncentiveRate) InvalidIncentiveRate.selector.revertWith();
 
+        // Transfer the full amount to the contract.
         IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
-        incentive.amountRemaining = amountRemainingBefore + amount;
+
+        uint256 feeAmount = _collectIncentiveFee(token, amount);
+        incentive.amountRemaining = amountRemainingBefore + amount - feeAmount;
+
         // Allows updating the incentive rate if the remaining incentive amount is 0.
         // Allow to decrease the incentive rate when accounted incentives are finished.
         if (amountRemainingBefore == 0) {
@@ -500,7 +505,8 @@ contract RewardVault is
 
         if (amount > incentiveBalance - amountRemainingBefore) NotEnoughBalance.selector.revertWith();
 
-        incentive.amountRemaining += amount;
+        uint256 feeAmount = _collectIncentiveFee(token, amount);
+        incentive.amountRemaining += amount - feeAmount;
 
         emit IncentiveAdded(token, msg.sender, amount, incentiveRateStored);
     }
@@ -617,6 +623,16 @@ contract RewardVault is
                     return;
                 }
             }
+        }
+    }
+
+    function _collectIncentiveFee(address token, uint256 amount) internal returns (uint256 feeAmount) {
+        // Computes the fee amount based on the incentive fee rate, and transfers it to the collector.
+        IRewardVaultFactory factory = IRewardVaultFactory(factory());
+        feeAmount = factory.getIncentiveFeeAmount(amount);
+        if (feeAmount > 0) {
+            IERC20(token).safeTransfer(factory.bgtIncentiveFeeCollector(), feeAmount);
+            emit IncentiveFeeCollected(token, feeAmount);
         }
     }
 
