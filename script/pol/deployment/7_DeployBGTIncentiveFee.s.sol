@@ -17,7 +17,7 @@ import {
 
 contract DeployBGTIncentiveFeeScript is BaseScript, RBAC, Storage, Create2Deployer {
     // The amount to be paid out to the incentive fee collector in order to claim fees.
-    uint256 internal constant PAYOUT_AMOUNT = 30_000 ether; // WBERA
+    uint256 internal constant PAYOUT_AMOUNT = 50_000 ether; // WBERA
 
     /// @notice The initial deposit amount to the WBERAStakerVault to avoid inflation attack.
     uint256 public constant INITIAL_DEPOSIT_AMOUNT = 10e18;
