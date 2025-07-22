@@ -91,6 +91,11 @@ interface IRewardVault is IPOLErrors, IStakingRewards {
     /// @param amount The amount of the incentive fee.
     event IncentiveFeeCollected(address indexed token, uint256 amount);
 
+    /// @notice Emitted when the incentive fee is failed to be sent to the collector.
+    /// @param token The address of the incentive token.
+    /// @param amount The amount of the incentive fee.
+    event IncentiveFeeCollectionFailed(address indexed token, uint256 amount);
+
     /// @notice Emitted when the target rewards per second is updated.
     /// @param newTargetRewardsPerSecond The new target rewards per second.
     /// @param oldTargetRewardsPerSecond The old target rewards per second.
