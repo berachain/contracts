@@ -46,6 +46,7 @@
     "solstat": "RUST_BACKTRACE=full solstat -p ./src",
     "test": "forge test",
     "test:coverage": "forge coverage",
-    "test:coverage:report": "forge coverage --report lcov && genhtml lcov.info --branch-coverage --output-dir coverage"
+    "test:coverage:report": "forge coverage --report lcov && genhtml lcov.info --branch-coverage --output-dir coverage",
+    "abis:sync": "node manage-abis.js sync"
   }
 }

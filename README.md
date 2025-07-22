@@ -95,6 +95,28 @@ simply copy paste the path):
 $ bun run test:coverage:report
 ```
 
+## ABI Management
+
+This repository includes automated ABI management that syncs contract ABIs to a checkout of[`doc-abis`](https://github.com/berachain/doc-abis) repository, expected to be found at `../doc-abis`, next to the `contracts` checkout.
+
+### Commands
+
+```sh
+# Sync all ABI files (update existing + create missing, excludes test/mock contracts)
+$ npm run abis:sync
+```
+
+### Adding New Contracts
+
+ABIs are automatically organized into directories:
+
+- **`core/`** - Protocol contracts (BeraChef, BGT, RewardVault, etc.)
+- **`gov/`** - Governance contracts (BerachainGovernance, Timelock)
+- **`bex/`** - BEX/Balancer contracts (interfaces starting with `I`)
+- **`misc/`** - Other contracts (ERC20, utilities)
+
+To add a new contract category, update the `directoryMapping` in [`manage-abis.js`](./manage-abis.js).
+
 ## Related Efforts
 
 - [abigger87/femplate](https://github.com/abigger87/femplate)
