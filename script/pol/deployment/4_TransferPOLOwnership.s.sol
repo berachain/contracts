@@ -27,7 +27,7 @@ contract TransferPOLOwnershipScript is RBAC, BaseScript, Storage {
     address internal constant FEE_COLLECTOR_MANAGER = address(0);
 
     function run() public virtual broadcast {
-        // Check if the managers are set
+        // Check if the new owner and managers are set
         require(NEW_OWNER != address(0), "NEW_OWNER must be set");
         require(VAULT_FACTORY_MANAGER != address(0), "VAULT_FACTORY_MANAGER must be set");
         require(DISTRIBUTOR_MANAGER != address(0), "DISTRIBUTOR_MANAGER must be set");

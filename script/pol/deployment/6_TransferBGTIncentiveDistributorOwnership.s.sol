@@ -13,7 +13,7 @@ contract TransferBGTIncentiveDistributorOwnershipScript is RBAC, BaseScript, Sto
     address internal constant NEW_OWNER = address(0); // TIMELOCK_ADDRESS;
 
     function run() public virtual broadcast {
-        // Check if the managers are set
+        // Check if the new owner is set
         require(NEW_OWNER != address(0), "NEW_OWNER must be set");
 
         // create contracts instance from deployed addresses
