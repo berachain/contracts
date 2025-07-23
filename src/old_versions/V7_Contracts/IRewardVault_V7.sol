@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.26;
 
-import { IPOLErrors } from "./IPOLErrors.sol";
-import { IStakingRewards } from "../../base/IStakingRewards.sol";
+import { IPOLErrors } from "src/pol/interfaces/IPOLErrors.sol";
+import { IStakingRewards } from "src/base/IStakingRewards.sol";
 
-interface IRewardVault is IPOLErrors, IStakingRewards {
+interface IRewardVault_V7 is IPOLErrors, IStakingRewards {
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
     /*                           EVENTS                           */
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
@@ -90,11 +90,6 @@ interface IRewardVault is IPOLErrors, IStakingRewards {
     /// @param token The address of the incentive token.
     /// @param amount The amount of the incentive fee.
     event IncentiveFeeCollected(address indexed token, uint256 amount);
-
-    /// @notice Emitted when the incentive fee is failed to be sent to the collector.
-    /// @param token The address of the incentive token.
-    /// @param amount The amount of the incentive fee.
-    event IncentiveFeeCollectionFailed(address indexed token, uint256 amount);
 
     /// @notice Emitted when the target rewards per second is updated.
     /// @param newTargetRewardsPerSecond The new target rewards per second.
@@ -234,15 +229,6 @@ interface IRewardVault is IPOLErrors, IStakingRewards {
     /// @return The amount of the reward claimed.
     function getReward(address account, address recipient) external returns (uint256);
 
-    /// @notice Claim a partial reward.
-    /// @notice Use `getReward` if you want to claim the full reward.
-    /// @dev The operator only handles BGT, not STAKING_TOKEN.
-    /// @dev Callable by the operator or the account holder.
-    /// @param account The account to get the reward for.
-    /// @param recipient The address to send the reward to.
-    /// @param amount The amount of the reward to claim.
-    function getPartialReward(address account, address recipient, uint256 amount) external;
-
     /// @notice Stake tokens in the vault.
     /// @param amount The amount of tokens to stake.
     function stake(uint256 amount) external;
@@ -251,11 +237,6 @@ interface IRewardVault is IPOLErrors, IStakingRewards {
     /// @param account The account to stake for.
     /// @param amount The amount of tokens to stake.
     function delegateStake(address account, uint256 amount) external;
-
-    /// @notice Stake tokens on behalf of another account.
-    /// @param account The account to stake for.
-    /// @param amount The amount of tokens to stake.
-    function stakeOnBehalf(address account, uint256 amount) external;
 
     /// @notice Withdraw the staked tokens from the vault.
     /// @param amount The amount of tokens to withdraw.

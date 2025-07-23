@@ -91,6 +91,8 @@ interface IPOLErrors is IStakingRewardsErrors {
     error IncentiveRateTooHigh();
     // Signature: 0x5ee4de0e
     error NotIncentiveManager();
+    // Signature: 0x92949442
+    error AmountGreaterThanReward();
 
     // Signature: 0xf84835a0
     error TokenNotWhitelisted();

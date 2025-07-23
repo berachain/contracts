@@ -7,15 +7,15 @@ import { PausableUpgradeable } from "@openzeppelin/contracts-upgradeable/utils/P
 import { ReentrancyGuardUpgradeable } from "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
 import { FixedPointMathLib } from "solady/src/utils/FixedPointMathLib.sol";
 
-import { Utils } from "../../libraries/Utils.sol";
-import { IBeaconDeposit } from "../interfaces/IBeaconDeposit.sol";
-import { IRewardVault } from "../interfaces/IRewardVault.sol";
-import { FactoryOwnable } from "../../base/FactoryOwnable.sol";
-import { StakingRewards } from "../../base/StakingRewards.sol";
-import { IBeraChef } from "../interfaces/IBeraChef.sol";
-import { IDistributor } from "../interfaces/IDistributor.sol";
-import { IBGTIncentiveDistributor } from "../interfaces/IBGTIncentiveDistributor.sol";
-import { IRewardVaultFactory } from "../interfaces/IRewardVaultFactory.sol";
+import { Utils } from "src/libraries/Utils.sol";
+import { IBeaconDeposit } from "src/pol/interfaces/IBeaconDeposit.sol";
+import { IRewardVault_V7 } from "./IRewardVault_V7.sol";
+import { FactoryOwnable } from "src/base/FactoryOwnable.sol";
+import { StakingRewards } from "src/base/StakingRewards.sol";
+import { IBeraChef } from "src/pol/interfaces/IBeraChef.sol";
+import { IDistributor } from "src/pol/interfaces/IDistributor.sol";
+import { IBGTIncentiveDistributor } from "src/pol/interfaces/IBGTIncentiveDistributor.sol";
+import { IRewardVaultFactory } from "src/pol/interfaces/IRewardVaultFactory.sol";
 
 /// @title Rewards Vault
 /// @author Berachain Team
@@ -24,12 +24,12 @@ import { IRewardVaultFactory } from "../interfaces/IRewardVaultFactory.sol";
 /// https://github.com/Synthetixio/synthetix/blob/develop/contracts/StakingRewards.sol
 /// We are using this model instead of 4626 because we want to incentivize staying in the vault for x period of time to
 /// to be considered a 'miner' and not a 'trader'.
-contract RewardVault is
+contract RewardVault_V7 is
     PausableUpgradeable,
     ReentrancyGuardUpgradeable,
     FactoryOwnable,
     StakingRewards,
-    IRewardVault
+    IRewardVault_V7
 {
     using Utils for bytes4;
     using SafeERC20 for IERC20;
@@ -123,7 +123,7 @@ contract RewardVault is
         _disableInitializers();
     }
 
-    /// @inheritdoc IRewardVault
+    /// @inheritdoc IRewardVault_V7
     function initialize(
         address _beaconDepositContract,
         address _bgt,
@@ -180,20 +180,20 @@ contract RewardVault is
     /*                       ADMIN FUNCTIONS                      */
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
 
-    /// @inheritdoc IRewardVault
+    /// @inheritdoc IRewardVault_V7
     function setDistributor(address _rewardDistribution) external onlyFactoryOwner {
         if (_rewardDistribution == address(0)) ZeroAddress.selector.revertWith();
         distributor = _rewardDistribution;
         emit DistributorSet(_rewardDistribution);
     }
 
-    /// @inheritdoc IRewardVault
+    /// @inheritdoc IRewardVault_V7
     function notifyRewardAmount(bytes calldata pubkey, uint256 reward) external onlyDistributor {
         _notifyRewardAmount(reward);
         _processIncentives(pubkey, reward);
     }
 
-    /// @inheritdoc IRewardVault
+    /// @inheritdoc IRewardVault_V7
     function recoverERC20(address tokenAddress, uint256 tokenAmount) external onlyFactoryOwner {
         if (incentives[tokenAddress].minIncentiveRate != 0) CannotRecoverIncentiveToken.selector.revertWith();
         if (tokenAddress == address(stakeToken)) {
@@ -206,7 +206,7 @@ contract RewardVault is
         emit Recovered(tokenAddress, tokenAmount);
     }
 
-    /// @inheritdoc IRewardVault
+    /// @inheritdoc IRewardVault_V7
     function setRewardsDuration(uint256 _rewardsDuration) external onlyRewardVaultManager {
         // protocol must not have switched to targetRewardsPerSecond logic.
         if (targetRewardsPerSecond != 0) DurationChangeNotAllowed.selector.revertWith();
@@ -218,7 +218,7 @@ contract RewardVault is
         pendingRewardsDuration = _rewardsDuration;
     }
 
-    /// @inheritdoc IRewardVault
+    /// @inheritdoc IRewardVault_V7
     function setTargetRewardsPerSecond(uint256 _targetRewardsPerSecond) external onlyRewardVaultManager {
         // set the `minRewardDurationForTargetRate` to `MIN_REWARD_DURATION` if it is not set.
         if (minRewardDurationForTargetRate == 0) {
@@ -239,7 +239,7 @@ contract RewardVault is
         targetRewardsPerSecond = _targetRewardsPerSecond;
     }
 
-    /// @inheritdoc IRewardVault
+    /// @inheritdoc IRewardVault_V7
     function setMinRewardDurationForTargetRate(uint256 _minRewardDurationForTargetRate)
         external
         onlyRewardVaultManager
@@ -255,7 +255,7 @@ contract RewardVault is
         minRewardDurationForTargetRate = _minRewardDurationForTargetRate;
     }
 
-    /// @inheritdoc IRewardVault
+    /// @inheritdoc IRewardVault_V7
     function whitelistIncentiveToken(
         address token,
         uint256 minIncentiveRate,
@@ -284,7 +284,7 @@ contract RewardVault is
         emit IncentiveTokenWhitelisted(token, minIncentiveRate, manager);
     }
 
-    /// @inheritdoc IRewardVault
+    /// @inheritdoc IRewardVault_V7
     function removeIncentiveToken(address token) external onlyFactoryVaultManager onlyWhitelistedToken(token) {
         delete incentives[token];
         // delete the token from the list.
@@ -292,7 +292,7 @@ contract RewardVault is
         emit IncentiveTokenRemoved(token);
     }
 
-    /// @inheritdoc IRewardVault
+    /// @inheritdoc IRewardVault_V7
     function updateIncentiveManager(
         address token,
         address newManager
@@ -309,7 +309,7 @@ contract RewardVault is
         emit IncentiveManagerChanged(token, newManager, currentManager);
     }
 
-    /// @inheritdoc IRewardVault
+    /// @inheritdoc IRewardVault_V7
     function setMaxIncentiveTokensCount(uint8 _maxIncentiveTokensCount) external onlyFactoryOwner {
         if (_maxIncentiveTokensCount < whitelistedTokens.length) {
             InvalidMaxIncentiveTokensCount.selector.revertWith();
@@ -318,17 +318,17 @@ contract RewardVault is
         emit MaxIncentiveTokensCountUpdated(_maxIncentiveTokensCount);
     }
 
-    /// @inheritdoc IRewardVault
+    /// @inheritdoc IRewardVault_V7
     function pause() external onlyFactoryVaultPauser {
         _pause();
     }
 
-    /// @inheritdoc IRewardVault
+    /// @inheritdoc IRewardVault_V7
     function unpause() external onlyFactoryVaultManager {
         _unpause();
     }
 
-    /// @inheritdoc IRewardVault
+    /// @inheritdoc IRewardVault_V7
     function setRewardVaultManager(address _rewardVaultManager) external onlyFactoryVaultManager {
         if (_rewardVaultManager == address(0)) ZeroAddress.selector.revertWith();
         emit RewardVaultManagerSet(_rewardVaultManager, rewardVaultManager);
@@ -339,27 +339,27 @@ contract RewardVault is
     /*                          GETTERS                           */
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
 
-    /// @inheritdoc IRewardVault
+    /// @inheritdoc IRewardVault_V7
     function operator(address account) external view returns (address) {
         return _operators[account];
     }
 
-    /// @inheritdoc IRewardVault
+    /// @inheritdoc IRewardVault_V7
     function getWhitelistedTokensCount() external view returns (uint256) {
         return whitelistedTokens.length;
     }
 
-    /// @inheritdoc IRewardVault
+    /// @inheritdoc IRewardVault_V7
     function getWhitelistedTokens() public view returns (address[] memory) {
         return whitelistedTokens;
     }
 
-    /// @inheritdoc IRewardVault
+    /// @inheritdoc IRewardVault_V7
     function getTotalDelegateStaked(address account) external view returns (uint256) {
         return _delegateStake[account].delegateTotalStaked;
     }
 
-    /// @inheritdoc IRewardVault
+    /// @inheritdoc IRewardVault_V7
     function getDelegateStake(address account, address delegate) external view returns (uint256) {
         return _delegateStake[account].stakedByDelegate[delegate];
     }
@@ -368,12 +368,12 @@ contract RewardVault is
     /*                          WRITES                            */
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
 
-    /// @inheritdoc IRewardVault
+    /// @inheritdoc IRewardVault_V7
     function stake(uint256 amount) external nonReentrant whenNotPaused {
         _stake(msg.sender, amount);
     }
 
-    /// @inheritdoc IRewardVault
+    /// @inheritdoc IRewardVault_V7
     function delegateStake(address account, uint256 amount) external nonReentrant whenNotPaused {
         if (msg.sender == account) NotDelegate.selector.revertWith();
 
@@ -390,17 +390,12 @@ contract RewardVault is
         emit DelegateStaked(account, msg.sender, amount);
     }
 
-    /// @inheritdoc IRewardVault
-    function stakeOnBehalf(address account, uint256 amount) external nonReentrant whenNotPaused {
-        _stake(account, amount);
-    }
-
-    /// @inheritdoc IRewardVault
+    /// @inheritdoc IRewardVault_V7
     function withdraw(uint256 amount) external nonReentrant checkSelfStakedBalance(msg.sender, amount) whenNotPaused {
         _withdraw(msg.sender, amount);
     }
 
-    /// @inheritdoc IRewardVault
+    /// @inheritdoc IRewardVault_V7
     function delegateWithdraw(address account, uint256 amount) external nonReentrant whenNotPaused {
         if (msg.sender == account) NotDelegate.selector.revertWith();
 
@@ -416,7 +411,7 @@ contract RewardVault is
         emit DelegateWithdrawn(account, msg.sender, amount);
     }
 
-    /// @inheritdoc IRewardVault
+    /// @inheritdoc IRewardVault_V7
     function getReward(
         address account,
         address recipient
@@ -430,21 +425,7 @@ contract RewardVault is
         return _getReward(account, recipient);
     }
 
-    /// @inheritdoc IRewardVault
-    function getPartialReward(
-        address account,
-        address recipient,
-        uint256 amount
-    )
-        external
-        nonReentrant
-        whenNotPaused
-        onlyOperatorOrUser(account)
-    {
-        _getPartialReward(account, recipient, amount);
-    }
-
-    /// @inheritdoc IRewardVault
+    /// @inheritdoc IRewardVault_V7
     function exit(address recipient) external nonReentrant whenNotPaused {
         // self-staked amount
         uint256 amount = _accountInfo[msg.sender].balance - _delegateStake[msg.sender].delegateTotalStaked;
@@ -452,13 +433,13 @@ contract RewardVault is
         _getReward(msg.sender, recipient);
     }
 
-    /// @inheritdoc IRewardVault
+    /// @inheritdoc IRewardVault_V7
     function setOperator(address _operator) external {
         _operators[msg.sender] = _operator;
         emit OperatorSet(msg.sender, _operator);
     }
 
-    /// @inheritdoc IRewardVault
+    /// @inheritdoc IRewardVault_V7
     function addIncentive(
         address token,
         uint256 amount,
@@ -486,7 +467,8 @@ contract RewardVault is
         // Transfer the full amount to the contract.
         IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
 
-        incentive.amountRemaining = amountRemainingBefore + amount;
+        uint256 feeAmount = _collectIncentiveFee(token, amount);
+        incentive.amountRemaining = amountRemainingBefore + amount - feeAmount;
 
         // Allows updating the incentive rate if the remaining incentive amount is 0.
         // Allow to decrease the incentive rate when accounted incentives are finished.
@@ -505,7 +487,7 @@ contract RewardVault is
         emit IncentiveAdded(token, msg.sender, amount, incentive.incentiveRate);
     }
 
-    /// @inheritdoc IRewardVault
+    /// @inheritdoc IRewardVault_V7
     function accountIncentives(address token, uint256 amount) external nonReentrant onlyWhitelistedToken(token) {
         Incentive storage incentive = incentives[token];
         (uint256 minIncentiveRate, uint256 incentiveRateStored, uint256 amountRemainingBefore, address manager) =
@@ -523,7 +505,8 @@ contract RewardVault is
 
         if (amount > incentiveBalance - amountRemainingBefore) NotEnoughBalance.selector.revertWith();
 
-        incentive.amountRemaining += amount;
+        uint256 feeAmount = _collectIncentiveFee(token, amount);
+        incentive.amountRemaining += amount - feeAmount;
 
         emit IncentiveAdded(token, msg.sender, amount, incentiveRateStored);
     }
@@ -575,8 +558,6 @@ contract RewardVault is
                 uint256 amount = FixedPointMathLib.mulDiv(bgtEmitted, incentive.incentiveRate, PRECISION);
                 uint256 amountRemaining = incentive.amountRemaining;
                 amount = FixedPointMathLib.min(amount, amountRemaining);
-                // collect the incentive fee.
-                (amount, amountRemaining) = _collectIncentiveFee(token, amount, amountRemaining);
 
                 uint256 validatorShare;
                 if (amount > 0) {
@@ -645,28 +626,14 @@ contract RewardVault is
         }
     }
 
-    function _collectIncentiveFee(
-        address token,
-        uint256 amount,
-        uint256 amountRemaining
-    )
-        internal
-        returns (uint256, uint256)
-    {
+    function _collectIncentiveFee(address token, uint256 amount) internal returns (uint256 feeAmount) {
         // Computes the fee amount based on the incentive fee rate, and transfers it to the collector.
         IRewardVaultFactory factory = IRewardVaultFactory(factory());
-        uint256 feeAmount = factory.getIncentiveFeeAmount(amount);
+        feeAmount = factory.getIncentiveFeeAmount(amount);
         if (feeAmount > 0) {
-            amount -= feeAmount;
-            bool success = token.trySafeTransfer(factory.bgtIncentiveFeeCollector(), feeAmount);
-            if (success) {
-                amountRemaining -= feeAmount;
-                emit IncentiveFeeCollected(token, feeAmount);
-            } else {
-                emit IncentiveFeeCollectionFailed(token, feeAmount);
-            }
+            IERC20(token).safeTransfer(factory.bgtIncentiveFeeCollector(), feeAmount);
+            emit IncentiveFeeCollected(token, feeAmount);
         }
-        return (amount, amountRemaining);
     }
 
     function _setRewardRate() internal override {
@@ -701,16 +668,5 @@ contract RewardVault is
         rewardRate = _rewardRate;
         periodFinish = block.timestamp + _rewardsDuration;
         undistributedRewards -= _rewardRate * _rewardsDuration;
-    }
-
-    function _getPartialReward(address account, address recipient, uint256 amount) internal updateReward(account) {
-        Info storage info = _accountInfo[account];
-        uint256 reward = info.unclaimedReward; // get the rewards owed to the account
-        if (amount > reward) AmountGreaterThanReward.selector.revertWith();
-        if (amount != 0) {
-            info.unclaimedReward = reward - amount;
-            _safeTransferRewardToken(recipient, amount);
-            emit RewardPaid(account, recipient, amount);
-        }
     }
 }

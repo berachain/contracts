@@ -5,6 +5,7 @@ import "forge-std/Test.sol";
 
 import { FixedPointMathLib } from "solady/src/utils/FixedPointMathLib.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { ERC20 } from "solady/src/tokens/ERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { PausableUpgradeable } from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 
@@ -83,6 +84,16 @@ contract RewardVaultTest is DistributorTest, StakingTest {
         vm.prank(_caller);
         // user getting the BGT emission.
         return vault.getReward(_user, _recipient);
+    }
+
+    function _getPartialReward(address _caller, address _user, address _recipient, uint256 _amount) internal {
+        vm.prank(_caller);
+        // user getting partial BGT emission.
+        vault.getPartialReward(_user, _recipient, _amount);
+    }
+
+    function _getPartialReward(address _user, address _recipient, uint256 _amount) internal {
+        _getPartialReward(_user, _user, _recipient, _amount);
     }
 
     function _notifyRewardAmount(uint256 _amount) internal override {
@@ -552,6 +563,17 @@ contract RewardVaultTest is DistributorTest, StakingTest {
         test_Distribute();
         // operator staking on behalf of user.
         performDelegateStake(operator, user, 100 ether);
+        vm.warp(block.timestamp + 1 weeks);
+        uint256 accumulatedBGTRewards = vault.earned(user);
+
+        uint256 rewardAmount = _getReward(user, user, user);
+        assertEq(rewardAmount, accumulatedBGTRewards);
+        assertEq(bgt.balanceOf(user), accumulatedBGTRewards);
+    }
+
+    function test_GetRewardWithStakeOnBehalf() public {
+        test_Distribute();
+        testFuzz_StakeOnBehalf(user, 100 ether);
         vm.warp(block.timestamp + 1 weeks);
         uint256 accumulatedBGTRewards = vault.earned(user);
 
@@ -1606,6 +1628,289 @@ contract RewardVaultTest is DistributorTest, StakingTest {
 
         (,, amountRemaining,) = vault.incentives(stakeToken);
         assertEq(amountRemaining, 600e18);
+    }
+
+    /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
+    /*                    STAKE ON BEHALF TESTS                    */
+    /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
+
+    function test_StakeOnBehalf() public {
+        testFuzz_StakeOnBehalf(user, 100 ether);
+    }
+
+    function testFuzz_StakeOnBehalf(address _account, uint256 _amount) public {
+        vm.assume(_amount > 0);
+        vm.assume(_account != address(0));
+
+        // Mint honey tokens to the caller (this contract)
+        honey.mint(address(this), _amount);
+
+        // Approve the vault to spend honey tokens on behalf of the caller
+        honey.approve(address(vault), _amount);
+
+        // Stake the tokens on behalf of the account
+        vm.expectEmit();
+        emit IStakingRewards.Staked(_account, _amount);
+        vault.stakeOnBehalf(_account, _amount);
+
+        // Verify the staking worked correctly
+        assertEq(vault.totalSupply(), _amount);
+        assertEq(vault.balanceOf(_account), _amount);
+        assertEq(vault.getTotalDelegateStaked(_account), 0);
+    }
+
+    function test_StakeOnBehalfFailsIfPaused() public {
+        test_Pause();
+        vm.expectRevert(abi.encodeWithSelector(PausableUpgradeable.EnforcedPause.selector));
+        vault.stakeOnBehalf(user, 1 ether);
+    }
+
+    function test_StakeOnBehalfWithZeroAmount() public {
+        vm.expectRevert(IStakingRewardsErrors.StakeAmountIsZero.selector);
+        vault.stakeOnBehalf(user, 0);
+    }
+
+    function test_StakeOnBehalfWithInsufficientAllowance() public {
+        honey.mint(address(this), 100 ether);
+        honey.approve(address(vault), 50 ether); // Only approve 50 ether
+
+        vm.expectRevert(ERC20.InsufficientAllowance.selector);
+        vault.stakeOnBehalf(user, 100 ether);
+    }
+
+    function test_StakeOnBehalfWithInsufficientBalance() public {
+        honey.mint(address(this), 50 ether);
+        honey.approve(address(vault), 100 ether);
+
+        vm.expectRevert(ERC20.InsufficientBalance.selector);
+        vault.stakeOnBehalf(user, 100 ether);
+    }
+
+    function test_StakeOnBehalfMultipleAccounts() public {
+        address account1 = makeAddr("account1");
+        address account2 = makeAddr("account2");
+        uint256 amount1 = 100 ether;
+        uint256 amount2 = 200 ether;
+
+        // Mint and approve tokens
+        honey.mint(address(this), amount1 + amount2);
+        honey.approve(address(vault), amount1 + amount2);
+
+        // Stake on behalf of account1
+        vault.stakeOnBehalf(account1, amount1);
+        assertEq(vault.balanceOf(account1), amount1);
+        assertEq(vault.totalSupply(), amount1);
+
+        // Stake on behalf of account2
+        vault.stakeOnBehalf(account2, amount2);
+        assertEq(vault.balanceOf(account2), amount2);
+        assertEq(vault.totalSupply(), amount1 + amount2);
+    }
+
+    function test_StakeOnBehalfWithDelegateStake() public {
+        address account = makeAddr("account");
+        uint256 selfStakeAmount = 100 ether;
+        uint256 delegateStakeAmount = 50 ether;
+
+        // Mint tokens for stake on behalf
+        honey.mint(address(this), selfStakeAmount);
+        honey.approve(address(vault), selfStakeAmount);
+
+        // Stake on behalf of account
+        vault.stakeOnBehalf(account, selfStakeAmount);
+        assertEq(vault.balanceOf(account), selfStakeAmount);
+        assertEq(vault.getTotalDelegateStaked(account), 0);
+
+        // Delegate stake for the same account
+        performDelegateStake(operator, account, delegateStakeAmount);
+        assertEq(vault.balanceOf(account), selfStakeAmount + delegateStakeAmount);
+        assertEq(vault.getTotalDelegateStaked(account), delegateStakeAmount);
+    }
+
+    /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
+    /*                  GET PARTIAL REWARD TESTS                   */
+    /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
+
+    function test_GetPartialReward() public {
+        testFuzz_GetPartialReward(user, 50 ether);
+    }
+
+    function test_GetPartialRewardFailsIfPaused() public {
+        test_Pause();
+        vm.expectRevert(abi.encodeWithSelector(PausableUpgradeable.EnforcedPause.selector));
+        vault.getPartialReward(user, user, 1 ether);
+    }
+
+    function testFuzz_GetPartialReward(address _account, uint256 _partialAmount) public {
+        vm.assume(_partialAmount > 0);
+        vm.assume(_account != address(0));
+        vm.assume(_account != address(distributor));
+
+        test_Distribute();
+        performStake(_account, 100 ether);
+        vm.warp(block.timestamp + 1 weeks);
+
+        uint256 totalRewards = vault.earned(_account);
+        _partialAmount = bound(_partialAmount, 1, totalRewards);
+
+        uint256 initialBalance = bgt.balanceOf(_account);
+        vm.expectEmit();
+        emit IStakingRewards.RewardPaid(_account, _account, _partialAmount);
+        _getPartialReward(_account, _account, _partialAmount);
+        assertEq(bgt.balanceOf(_account), initialBalance + _partialAmount);
+        assertEq(vault.earned(_account), totalRewards - _partialAmount);
+    }
+
+    function test_GetPartialRewardToDifferentRecipient() public {
+        testFuzz_GetPartialRewardToDifferentRecipient(user, otherUser, 50 ether);
+    }
+
+    function testFuzz_GetPartialRewardToDifferentRecipient(
+        address _account,
+        address _recipient,
+        uint256 _partialAmount
+    )
+        public
+    {
+        vm.assume(_partialAmount > 0);
+        vm.assume(_account != address(0));
+        vm.assume(_recipient != address(0));
+        vm.assume(_recipient != address(distributor));
+        vm.assume(_account != _recipient);
+
+        test_Distribute();
+        performStake(_account, 100 ether);
+        vm.warp(block.timestamp + 1 weeks);
+
+        uint256 totalRewards = vault.earned(_account);
+        _partialAmount = bound(_partialAmount, 1, totalRewards);
+
+        uint256 initialRecipientBalance = bgt.balanceOf(_recipient);
+        _getPartialReward(_account, _account, _recipient, _partialAmount);
+        assertEq(bgt.balanceOf(_recipient), initialRecipientBalance + _partialAmount);
+        assertEq(vault.earned(_account), totalRewards - _partialAmount);
+    }
+
+    function test_GetPartialRewardFailsIfAmountGreaterThanReward() public {
+        testFuzz_GetPartialRewardFailsIfAmountGreaterThanReward(user, 1000 ether);
+    }
+
+    function testFuzz_GetPartialRewardFailsIfAmountGreaterThanReward(
+        address _account,
+        uint256 _partialAmount
+    )
+        public
+    {
+        vm.assume(_partialAmount > 0);
+        vm.assume(_account != address(0));
+
+        test_Distribute();
+        performStake(_account, 100 ether);
+        vm.warp(block.timestamp + 1 weeks);
+
+        uint256 totalRewards = vault.earned(_account);
+        _partialAmount = bound(_partialAmount, totalRewards + 1, type(uint256).max);
+
+        vm.expectRevert(IPOLErrors.AmountGreaterThanReward.selector);
+        _getPartialReward(_account, _account, _partialAmount);
+    }
+
+    function test_GetPartialRewardFailsIfNotOperatorOrUser() public {
+        test_Distribute();
+        performStake(user, 100 ether);
+        vm.warp(block.timestamp + 1 weeks);
+
+        vm.prank(otherUser);
+        vm.expectRevert(IPOLErrors.NotOperator.selector);
+        vault.getPartialReward(user, otherUser, 1 ether);
+    }
+
+    function test_GetPartialRewardWithZeroAmount() public {
+        test_Distribute();
+        performStake(user, 100 ether);
+        vm.warp(block.timestamp + 1 weeks);
+
+        uint256 initialRewards = vault.earned(user);
+        _getPartialReward(user, user, 0);
+        assertEq(vault.earned(user), initialRewards); // Should remain unchanged
+    }
+
+    function test_GetPartialRewardWithOperator() public {
+        test_Distribute();
+        performStake(user, 100 ether);
+        vm.warp(block.timestamp + 1 weeks);
+
+        // Set operator for user
+        vm.prank(user);
+        vault.setOperator(operator);
+
+        uint256 totalRewards = vault.earned(user);
+        uint256 partialAmount = totalRewards / 2;
+
+        uint256 initialOperatorBalance = bgt.balanceOf(operator);
+        _getPartialReward(operator, user, operator, partialAmount);
+        assertEq(bgt.balanceOf(operator), initialOperatorBalance + partialAmount);
+        assertEq(vault.earned(user), totalRewards - partialAmount);
+    }
+
+    function test_GetPartialRewardMultipleCalls() public {
+        test_Distribute();
+        performStake(user, 100 ether);
+        vm.warp(block.timestamp + 1 weeks);
+
+        uint256 totalRewards = vault.earned(user);
+        uint256 firstPartial = totalRewards / 3;
+        uint256 secondPartial = totalRewards / 4;
+
+        // First partial reward
+        _getPartialReward(user, user, firstPartial);
+        assertEq(vault.earned(user), totalRewards - firstPartial);
+
+        // Second partial reward
+        _getPartialReward(user, user, secondPartial);
+        assertEq(vault.earned(user), totalRewards - firstPartial - secondPartial);
+    }
+
+    function test_GetPartialRewardWithExactAmount() public {
+        test_Distribute();
+        performStake(user, 100 ether);
+        vm.warp(block.timestamp + 1 weeks);
+
+        uint256 totalRewards = vault.earned(user);
+
+        // Get exactly the total rewards
+        _getPartialReward(user, user, totalRewards);
+        assertEq(vault.earned(user), 0);
+    }
+
+    function test_GetPartialRewardAfterStakeOnBehalf() public {
+        test_Distribute();
+
+        // Stake on behalf of user
+        honey.mint(address(this), 100 ether);
+        honey.approve(address(vault), 100 ether);
+        vault.stakeOnBehalf(user, 100 ether);
+
+        vm.warp(block.timestamp + 1 weeks);
+
+        uint256 totalRewards = vault.earned(user);
+        uint256 partialAmount = totalRewards / 2;
+
+        _getPartialReward(user, user, partialAmount);
+        assertEq(vault.earned(user), totalRewards - partialAmount);
+    }
+
+    function test_GetPartialRewardWithDelegateStake() public {
+        test_Distribute();
+        performStake(user, 100 ether);
+        performDelegateStake(operator, user, 50 ether);
+        vm.warp(block.timestamp + 1 weeks);
+
+        uint256 totalRewards = vault.earned(user);
+        uint256 partialAmount = totalRewards / 2;
+
+        _getPartialReward(user, user, partialAmount);
+        assertEq(vault.earned(user), totalRewards - partialAmount);
     }
 
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
