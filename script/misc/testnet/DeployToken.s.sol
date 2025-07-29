@@ -7,10 +7,19 @@ import { DAI } from "./tokens/DAI.sol";
 import { USDT } from "./tokens/USDT.sol";
 import { USDC } from "./tokens/USDC.sol";
 import { BST } from "./tokens/BST.sol";
+import { TestnetToken } from "./tokens/TestnetToken.sol";
 
 contract DeployTokenScript is BaseScript {
     function run() public pure {
         console2.log("Please run specific task");
+    }
+
+    function deployTestnetToken(string memory name, string memory symbol, uint8 decimals) public broadcast {
+        TestnetToken token = new TestnetToken(name, symbol, decimals);
+        console2.log("TestnetToken deployed at: ", address(token));
+        console2.log("TestnetToken name: ", token.name());
+        console2.log("TestnetToken symbol: ", token.symbol());
+        console2.log("TestnetToken decimals: ", token.decimals());
     }
 
     function deployDAI() public broadcast {
