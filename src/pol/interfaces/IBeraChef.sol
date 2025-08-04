@@ -116,6 +116,13 @@ interface IBeraChef is IPOLErrors {
      */
     event ValCommissionSet(bytes indexed valPubkey, uint96 oldCommissionRate, uint96 newCommissionRate);
 
+    /**
+     * @notice Emitted when the reward allocator for a validator has been set.
+     * @param valPubkey The validator's pubkey.
+     * @param rewardAllocator The reward allocator address.
+     */
+    event ValRewardAllocatorSet(bytes indexed valPubkey, address rewardAllocator);
+
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
     /*                          GETTERS                           */
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
@@ -287,4 +294,13 @@ interface IBeraChef is IPOLErrors {
      * @param valPubkey The validator's pubkey.
      */
     function activateQueuedValCommission(bytes calldata valPubkey) external;
+
+    /**
+     * @notice Sets the reward allocator for a validator.
+     * @dev Only the operator of the validator can set the reward allocator.
+     * @dev Reward allocator is used to queue new reward allocations.
+     * @param valPubkey The validator's pubkey.
+     * @param rewardAllocator The reward allocator address.
+     */
+    function setValRewardAllocator(bytes calldata valPubkey, address rewardAllocator) external;
 }

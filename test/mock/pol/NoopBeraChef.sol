@@ -85,4 +85,7 @@ contract NoopBeraChef is IBeraChef {
 
     /// @inheritdoc IBeraChef
     function activateQueuedValCommission(bytes calldata) external pure { }
+
+    /// @inheritdoc IBeraChef
+    function setValRewardAllocator(bytes calldata, address) external pure { }
 }

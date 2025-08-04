@@ -74,29 +74,33 @@ contract DistributeForGasUsageTest is BeaconRootsHelperTest {
 
         // call distributeFor 3 times in a single multicall
         bytes[] memory callData = new bytes[](3);
-        callData[0] = abi.encodeCall(
-            distributor.distributeFor,
-            (DISTRIBUTE_FOR_TIMESTAMP, valData.index, valData.pubkey, valData.proposerIndexProof, valData.pubkeyProof)
+
+        // Function selector for distributeFor(uint64,uint64,bytes,bytes32[],bytes32[])
+        bytes4 selector = bytes4(keccak256("distributeFor(uint64,uint64,bytes,bytes32[],bytes32[])"));
+
+        callData[0] = abi.encodeWithSelector(
+            selector,
+            DISTRIBUTE_FOR_TIMESTAMP,
+            valData.index,
+            valData.pubkey,
+            valData.proposerIndexProof,
+            valData.pubkeyProof
         );
-        callData[1] = abi.encodeCall(
-            distributor.distributeFor,
-            (
-                DISTRIBUTE_FOR_TIMESTAMP + 1,
-                valData.index,
-                valData.pubkey,
-                valData.proposerIndexProof,
-                valData.pubkeyProof
-            )
+        callData[1] = abi.encodeWithSelector(
+            selector,
+            DISTRIBUTE_FOR_TIMESTAMP + 1,
+            valData.index,
+            valData.pubkey,
+            valData.proposerIndexProof,
+            valData.pubkeyProof
         );
-        callData[2] = abi.encodeCall(
-            distributor.distributeFor,
-            (
-                DISTRIBUTE_FOR_TIMESTAMP + 2,
-                valData.index,
-                valData.pubkey,
-                valData.proposerIndexProof,
-                valData.pubkeyProof
-            )
+        callData[2] = abi.encodeWithSelector(
+            selector,
+            DISTRIBUTE_FOR_TIMESTAMP + 2,
+            valData.index,
+            valData.pubkey,
+            valData.proposerIndexProof,
+            valData.pubkeyProof
         );
         distributor.multicall(callData);
     }

@@ -63,6 +63,8 @@ interface IPOLErrors is IStakingRewardsErrors {
     error InvalidCommissionChangeDelay();
     // Signature: 0x716e870e
     error InvalidIncentiveFeeRate();
+    // Signature: 0x6a1aee5f
+    error NotRewardAllocator();
 
     /*                   BLOCK REWARD CONTROLLLER                  */
 
@@ -138,6 +140,10 @@ interface IPOLErrors is IStakingRewardsErrors {
     error IndexOutOfRange();
     // Signature: 0x09bde339
     error InvalidProof();
+    // Signature: 0x5e742c5a
+    error NotSystemAddress();
+    // Signature: 0xa55ba280
+    error OnlySystemCallAllowed();
     // Signature: 0x0a431b2a
     error TimestampAlreadyProcessed();
 

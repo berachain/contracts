@@ -186,29 +186,30 @@ contract DistributorTest is BeaconRootsHelperTest {
 
         // call distributeFor 3 times in a single multicall
         bytes[] memory callData = new bytes[](3);
-        callData[0] = abi.encodeCall(
-            distributor.distributeFor,
-            (DISTRIBUTE_FOR_TIMESTAMP, valData.index, valData.pubkey, valData.proposerIndexProof, valData.pubkeyProof)
+        bytes4 selector = bytes4(keccak256("distributeFor(uint64,uint64,bytes,bytes32[],bytes32[])"));
+        callData[0] = abi.encodeWithSelector(
+            selector,
+            DISTRIBUTE_FOR_TIMESTAMP,
+            valData.index,
+            valData.pubkey,
+            valData.proposerIndexProof,
+            valData.pubkeyProof
         );
-        callData[1] = abi.encodeCall(
-            distributor.distributeFor,
-            (
-                DISTRIBUTE_FOR_TIMESTAMP + 1,
-                valData.index,
-                valData.pubkey,
-                valData.proposerIndexProof,
-                valData.pubkeyProof
-            )
+        callData[1] = abi.encodeWithSelector(
+            selector,
+            DISTRIBUTE_FOR_TIMESTAMP + 1,
+            valData.index,
+            valData.pubkey,
+            valData.proposerIndexProof,
+            valData.pubkeyProof
         );
-        callData[2] = abi.encodeCall(
-            distributor.distributeFor,
-            (
-                DISTRIBUTE_FOR_TIMESTAMP + 2,
-                valData.index,
-                valData.pubkey,
-                valData.proposerIndexProof,
-                valData.pubkeyProof
-            )
+        callData[2] = abi.encodeWithSelector(
+            selector,
+            DISTRIBUTE_FOR_TIMESTAMP + 2,
+            valData.index,
+            valData.pubkey,
+            valData.proposerIndexProof,
+            valData.pubkeyProof
         );
         distributor.multicall(callData);
 
@@ -372,5 +373,115 @@ contract DistributorTest is BeaconRootsHelperTest {
         vm.deal(address(bgt), address(bgt).balance + rewardRate * multiplier / 1e18); // add max bgt minted in a block
 
         testFuzz_DistributeDoesNotLeaveDust(weight);
+    }
+
+    /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
+    /*                    SYSTEM CALL TESTS                       */
+    /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
+
+    /// @dev Test that the new distributeFor function with only pubkey parameter works when called by system address.
+    function test_DistributeForSystemCall() public {
+        helper_SetDefaultRewardAllocation();
+
+        // expect a call to process the rewards
+        bytes memory data =
+            abi.encodeCall(IBlockRewardController.processRewards, (valData.pubkey, uint64(block.timestamp), true));
+        vm.expectCall(address(blockRewardController), data, 1);
+
+        // expect a call to mint the BGT to the distributor
+        data = abi.encodeCall(IBGT.mint, (address(distributor), TEST_BGT_PER_BLOCK));
+        vm.expectCall(address(bgt), data, 1);
+
+        // expect a call to activate the queued reward allocation
+        data = abi.encodeCall(IBeraChef.activateReadyQueuedRewardAllocation, (valData.pubkey));
+        vm.expectCall(address(beraChef), data, 1);
+
+        vm.expectEmit(true, true, true, true);
+        emit IDistributor.Distributed(valData.pubkey, uint64(block.timestamp), address(vault), TEST_BGT_PER_BLOCK);
+
+        // Call as system address
+        vm.prank(0xffffFFFfFFffffffffffffffFfFFFfffFFFfFFfE);
+        distributor.distributeFor(valData.pubkey);
+
+        assertEq(bgt.allowance(address(distributor), address(vault)), TEST_BGT_PER_BLOCK);
+    }
+
+    /// @dev Test that the new distributeFor function fails when called by non-system address.
+    function test_DistributeForSystemCall_FailIfNotSystemAddress() public {
+        helper_SetDefaultRewardAllocation();
+        // Try to call as a regular address
+        vm.expectRevert(IPOLErrors.NotSystemAddress.selector);
+        distributor.distributeFor(valData.pubkey);
+
+        // Try to call as governance
+        vm.prank(governance);
+        vm.expectRevert(IPOLErrors.NotSystemAddress.selector);
+        distributor.distributeFor(valData.pubkey);
+    }
+
+    /// @dev Test that the new distributeFor function works correctly with
+    /// same block queued reward allocation activation.
+    function test_DistributeForSystemCall_WithSameBlockQueuedRewardAllocationActivation() public {
+        helper_SetDefaultRewardAllocation();
+
+        address stakingToken = address(new MockERC20());
+        address vault2 = factory.createRewardVault(stakingToken);
+        vm.prank(governance);
+        beraChef.setVaultWhitelistedStatus(vault2, true, "");
+
+        IBeraChef.Weight[] memory weights = new IBeraChef.Weight[](2);
+        weights[0] = IBeraChef.Weight(address(vault), 5000);
+        weights[1] = IBeraChef.Weight(vault2, 5000);
+
+        vm.prank(operator);
+        beraChef.queueNewRewardAllocation(valData.pubkey, uint64(block.number), weights);
+
+        // expect a call to process the rewards
+        bytes memory data =
+            abi.encodeCall(IBlockRewardController.processRewards, (valData.pubkey, uint64(block.timestamp), true));
+        vm.expectCall(address(blockRewardController), data, 1);
+
+        // expect a call to mint the BGT to the distributor
+        data = abi.encodeCall(IBGT.mint, (address(distributor), TEST_BGT_PER_BLOCK));
+        vm.expectCall(address(bgt), data, 1);
+
+        // expect a call to activate the queued reward allocation
+        data = abi.encodeCall(IBeraChef.activateReadyQueuedRewardAllocation, (valData.pubkey));
+        vm.expectCall(address(beraChef), data, 1);
+
+        vm.expectEmit(true, true, true, true);
+        emit IDistributor.Distributed(valData.pubkey, uint64(block.timestamp), address(vault), TEST_BGT_PER_BLOCK / 2);
+        emit IDistributor.Distributed(valData.pubkey, uint64(block.timestamp), vault2, TEST_BGT_PER_BLOCK / 2);
+
+        // Call as system address
+        vm.prank(0xffffFFFfFFffffffffffffffFfFFFfffFFFfFFfE);
+        distributor.distributeFor(valData.pubkey);
+
+        // check that the queued reward allocation was activated
+        assertEq(beraChef.getActiveRewardAllocation(valData.pubkey).startBlock, uint64(block.number));
+        assertEq(bgt.allowance(address(distributor), address(vault)), TEST_BGT_PER_BLOCK / 2);
+        assertEq(bgt.allowance(address(distributor), vault2), TEST_BGT_PER_BLOCK / 2);
+    }
+
+    /// @dev Test that permissionless distributeFor function fails after Pectra11 hard fork.
+    function test_PermissionlessDistributeFor_AfterHardFork() public {
+        // Set timestamp to after Pectra11 hard fork
+        uint64 postHardForkTimestamp = 1_754_496_001; // PECTRA11_HARD_FORK_TIMESTAMP + 1
+        testFuzz_PermissionlessDistributeFor_AfterHardFork(postHardForkTimestamp);
+    }
+
+    /// @dev Test that permissionless distributeFor function fails starting from Pectra11 hard fork.
+    function testFuzz_PermissionlessDistributeFor_AfterHardFork(uint64 timestamp) public {
+        helper_SetDefaultRewardAllocation();
+        // start from Pectra11 hard fork timestamp
+        timestamp = uint64(bound(timestamp, 1_754_496_000, type(uint64).max));
+
+        // expect the function to revert with OnlySystemCallAllowed error
+        vm.expectRevert(IPOLErrors.OnlySystemCallAllowed.selector);
+        distributor.distributeFor(
+            timestamp, valData.index, valData.pubkey, valData.proposerIndexProof, valData.pubkeyProof
+        );
+        // Verify no BGT was distributed
+        assertEq(bgt.allowance(address(distributor), address(vault)), 0);
     }
 }

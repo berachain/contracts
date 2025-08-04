@@ -33,6 +33,12 @@ interface IDistributor is IPOLErrors {
     )
         external;
 
+    /// @notice Distribute the rewards to the reward allocation receivers according to BRIP-0004.
+    /// @dev This will be called for block N at the top of block N+1.
+    /// @dev Only system calls allowed i.e only the execution layer client can call this function.
+    /// @param pubkey The validator pubkey of the proposer.
+    function distributeFor(bytes calldata pubkey) external;
+
     /// @notice Returns the address of the BeraChef contract.
     function beraChef() external view returns (IBeraChef);
 }

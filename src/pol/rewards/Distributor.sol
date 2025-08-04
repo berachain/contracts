@@ -37,6 +37,14 @@ contract Distributor is
     /// @dev Represents 100%. Chosen to be less granular.
     uint96 internal constant ONE_HUNDRED_PERCENT = 1e4;
 
+    /// @dev Address controlled by the execution layer client and used to call `distributeFor` function.
+    address private constant SYSTEM_ADDRESS = 0xffffFFFfFFffffffffffffffFfFFFfffFFFfFFfE;
+
+    /// @dev Pectra11 hard fork timestamp.
+    // TODO change for mainnet upgrade
+    /// @dev Bepolia: 1_754_496_000, 2025-08-06T16:00:00.000Z
+    uint64 private constant PECTRA11_HARD_FORK_TIMESTAMP = 1_754_496_000;
+
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
     /*                          STORAGE                           */
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
@@ -107,6 +115,10 @@ contract Distributor is
         external
         nonReentrant
     {
+        // only allow permissionless distribution using proofs till hard fork timestamp
+        if (nextTimestamp >= PECTRA11_HARD_FORK_TIMESTAMP) {
+            OnlySystemCallAllowed.selector.revertWith();
+        }
         // Process the timestamp in the history buffer, reverting if already processed.
         bytes32 beaconBlockRoot = _processTimestampInBuffer(nextTimestamp);
 
@@ -118,6 +130,11 @@ contract Distributor is
 
         // Distribute the rewards to the proposer validator.
         _distributeFor(pubkey, nextTimestamp);
+    }
+
+    /// @inheritdoc IDistributor
+    function distributeFor(bytes calldata pubkey) external onlySystemCall {
+        _distributeFor(pubkey, uint64(block.timestamp));
     }
 
     /// @dev Distributes the rewards for the given validator for the given timestamp's parent block.
@@ -168,5 +185,18 @@ contract Distributor is
                 ++i;
             }
         }
+    }
+
+    /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
+    /*                       MODIFIERS                            */
+    /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
+
+    /// @dev Modifier to restrict function access to system address.
+    /// @dev This ensures only the execution layer client can call `distributeFor` function.
+    modifier onlySystemCall() {
+        if (msg.sender != SYSTEM_ADDRESS) {
+            NotSystemAddress.selector.revertWith();
+        }
+        _;
     }
 }

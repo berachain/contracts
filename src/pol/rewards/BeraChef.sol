@@ -76,6 +76,10 @@ contract BeraChef is IBeraChef, OwnableUpgradeable, UUPSUpgradeable {
     /// @notice The maximum weight a vault can assume in the reward allocation
     uint96 public maxWeightPerVault;
 
+    /// @notice Mapping of validator pubkey to its reward allocator address.
+    /// @dev this is set by the operator and is used to queue new reward allocations.
+    mapping(bytes valPubkey => address rewardAllocator) public valRewardAllocator;
+
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
         _disableInitializers();
@@ -238,10 +242,21 @@ contract BeraChef is IBeraChef, OwnableUpgradeable, UUPSUpgradeable {
         Weight[] calldata weights
     )
         external
-        onlyOperator(valPubkey)
     {
+        // get the reward allocator address.
+        address rewardAllocator = valRewardAllocator[valPubkey];
+        if (rewardAllocator == address(0)) {
+            // for backward compatibility, if the reward allocator is not set, use the operator address.
+            rewardAllocator = beaconDepositContract.getOperator(valPubkey);
+        }
+        // only allow the reward allocator to queue a new reward allocation.
+        if (msg.sender != rewardAllocator) {
+            NotRewardAllocator.selector.revertWith();
+        }
+
         // adds a delay before a new reward allocation can go into effect
-        if (startBlock <= block.number + rewardAllocationBlockDelay) {
+        // allows for same block activation in case `rewardAllocationBlockDelay` is 0
+        if (startBlock < block.number + rewardAllocationBlockDelay) {
             InvalidStartBlock.selector.revertWith();
         }
 
@@ -299,11 +314,27 @@ contract BeraChef is IBeraChef, OwnableUpgradeable, UUPSUpgradeable {
     function activateReadyQueuedRewardAllocation(bytes calldata valPubkey) external onlyDistributor {
         if (!isQueuedRewardAllocationReady(valPubkey, block.number)) return;
         RewardAllocation storage qra = queuedRewardAllocations[valPubkey];
-        uint64 startBlock = qra.startBlock;
+        uint64 startBlock = uint64(block.number);
+        qra.startBlock = startBlock;
         activeRewardAllocations[valPubkey] = qra;
         emit ActivateRewardAllocation(valPubkey, startBlock, qra.weights);
         // delete the queued reward allocation
         delete queuedRewardAllocations[valPubkey];
+    }
+
+    /// @inheritdoc IBeraChef
+    function setValRewardAllocator(
+        bytes calldata valPubkey,
+        address rewardAllocator
+    )
+        external
+        onlyOperator(valPubkey)
+    {
+        if (rewardAllocator == address(0)) {
+            ZeroAddress.selector.revertWith();
+        }
+        valRewardAllocator[valPubkey] = rewardAllocator;
+        emit ValRewardAllocatorSet(valPubkey, rewardAllocator);
     }
 
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
