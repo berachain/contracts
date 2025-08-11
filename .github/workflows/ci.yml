@@ -11,7 +11,7 @@ on:
 jobs:
   ci:
     runs-on:
-      labels: berachain-devnet-gha-runner
+      labels: ubuntu-latest
     strategy:
       matrix:
         include:
