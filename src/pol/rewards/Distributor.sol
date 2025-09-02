@@ -41,9 +41,9 @@ contract Distributor is
     address private constant SYSTEM_ADDRESS = 0xffffFFFfFFffffffffffffffFfFFFfffFFFfFFfE;
 
     /// @dev Pectra11 hard fork timestamp.
-    // TODO change for mainnet upgrade
     /// @dev Bepolia: 1_754_496_000, 2025-08-06T16:00:00.000Z
-    uint64 private constant PECTRA11_HARD_FORK_TIMESTAMP = 1_754_496_000;
+    /// @dev Mainnet: 1_756_915_200, 2025-09-03T16:00:00.000Z
+    uint64 private constant PECTRA11_HARD_FORK_TIMESTAMP = 1_756_915_200;
 
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
     /*                          STORAGE                           */

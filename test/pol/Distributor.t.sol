@@ -466,7 +466,7 @@ contract DistributorTest is BeaconRootsHelperTest {
     /// @dev Test that permissionless distributeFor function fails after Pectra11 hard fork.
     function test_PermissionlessDistributeFor_AfterHardFork() public {
         // Set timestamp to after Pectra11 hard fork
-        uint64 postHardForkTimestamp = 1_754_496_001; // PECTRA11_HARD_FORK_TIMESTAMP + 1
+        uint64 postHardForkTimestamp = 1_756_915_201; // PECTRA11_HARD_FORK_TIMESTAMP + 1
         testFuzz_PermissionlessDistributeFor_AfterHardFork(postHardForkTimestamp);
     }
 
@@ -474,7 +474,7 @@ contract DistributorTest is BeaconRootsHelperTest {
     function testFuzz_PermissionlessDistributeFor_AfterHardFork(uint64 timestamp) public {
         helper_SetDefaultRewardAllocation();
         // start from Pectra11 hard fork timestamp
-        timestamp = uint64(bound(timestamp, 1_754_496_000, type(uint64).max));
+        timestamp = uint64(bound(timestamp, 1_756_915_201, type(uint64).max));
 
         // expect the function to revert with OnlySystemCallAllowed error
         vm.expectRevert(IPOLErrors.OnlySystemCallAllowed.selector);
