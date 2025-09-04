@@ -6,10 +6,10 @@ import { IBeaconDeposit } from "./interfaces/IBeaconDeposit.sol";
 import { Utils } from "../libraries/Utils.sol";
 
 /**
- * @title DepositContract
+ * @title BeaconDeposit
  * @author Berachain Team
- * @notice A contract that handles validators deposits.
- * @dev Its events are used by the beacon chain to manage the staking process.
+ * @notice The contract handling validators deposits. Its events are used by the beacon chain to manage the staking
+ * process.
  * @dev This contract does not implement the deposit merkle tree.
  */
 contract BeaconDeposit is IBeaconDeposit, ERC165 {

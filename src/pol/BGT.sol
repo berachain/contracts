@@ -24,6 +24,8 @@ import { IBlockRewardController } from "./interfaces/IBlockRewardController.sol"
 
 /// @title Bera Governance Token
 /// @author Berachain Team
+/// @notice The Berachain Governance Token ($BGT) is a soulbound ERC20 token, which cannot be transferred, only earned
+/// through Reward Vaults, used for governance proposals and voting, and can be redeemed for $BERA.
 /// @dev Should be owned by the governance module.
 /// @dev Only allows minting BGT by the BlockRewardController contract.
 /// @dev It's not upgradable even though it inherits from `ERC20VotesUpgradeable` and `OwnableUpgradeable`.
@@ -424,7 +426,7 @@ contract BGT is IBGT, ERC20VotesUpgradeable, OwnableUpgradeable, Multicallable {
         return SYMBOL;
     }
 
-    //. @inheritdoc IBGT
+    /// @inheritdoc IBGT
     function unboostedBalanceOf(address account) public view returns (uint256) {
         UserBoost storage userBoost = userBoosts[account];
         (uint128 boost, uint128 _queuedBoost) = (userBoost.boost, userBoost.queuedBoost);

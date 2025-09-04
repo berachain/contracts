@@ -22,7 +22,7 @@ import { IRewardVaultFactory } from "../interfaces/IRewardVaultFactory.sol";
 /// @notice This contract is the vault for the Berachain rewards, it handles the staking and rewards accounting of BGT.
 /// @dev This contract is taken from the stable and tested:
 /// https://github.com/Synthetixio/synthetix/blob/develop/contracts/StakingRewards.sol
-/// We are using this model instead of 4626 because we want to incentivize staying in the vault for x period of time to
+/// We are using this model instead of 4626 because we want to incentivize staying in the vault for x period of time
 /// to be considered a 'miner' and not a 'trader'.
 contract RewardVault is
     PausableUpgradeable,
@@ -90,7 +90,7 @@ contract RewardVault is
     /// @notice The mapping of accounts to their operators.
     mapping(address account => address operator) internal _operators;
 
-    /// @notice the mapping of incentive token to its incentive data.
+    /// @notice The mapping of incentive token to its incentive data.
     mapping(address token => Incentive) public incentives;
 
     /// @notice The list of whitelisted tokens.

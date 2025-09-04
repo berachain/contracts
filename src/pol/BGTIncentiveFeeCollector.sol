@@ -26,7 +26,7 @@ contract BGTIncentiveFeeCollector is
     using Utils for bytes4;
 
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
-    /*.                         CONSTANTS                         */
+    /*                          CONSTANTS                         */
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
 
     /// @notice The PAUSER role
@@ -39,7 +39,7 @@ contract BGTIncentiveFeeCollector is
     address public constant WBERA = 0x6969696969696969696969696969696969696969;
 
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
-    /*.                          STORAGE                          */
+    /*                           STORAGE                          */
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
 
     /// @inheritdoc IBGTIncentiveFeeCollector

@@ -22,6 +22,12 @@ struct InitialGovernorParameters {
     uint32 votingPeriod;
 }
 
+/// @title BerachainGovernance
+/// @author Berachain Team
+/// @notice The Berachain Governance contract extends OpenZeppelin's governor contracts. It uses the $BGT token as its
+/// governance token, which determines voting power in the governance system. Users must hold $BGT tokens to
+/// participate
+/// in governance activities such as creating proposals and voting.
 /// @custom:security-contact security@berachain.com
 contract BerachainGovernance is
     UUPSUpgradeable,

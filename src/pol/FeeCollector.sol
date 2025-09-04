@@ -14,8 +14,8 @@ import { BGTStaker } from "./BGTStaker.sol";
 /**
  * @title FeeCollector
  * @author Berachain Team
- * @notice The Fee Collector contract is responsible for collecting fees from Berachain Dapps and
- * auctioning them for a Payout token which then is distributed among the BGT stakers.
+ * @notice The Fee Collector contract is responsible for collecting fees from Berachain Dapps
+ * and auctioning them for a Payout token, which then is distributed among the BGT stakers.
  * @dev This contract is inspired by the Uniswap V3 Factory Owner contract.
  * https://github.com/uniswapfoundation/UniStaker/blob/main/src/V3FactoryOwner.sol
  */

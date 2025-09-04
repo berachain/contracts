@@ -12,8 +12,10 @@ import { IHoneyErrors } from "./IHoneyErrors.sol";
 import { Utils } from "../libraries/Utils.sol";
 import { HoneyFactory } from "./HoneyFactory.sol";
 
-/// @notice This is the factory contract for minting and redeeming Honey.
+/// @title HoneyFactoryReader
 /// @author Berachain Team
+/// @notice The HoneyFactoryReader contract is responsible for providing previews of minting/redeeming HONEY.
+/// @dev This contract provides view functions to calculate expected outputs for various HoneyFactory operations.
 contract HoneyFactoryReader is AccessControlUpgradeable, UUPSUpgradeable, IHoneyFactoryReader, IHoneyErrors {
     using Utils for bytes4;
 

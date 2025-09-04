@@ -57,7 +57,7 @@ contract BlockRewardController is IBlockRewardController, OwnableUpgradeable, UU
     /// @notice The minimum reward rate for BGT after accounting for validator boosts.
     uint256 public minBoostedRewardRate;
 
-    /// @notice The boost mutliplier param in the function, determines the inflation cap, 18 dec.
+    /// @notice The boost multiplier param in the function, determines the inflation cap, 18 dec.
     uint256 public boostMultiplier;
 
     /// @notice The reward convexity param in the function, determines how fast it converges to its max, 18 dec.

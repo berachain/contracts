@@ -26,7 +26,7 @@ contract BeraChef is IBeraChef, OwnableUpgradeable, UUPSUpgradeable {
     uint96 internal constant DEFAULT_COMMISSION_RATE = 0.05e4;
 
     /// @dev The maximum delay in block for a validator to change its commission rate.
-    /// @dev taken as sum of max boost delay and max drop boost delay from BGT.sol
+    /// @dev taken as sum of max boost delay and max drop boost delay from BGT.sol.
     uint64 internal constant MAX_COMMISSION_CHANGE_DELAY = 2 * 8191;
 
     /// @dev With 2 second block time, this is ~30 days.
@@ -55,7 +55,7 @@ contract BeraChef is IBeraChef, OwnableUpgradeable, UUPSUpgradeable {
     /// @dev Mapping of validator public key to active reward allocation.
     mapping(bytes valPubkey => RewardAllocation) internal activeRewardAllocations;
 
-    /// @dev Mapping of validator public key address to queued reward allocation.
+    /// @dev Mapping of validator public key to queued reward allocation.
     mapping(bytes valPubkey => RewardAllocation) internal queuedRewardAllocations;
 
     /// @notice Mapping of receiver address to whether they are white-listed or not.
@@ -491,7 +491,7 @@ contract BeraChef is IBeraChef, OwnableUpgradeable, UUPSUpgradeable {
         uint256 length = weights.length;
 
         // If the max number of weights was changed after that the reward allocation was set
-        // and the length now exeeds the new max, the reward allocation becomes invalid.
+        // and the length now exceeds the new max, the reward allocation becomes invalid.
         if (length > maxNumWeightsPerRewardAllocation) {
             return false;
         }

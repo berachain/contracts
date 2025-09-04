@@ -15,10 +15,18 @@ import { IWBERAStakerVault } from "./interfaces/IWBERAStakerVault.sol";
 
 /// @title WBERA Staker Vault
 /// @author Berachain Team
-/// @notice ERC4626 compliant vault for WBERA staking, receive WBERA rewards from `BGTIncentiveFeeCollector`
+/// @notice The WBERAStakerVault is an ERC4626-compliant vault that allows users to stake $BERA and earn yield from
+/// redirected PoL incentives. This contract is the core component of the PoL BERA Yield Module.
+/// Key features:
+/// - ERC4626 Compliance: Standard vault interface for easy integration
+/// - Native BERA Support: Accepts both native BERA and WBERA deposits
+/// - 7-Day Unbonding: Withdrawal requests require 7-day cooldown period
+/// - Auto-Compounding: Rewards automatically compound to staker positions
+/// - Inflation Attack Protection: Initial deposit mechanism prevents attacks
+/// - Emergency Controls: Pausable with role-based access control
 /// @dev Contract overrides internal `_withdraw` to enforce cooldown mechanism, all withdraw/redeem call be stored as
-/// withdrawal request and can be completed after cooldown period
-/// @dev Only one withdrawal request is allowed per caller until its not completed.
+/// withdrawal request and can be completed after cooldown period.
+/// @dev Only one withdrawal request is allowed per caller until it is completed.
 contract WBERAStakerVault is
     IWBERAStakerVault,
     PausableUpgradeable,

@@ -13,11 +13,11 @@ import { Utils } from "../../libraries/Utils.sol";
 import { IBGTIncentiveDistributor } from "../interfaces/IBGTIncentiveDistributor.sol";
 
 /// @title BGTIncentiveDistributor
-/// @notice forked from Hidden Hand RewardDistributor Contract:
+/// @author Berachain Team
+/// @notice A contract that distributes POL incentives to BGT boosters using a merkle-based distribution system.
+/// When BGT holders boost a validator, they become eligible for a share of the incentives from reward vaults.
+/// These incentives are transferred to this contract and distributed based on off-chain computed merkle roots.
 /// https://github.com/dinero-protocol/hidden-hand-contracts/blob/master/contracts/RewardDistributor.sol
-/// @dev This contract is used to distribute the POL incentives to the BGT boosters.
-/// BGT boosters share of incentive from the rewardVault is transferred to the BGTIncentiveDistributor contract.
-/// The rewards are then distributed to the BGT boosters based on the merkle root computed off-chain.
 contract BGTIncentiveDistributor is
     IBGTIncentiveDistributor,
     AccessControlUpgradeable,

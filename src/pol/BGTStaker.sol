@@ -14,8 +14,12 @@ import { StakingRewards } from "../base/StakingRewards.sol";
 
 /// @title BGTStaker
 /// @author Berachain Team
-/// @notice A contract for staking BGT tokens without transferring them.
-/// BGT delegators stake in this contract and receive dApp fees.
+/// @notice A contract that enables BGT token holders to stake their tokens and earn dApp fees without transferring
+/// their tokens. This contract acts as a non-custodial staking solution where BGT tokens remain in the holder's
+/// wallet while still allowing them to participate in fee distribution. The contract integrates with the FeeCollector
+/// to distribute protocol fees to BGT delegators.
+/// @dev Inherits StakingRewards for reward distribution mechanics and uses a custom staking mechanism that doesn't
+/// require token transfers.
 contract BGTStaker is IBGTStaker, OwnableUpgradeable, UUPSUpgradeable, StakingRewards {
     using Utils for bytes4;
     using SafeERC20 for IERC20;
