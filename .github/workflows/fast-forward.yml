@@ -1,0 +1,44 @@
+# Fast Forward Workflow
+# This workflow automatically fast-forwards pull requests with the 'fast-forward' label
+# when they receive an approved review. It ensures proper branch hierarchy:
+# - PRs targeting 'bepolia' must come from 'devel' branch
+# - PRs targeting 'main' must come from 'bepolia' branch
+# The workflow uses sequoia-pgp/fast-forward action to merge changes automatically.
+
+name: execute-fast-forward
+on:
+  pull_request_review:
+    types: [submitted]
+    branches:
+      - main
+      - bepolia
+jobs:
+  execute-fast-forward:
+    runs-on: ubuntu-latest
+
+    if:
+      ${{ contains(github.event.pull_request.labels.*.name, 'fast-forward') && github.event.review.state == 'approved'
+      }}
+
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+
+    steps:
+      - name: Validate branches
+        run: |
+          echo "GITHUB_BASE_REF: ${{ github.event.pull_request.base.ref }}"
+          echo "GITHUB_HEAD_REF: ${{ github.event.pull_request.head.ref }}"
+          if [ ${{ github.event.pull_request.base.ref }} == "bepolia" ] && [ ${{ github.event.pull_request.head.ref }} != "devel" ]; then
+            echo "Error: When targeting bepolia branch, head branch must be devel"
+            exit 1
+          elif [ ${{ github.event.pull_request.base.ref }} == "main" ] && [ ${{ github.event.pull_request.head.ref }} != "bepolia" ]; then
+            echo "Error: When targeting main branch, head branch must be bepolia"
+            exit 1
+          fi
+      - name: Fast forwarding
+        uses: sequoia-pgp/fast-forward@v1
+        with:
+          merge: true
+          comment: on-error # always | never | on-error

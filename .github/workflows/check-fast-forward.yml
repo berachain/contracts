@@ -1,0 +1,43 @@
+# Fast Forward Check Workflow
+# This workflow validates pull requests with the 'fast-forward' label to ensure they follow
+# the correct branch hierarchy before allowing fast-forward merging:
+# - PRs targeting 'bepolia' must come from 'devel' branch
+# - PRs targeting 'main' must come from 'bepolia' branch
+# The workflow runs on PR events and validates branch structure without merging.
+
+name: check-fast-forward
+on:
+  pull_request:
+    types: [opened, edited, labeled, synchronize]
+    branches:
+      - main
+      - bepolia
+jobs:
+  check-fast-forward:
+    runs-on: ubuntu-latest
+
+    if: ${{ contains(github.event.pull_request.labels.*.name, 'fast-forward') }}
+
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+
+    steps:
+      - name: Validate branches
+        run: |
+          echo "GITHUB_BASE_REF: $GITHUB_BASE_REF"
+          echo "GITHUB_HEAD_REF: $GITHUB_HEAD_REF"
+          if [ "$GITHUB_BASE_REF" == "bepolia" ] && [ "$GITHUB_HEAD_REF" != "devel" ]; then
+            echo "Error: When targeting bepolia branch, head branch must be devel"
+            exit 1
+          elif [ "$GITHUB_BASE_REF" == "main" ] && [ "$GITHUB_HEAD_REF" != "bepolia" ]; then
+            echo "Error: When targeting main branch, head branch must be bepolia"
+            exit 1
+          fi
+
+      - name: Fast forwarding
+        uses: sequoia-pgp/fast-forward@v1
+        with:
+          merge: false
+          comment: on-error # always | never | on-error
