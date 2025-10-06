@@ -213,4 +213,12 @@ interface IPOLErrors is IStakingRewardsErrors {
     error WithdrawalNotRequested();
     // Signature: 0xfb52063b
     error WithdrawalAlreadyRequested();
+    // Signature: 0xeceb35ec
+    error NotWBERAStakerVault();
+    // Signature: 0x9cbe2357
+    error NonTransferable();
+    // Signature: 0x83f171d6
+    error MethodNotAllowed();
+    // Signature: 0x891ec151
+    error OnlyNFTOwnerAllowed();
 }

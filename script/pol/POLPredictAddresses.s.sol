@@ -14,6 +14,7 @@ import { FeeCollector } from "src/pol/FeeCollector.sol";
 import { WBERAStakerVault } from "src/pol/WBERAStakerVault.sol";
 import { BGTIncentiveFeeCollector } from "src/pol/BGTIncentiveFeeCollector.sol";
 import { BGTIncentiveDistributor } from "src/pol/rewards/BGTIncentiveDistributor.sol";
+import { WBERAStakerVaultWithdrawalRequest } from "src/pol/WBERAStakerVaultWithdrawalRequest.sol";
 
 import {
     WBERA_SALT,
@@ -26,7 +27,8 @@ import {
     FEE_COLLECTOR_SALT,
     BGT_INCENTIVE_DISTRIBUTOR_SALT,
     WBERA_STAKER_VAULT_SALT,
-    BGT_INCENTIVE_FEE_COLLECTOR_SALT
+    BGT_INCENTIVE_FEE_COLLECTOR_SALT,
+    WBERA_STAKER_VAULT_WITHDRAWAL_REQUEST_SALT
 } from "./POLSalts.sol";
 
 contract POLPredictAddressesScript is BasePredictScript {
@@ -57,5 +59,14 @@ contract POLPredictAddressesScript is BasePredictScript {
         );
         _predictAddress("WBERA Staker Vault Impl", type(WBERAStakerVault).creationCode, 0);
         _predictProxyAddress("WBERA Staker Vault", type(WBERAStakerVault).creationCode, 0, WBERA_STAKER_VAULT_SALT);
+        _predictAddress(
+            "WBERA Staker Vault Withdrawal Request Impl", type(WBERAStakerVaultWithdrawalRequest).creationCode, 0
+        );
+        _predictProxyAddress(
+            "WBERA Staker Vault Withdrawal Request",
+            type(WBERAStakerVaultWithdrawalRequest).creationCode,
+            0,
+            WBERA_STAKER_VAULT_WITHDRAWAL_REQUEST_SALT
+        );
     }
 }

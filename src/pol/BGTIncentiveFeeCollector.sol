@@ -106,8 +106,12 @@ contract BGTIncentiveFeeCollector is
 
     /// @inheritdoc IBGTIncentiveFeeCollector
     function claimFees(address _recipient, address[] calldata _feeTokens) external whenNotPaused {
-        // Transfer the payout amount of the payout token to the WBERAStakerVault contract from msg.sender.
-        IERC20(WBERA).safeTransferFrom(msg.sender, wberaStakerVault, payoutAmount);
+        // Transfer the payout amount of the payout token to this contract from msg.sender.
+        IERC20(WBERA).safeTransferFrom(msg.sender, address(this), payoutAmount);
+        // approve the WBERAStakerVault contract to spend the payout amount
+        IERC20(WBERA).forceApprove(wberaStakerVault, payoutAmount);
+        // send the payout amount to the WBERAStakerVault contract
+        IWBERAStakerVault(wberaStakerVault).receiveRewards(payoutAmount);
         // From all the specified fee tokens, transfer them to the recipient.
         for (uint256 i; i < _feeTokens.length;) {
             address feeToken = _feeTokens[i];
