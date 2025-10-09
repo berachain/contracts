@@ -6,8 +6,8 @@ import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable/proxy/utils
 import { LibClone } from "solady/src/utils/LibClone.sol";
 import { UpgradeableBeacon } from "solady/src/utils/UpgradeableBeacon.sol";
 import { Utils } from "../../libraries/Utils.sol";
-import { IRewardVaultFactory } from "../interfaces/IRewardVaultFactory.sol";
-import { RewardVault } from "./RewardVault.sol";
+import { IRewardVaultFactory } from "./interfaces/IRewardVaultFactory_V2.sol";
+import { RewardVault } from "src/pol/rewards/RewardVault.sol";
 
 /// @title RewardVaultFactory
 /// @author Berachain Team
@@ -58,9 +58,6 @@ contract RewardVaultFactory is IRewardVaultFactory, AccessControlUpgradeable, UU
 
     /// @notice The address of the BGTIncentiveFeeCollector contract to receive fees.
     address public bgtIncentiveFeeCollector;
-
-    /// @notice The address of the RewardVaultHelper contract to help claim rewards.
-    address public rewardVaultHelper;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -118,13 +115,6 @@ contract RewardVaultFactory is IRewardVaultFactory, AccessControlUpgradeable, UU
         if (_bgtIncentiveFeeCollector == address(0)) ZeroAddress.selector.revertWith();
         emit IncentiveFeeCollectorUpdated(_bgtIncentiveFeeCollector, bgtIncentiveFeeCollector);
         bgtIncentiveFeeCollector = _bgtIncentiveFeeCollector;
-    }
-
-    /// @inheritdoc IRewardVaultFactory
-    function setRewardVaultHelper(address _rewardVaultHelper) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        if (_rewardVaultHelper == address(0)) ZeroAddress.selector.revertWith();
-        emit RewardVaultHelperUpdated(_rewardVaultHelper, rewardVaultHelper);
-        rewardVaultHelper = _rewardVaultHelper;
     }
 
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/

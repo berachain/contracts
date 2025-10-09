@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.26;
 
-import { IPOLErrors } from "../interfaces/IPOLErrors.sol";
+import { IPOLErrors } from "src/pol/interfaces/IPOLErrors.sol";
 
 interface IRewardVaultFactory is IPOLErrors {
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
@@ -38,13 +38,6 @@ interface IRewardVaultFactory is IPOLErrors {
      */
     event IncentiveFeeCollectorUpdated(address newAddress, address oldAddress);
 
-    /**
-     * @notice Emitted when the reward vault helper address is updated.
-     * @param newAddress The new address for reward vault helper.
-     * @param oldAddress The old address for reward vault helper.
-     */
-    event RewardVaultHelperUpdated(address newAddress, address oldAddress);
-
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
     /*                          ADMIN                             */
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
@@ -69,13 +62,6 @@ interface IRewardVaultFactory is IPOLErrors {
      * @param _bgtIncentiveFeeCollector The address of the new BGTIncentiveFeeCollector contract.
      */
     function setBGTIncentiveFeeCollector(address _bgtIncentiveFeeCollector) external;
-
-    /**
-     * @notice Sets the reward vault helper address.
-     * @dev Only callable by the admin.
-     * @param _rewardVaultHelper The address of the new RewardVaultHelper contract.
-     */
-    function setRewardVaultHelper(address _rewardVaultHelper) external;
 
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
     /*                         VAULT CREATION                     */
@@ -123,12 +109,6 @@ interface IRewardVaultFactory is IPOLErrors {
      * @return The address of the BGTIncentiveDistributor contract.
      */
     function bgtIncentiveDistributor() external view returns (address);
-
-    /**
-     * @notice Gets the address of the RewardVaultHelper contract.
-     * @return The address of the RewardVaultHelper contract.
-     */
-    function rewardVaultHelper() external view returns (address);
 
     /**
      * @notice Predicts the address of the reward vault for the given staking token.

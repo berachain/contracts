@@ -23,6 +23,8 @@ import { MockERC20 } from "@mock/token/MockERC20.sol";
 import { ApprovalPauseERC20 } from "@mock/token/ApprovalPauseERC20.sol";
 import { MaxGasConsumeERC20 } from "@mock/token/MaxGasConsumeERC20.sol";
 import { IBGTIncentiveDistributor } from "src/pol/interfaces/IBGTIncentiveDistributor.sol";
+import { IRewardVaultHelper } from "src/pol/interfaces/IRewardVaultHelper.sol";
+import { IBeraChef } from "src/pol/interfaces/IBeraChef.sol";
 
 contract RewardVaultTest is DistributorTest, StakingTest {
     using SafeERC20 for IERC20;
@@ -67,6 +69,7 @@ contract RewardVaultTest is DistributorTest, StakingTest {
         vm.stopPrank();
         // set the incentive fee as 33% and incentiveFeeCollector in the factory.
         _setIncentiveFeeRateAndCollector(3300, bgtIncentiveFeeCollector);
+        _setRewardVaultHelper(rewardVaultHelper);
     }
 
     /// @dev helper function to perform staking
@@ -582,6 +585,71 @@ contract RewardVaultTest is DistributorTest, StakingTest {
         assertEq(bgt.balanceOf(user), accumulatedBGTRewards);
     }
 
+    function test_GetRewardWithRewardVaultHelper() public {
+        test_Distribute();
+        performStake(user, 100 ether);
+        vm.warp(block.timestamp + 1 weeks);
+        uint256 accumulatedBGTRewards = vault.earned(user);
+
+        address[] memory vaults = new address[](1);
+        vaults[0] = address(vault);
+
+        address alice = makeAddr("alice");
+
+        vm.prank(user);
+        IRewardVaultHelper(rewardVaultHelper).claimAllRewards(vaults, alice);
+        assertEq(bgt.balanceOf(alice), accumulatedBGTRewards);
+        assertEq(bgt.balanceOf(user), 0);
+    }
+
+    function test_GetRewardWithRewardVaultHelper_MultipleVaults() public {
+        // Create a second vault
+        RewardVault vault2 = RewardVault(factory.createRewardVault(address(dai)));
+
+        // Set up reward allocation with equal weights between vaults
+        vm.startPrank(governance);
+        IBeraChef.Weight[] memory weights = new IBeraChef.Weight[](2);
+        weights[0] = IBeraChef.Weight(address(vault), 5000);
+        weights[1] = IBeraChef.Weight(address(vault2), 5000);
+        beraChef.setVaultWhitelistedStatus(address(vault), true, "");
+        beraChef.setVaultWhitelistedStatus(address(vault2), true, "");
+        beraChef.setDefaultRewardAllocation(IBeraChef.RewardAllocation(1, weights));
+        vm.stopPrank();
+
+        // Distribute rewards
+        vm.prank(0xffffFFFfFFffffffffffffffFfFFFfffFFFfFFfE);
+        distributor.distributeFor(valData.pubkey);
+
+        // Stake in both vaults
+        performStake(user, 100 ether);
+
+        dai.mint(user, 100 ether);
+        vm.startPrank(user);
+        dai.approve(address(vault2), 100 ether);
+        vault2.stake(100 ether);
+        vm.stopPrank();
+
+        // Advance time to accumulate rewards
+        vm.warp(block.timestamp + 1 weeks);
+
+        // Calculate expected rewards
+        uint256 accumulatedBGTRewardsVault1 = vault.earned(user);
+        uint256 accumulatedBGTRewardsVault2 = vault2.earned(user);
+        uint256 totalExpectedRewards = accumulatedBGTRewardsVault1 + accumulatedBGTRewardsVault2;
+
+        // Setup vaults array for claiming
+        address[] memory vaults = new address[](2);
+        vaults[0] = address(vault);
+        vaults[1] = address(vault2);
+
+        // Claim rewards from both vaults using helper
+        vm.prank(user);
+        IRewardVaultHelper(rewardVaultHelper).claimAllRewards(vaults, user);
+
+        // Verify rewards were received
+        assertEq(bgt.balanceOf(user), totalExpectedRewards);
+    }
+
     function testFuzz_GetRewardToRecipient(address _recipient) public {
         vm.assume(_recipient != address(0));
         // should not be distributor address to avoid locking of BGT rewards.
@@ -597,7 +665,7 @@ contract RewardVaultTest is DistributorTest, StakingTest {
         assertEq(bgt.balanceOf(_recipient), initialBal + accumulatedBGTRewards);
     }
 
-    function test_GetRewardNotOperatorOrUser() public {
+    function test_GetRewardNotOperator() public {
         vm.prank(otherUser);
         vm.expectRevert(IPOLErrors.NotOperator.selector);
         vault.getReward(user, user);
@@ -1815,7 +1883,7 @@ contract RewardVaultTest is DistributorTest, StakingTest {
         _getPartialReward(_account, _account, _partialAmount);
     }
 
-    function test_GetPartialRewardFailsIfNotOperatorOrUser() public {
+    function test_GetPartialRewardFailsIfNotOperator() public {
         test_Distribute();
         performStake(user, 100 ether);
         vm.warp(block.timestamp + 1 weeks);
@@ -2507,5 +2575,13 @@ contract RewardVaultTest is DistributorTest, StakingTest {
         vm.stopPrank();
         assertEq(factory.bgtIncentiveFeeRate(), rate);
         assertEq(factory.bgtIncentiveFeeCollector(), collector);
+    }
+
+    function _setRewardVaultHelper(address helper) internal {
+        vm.startPrank(governance);
+        IRewardVaultFactory factory = IRewardVaultFactory(vault.factory());
+        factory.setRewardVaultHelper(helper);
+        vm.stopPrank();
+        assertEq(factory.rewardVaultHelper(), helper);
     }
 }

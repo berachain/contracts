@@ -8,14 +8,14 @@ import { ReentrancyGuardUpgradeable } from "@openzeppelin/contracts-upgradeable/
 import { FixedPointMathLib } from "solady/src/utils/FixedPointMathLib.sol";
 
 import { Utils } from "../../libraries/Utils.sol";
-import { IBeaconDeposit } from "../interfaces/IBeaconDeposit.sol";
-import { IRewardVault } from "../interfaces/IRewardVault.sol";
-import { FactoryOwnable } from "../../base/FactoryOwnable.sol";
-import { StakingRewards } from "../../base/StakingRewards.sol";
-import { IBeraChef } from "../interfaces/IBeraChef.sol";
-import { IDistributor } from "../interfaces/IDistributor.sol";
-import { IBGTIncentiveDistributor } from "../interfaces/IBGTIncentiveDistributor.sol";
-import { IRewardVaultFactory } from "../interfaces/IRewardVaultFactory.sol";
+import { IBeaconDeposit } from "src/pol/interfaces/IBeaconDeposit.sol";
+import { IRewardVault } from "./interfaces/IRewardVault_V8.sol";
+import { FactoryOwnable } from "src/base/FactoryOwnable.sol";
+import { StakingRewards } from "src/base/StakingRewards.sol";
+import { IBeraChef } from "src/pol/interfaces/IBeraChef.sol";
+import { IDistributor } from "src/pol/interfaces/IDistributor.sol";
+import { IBGTIncentiveDistributor } from "src/pol/interfaces/IBGTIncentiveDistributor.sol";
+import { IRewardVaultFactory } from "src/pol/interfaces/IRewardVaultFactory.sol";
 
 /// @title Rewards Vault
 /// @author Berachain Team
@@ -154,14 +154,9 @@ contract RewardVault is
         _;
     }
 
-    modifier onlyUserOrOperator(address account) {
-        IRewardVaultFactory factory = IRewardVaultFactory(factory());
-        address rewardVaultHelper = factory.rewardVaultHelper();
-
-        if (msg.sender != account && msg.sender != rewardVaultHelper) {
-            if (msg.sender != _operators[account]) {
-                NotOperator.selector.revertWith();
-            }
+    modifier onlyOperatorOrUser(address account) {
+        if (msg.sender != account) {
+            if (msg.sender != _operators[account]) NotOperator.selector.revertWith();
         }
         _;
     }
@@ -429,7 +424,7 @@ contract RewardVault is
         external
         nonReentrant
         whenNotPaused
-        onlyUserOrOperator(account)
+        onlyOperatorOrUser(account)
         returns (uint256)
     {
         return _getReward(account, recipient);
@@ -444,7 +439,7 @@ contract RewardVault is
         external
         nonReentrant
         whenNotPaused
-        onlyUserOrOperator(account)
+        onlyOperatorOrUser(account)
     {
         _getPartialReward(account, recipient, amount);
     }

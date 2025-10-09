@@ -17,6 +17,8 @@ import { Create2Deployer } from "src/base/Create2Deployer.sol";
 import { BeaconDepositMock } from "test/mock/pol/BeaconDepositMock.sol";
 import { BGTIncentiveDistributor } from "src/pol/rewards/BGTIncentiveDistributor.sol";
 import { BGTIncentiveDistributorDeployer } from "src/pol/BGTIncentiveDistributorDeployer.sol";
+import { RewardVaultHelper } from "src/pol/rewards/RewardVaultHelper.sol";
+import { RewardVaultHelperDeployer } from "src/pol/RewardVaultHelperDeployer.sol";
 
 abstract contract POLTest is Test, Create2Deployer {
     uint256 internal constant TEST_BGT_PER_BLOCK = 5 ether;
@@ -53,6 +55,7 @@ abstract contract POLTest is Test, Create2Deployer {
     POLDeployer internal polDeployer;
     BGTFeeDeployer internal feeDeployer;
     address internal bgtIncentiveDistributor;
+    address internal rewardVaultHelper;
 
     /// @dev A function invoked before each test case is run.
     function setUp() public virtual {
@@ -105,9 +108,15 @@ abstract contract POLTest is Test, Create2Deployer {
         feeCollector = feeDeployer.feeCollector();
     }
 
+    function deployRewardVaultHelper(address owner) internal {
+        RewardVaultHelperDeployer rewardVaultHelperDeployer = new RewardVaultHelperDeployer(owner, 1);
+        rewardVaultHelper = address(rewardVaultHelperDeployer.rewardVaultHelper());
+    }
+
     function deployPOL(address owner) internal {
         deployBGT(owner);
         deployBGTIncentiveDistributor(owner);
+        deployRewardVaultHelper(owner);
 
         // deploy the beacon deposit contract at the address defined in the contract.
         deployCodeTo("BeaconDepositMock.sol", beaconDepositContract);
