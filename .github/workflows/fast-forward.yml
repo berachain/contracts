@@ -27,13 +27,16 @@ jobs:
 
     steps:
       - name: Validate branches
+        env:
+          GITHUB_BASE_REF: ${{ github.event.pull_request.base.ref }}
+          GITHUB_HEAD_REF: ${{ github.event.pull_request.head.ref }}
         run: |
-          echo "GITHUB_BASE_REF: ${{ github.event.pull_request.base.ref }}"
-          echo "GITHUB_HEAD_REF: ${{ github.event.pull_request.head.ref }}"
-          if [ ${{ github.event.pull_request.base.ref }} == "bepolia" ] && [ ${{ github.event.pull_request.head.ref }} != "devel" ]; then
+          echo "GITHUB_BASE_REF: $GITHUB_BASE_REF"
+          echo "GITHUB_HEAD_REF: $GITHUB_HEAD_REF"
+          if [ "$GITHUB_BASE_REF" == "bepolia" ] && [ "$GITHUB_HEAD_REF" != "devel" ]; then
             echo "Error: When targeting bepolia branch, head branch must be devel"
             exit 1
-          elif [ ${{ github.event.pull_request.base.ref }} == "main" ] && [ ${{ github.event.pull_request.head.ref }} != "bepolia" ]; then
+          elif [ "$GITHUB_BASE_REF" == "main" ] && [ "$GITHUB_HEAD_REF" != "bepolia" ]; then
             echo "Error: When targeting main branch, head branch must be bepolia"
             exit 1
           fi
