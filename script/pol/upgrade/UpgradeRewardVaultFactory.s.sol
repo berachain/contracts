@@ -33,6 +33,6 @@ contract UpgradeRewardVaultFactoryScript is BaseScript, Create2Deployer {
     }
 
     function _deployNewImplementation() internal returns (address) {
-        return deployWithCreate2(0, type(RewardVaultFactory).creationCode);
+        return deployWithCreate2(1, type(RewardVaultFactory).creationCode);
     }
 }

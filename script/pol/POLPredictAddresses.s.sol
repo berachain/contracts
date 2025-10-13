@@ -44,7 +44,7 @@ contract POLPredictAddressesScript is BasePredictScript {
             "BlockRewardController", type(BlockRewardController).creationCode, 0, BLOCK_REWARD_CONTROLLER_SALT
         );
         _predictProxyAddress("Distributor", type(Distributor).creationCode, 0, DISTRIBUTOR_SALT);
-        _predictAddress("RewardVaultFactory Impl", type(RewardVaultFactory).creationCode, 0);
+        _predictAddress("RewardVaultFactory Impl", type(RewardVaultFactory).creationCode, 1);
         _predictProxyAddress("RewardVaultFactory", type(RewardVaultFactory).creationCode, 0, REWARDS_FACTORY_SALT);
         _predictAddress("RewardVault Impl", type(RewardVault).creationCode, 0);
         _predictProxyAddress("BGTStaker", type(BGTStaker).creationCode, 0, BGT_STAKER_SALT);
