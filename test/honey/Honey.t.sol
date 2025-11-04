@@ -9,6 +9,7 @@ import { IERC1967 } from "@openzeppelin/contracts/interfaces/IERC1967.sol";
 import { IAccessControl } from "@openzeppelin/contracts/access/IAccessControl.sol";
 import { ERC20 } from "solady/src/tokens/ERC20.sol";
 import { LibClone } from "solady/src/utils/LibClone.sol";
+import { PausableUpgradeable } from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 
 import { IHoneyErrors } from "src/honey/IHoneyErrors.sol";
 import { Honey } from "src/honey/Honey.sol";
@@ -387,6 +388,54 @@ contract HoneyTest is StdCheats, SoladyTest {
         vm.expectRevert(abi.encodeWithSelector(Ownable.Unauthorized.selector));
         vm.startPrank(governance);
         honey.upgradeToAndCall(newImplementation, bytes(""));
+    }
+
+    function test_Pause() public {
+        address blackhat = makeAddr("blackhat");
+        vm.prank(address(factory));
+        honey.mint(blackhat, 100e18);
+        assertEq(false, honey.paused());
+
+        vm.prank(governance);
+        honey.setPaused(true);
+        assertEq(true, honey.paused());
+
+        address blackhatSink = makeAddr("blackhatSink");
+        vm.prank(blackhat);
+        vm.expectRevert(abi.encodeWithSelector(PausableUpgradeable.EnforcedPause.selector));
+        honey.transfer(blackhatSink, 100e18);
+
+        vm.prank(governance);
+        honey.setPaused(false);
+        assertEq(false, honey.paused());
+
+        vm.prank(blackhat);
+        honey.transfer(blackhatSink, 100e18);
+        assertEq(100e18, honey.balanceOf(blackhatSink));
+    }
+
+    function test_Blacklist() public {
+        address blackhat = makeAddr("blackhat");
+        vm.prank(address(factory));
+        honey.mint(blackhat, 100e18);
+        assertEq(false, honey.isBlacklistedWallet(blackhat));
+
+        vm.prank(governance);
+        honey.setBlacklisted(blackhat, true);
+        assertEq(true, honey.isBlacklistedWallet(blackhat));
+
+        address blackhatSink = makeAddr("blackhatSink");
+        vm.prank(blackhat);
+        vm.expectRevert(abi.encodeWithSelector(IHoneyErrors.BlacklistedWallet.selector));
+        honey.transfer(blackhatSink, 100e18);
+
+        vm.prank(governance);
+        honey.setBlacklisted(blackhat, false);
+        assertEq(false, honey.isBlacklistedWallet(blackhat));
+
+        vm.prank(blackhat);
+        honey.transfer(blackhatSink, 100e18);
+        assertEq(100e18, honey.balanceOf(blackhatSink));
     }
 
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/

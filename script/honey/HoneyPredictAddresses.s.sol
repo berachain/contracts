@@ -33,5 +33,6 @@ contract HoneyPredictAddressesScript is BasePredictScript {
             abi.encode(HONEY_FACTORY_ADDRESS, EXT_PYTH_ADDRESS, HONEY_FACTORY_READER_ADDRESS)
         );
         _predictAddress("HoneyFactoryReader Implementation", type(HoneyFactoryReader).creationCode, 0);
+        _predictAddress("Honey Implementation", type(Honey).creationCode, 0);
     }
 }

@@ -55,4 +55,6 @@ interface IHoneyErrors {
     error CapCanCauseDenialOfService();
     // Signature: 0xcd09f603
     error InvalidCustodyInfoInput();
+    // Signature: 0x265693b4
+    error BlacklistedWallet();
 }
