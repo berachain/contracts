@@ -5,11 +5,10 @@ import { console2 } from "forge-std/console2.sol";
 import { BaseScript } from "../../base/Base.s.sol";
 import { BerachainGovernance } from "../../../src/gov/BerachainGovernance.sol";
 import { BlockRewardController } from "../../../src/pol/rewards/BlockRewardController.sol";
-import { GOVERNANCE_ADDRESS } from "../../gov/GovernanceAddresses.sol";
-import { BLOCK_REWARD_CONTROLLER_ADDRESS } from "../POLAddresses.sol";
+import { AddressBook } from "../../base/AddressBook.sol";
 
 /// @dev Create a proposal to change POL parameters
-contract ChangePOLParametersProposalScript is BaseScript {
+contract ChangePOLParametersProposalScript is BaseScript, AddressBook {
     // POL - BlockRewardController params
     // The constant base rate for BGT.
     uint256 internal constant BASE_RATE = 0.5e18;
@@ -24,13 +23,15 @@ contract ChangePOLParametersProposalScript is BaseScript {
 
     string internal constant PROPOSAL_DESCRIPTION = "Update POL parameters";
 
+    constructor() AddressBook(_chainType) { }
+
     function run() public virtual broadcast {
         console2.log("Creating proposal to change POL parameters...");
-        BerachainGovernance gov = BerachainGovernance(payable(GOVERNANCE_ADDRESS));
+        BerachainGovernance gov = BerachainGovernance(payable(_governanceAddresses.governance));
 
         address[] memory _targets = new address[](5);
         for (uint256 i = 0; i < _targets.length; i++) {
-            _targets[i] = BLOCK_REWARD_CONTROLLER_ADDRESS;
+            _targets[i] = _polAddresses.blockRewardController;
         }
 
         uint256[] memory _values = new uint256[](5);

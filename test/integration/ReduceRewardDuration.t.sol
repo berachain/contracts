@@ -12,9 +12,10 @@ import { RewardVaultFactory } from "src/pol/rewards/RewardVaultFactory.sol";
 import { MockERC20 } from "../mock/token/MockERC20.sol";
 import { IRewardVault, IPOLErrors } from "src/pol/interfaces/IRewardVault.sol";
 
-import { REWARD_VAULT_FACTORY_ADDRESS, BGT_STAKER_ADDRESS } from "script/pol/POLAddresses.sol";
+import { ChainType } from "script/base/Chain.sol";
+import { AddressBook } from "script/base/AddressBook.sol";
 
-contract ReduceRewardDurationTest is Create2Deployer, Test {
+contract ReduceRewardDurationTest is Create2Deployer, Test, AddressBook {
     address factoryVaultAdmin = 0xD13948F99525FB271809F45c268D72a3C00a568D;
     address factoryVaultManager = 0xD13948F99525FB271809F45c268D72a3C00a568D;
 
@@ -26,6 +27,8 @@ contract ReduceRewardDurationTest is Create2Deployer, Test {
         0x3Be1bE98eFAcA8c1Eb786Cbf38234c84B5052EeB,
         0x1Fe3C13B009eCfCe196E480180Db5f8990FFf5Fe
     ];
+
+    constructor() AddressBook(ChainType.Mainnet) { }
 
     function setUp() public virtual {
         vm.createSelectFork("berachain");
@@ -43,7 +46,7 @@ contract ReduceRewardDurationTest is Create2Deployer, Test {
         // create a new reward vault
         address stakingToken = address(new MockERC20());
         MockERC20(stakingToken).initialize("StakingToken", "ST");
-        address rewardVault = RewardVaultFactory(REWARD_VAULT_FACTORY_ADDRESS).createRewardVault(stakingToken);
+        address rewardVault = RewardVaultFactory(_polAddresses.rewardVaultFactory).createRewardVault(stakingToken);
 
         // new reward duration is 7 days
         assertEq(RewardVault(rewardVault).rewardsDuration(), 7 days);
@@ -89,7 +92,7 @@ contract ReduceRewardDurationTest is Create2Deployer, Test {
     function _upgradeVaultImpl() internal {
         // upgrade the reward vault
         address newRewardVaultImpl = deployWithCreate2(0, type(RewardVault).creationCode);
-        address beacon = RewardVaultFactory(REWARD_VAULT_FACTORY_ADDRESS).beacon();
+        address beacon = RewardVaultFactory(_polAddresses.rewardVaultFactory).beacon();
         vm.prank(factoryVaultAdmin);
         UpgradeableBeacon(beacon).upgradeTo(newRewardVaultImpl);
     }

@@ -4,13 +4,13 @@ pragma solidity 0.8.26;
 import { console2 } from "forge-std/Script.sol";
 import { BaseScript } from "../../base/Base.s.sol";
 import { IERC20 } from "forge-std/interfaces/IERC20.sol";
-import { GOVERNANCE_ADDRESS } from "../../gov/GovernanceAddresses.sol";
-import { BERACHEF_ADDRESS, BGT_ADDRESS } from "../POLAddresses.sol";
+import { AddressBook } from "../../base/AddressBook.sol";
+
 import { IBeraChef } from "src/pol/interfaces/IBeraChef.sol";
 import { BerachainGovernance } from "src/gov/BerachainGovernance.sol";
 
 /// @notice This script create a proposal to whitelist reward vaults
-contract SetDefaultRewardAllocationScript is BaseScript {
+contract SetDefaultRewardAllocationScript is BaseScript, AddressBook {
     // Placeholder. Reward vault addresses to whitelist and metadata.
     // METADATAs are used from indexer to save and then display the vault's informations.
     // TDB: Format of METADATA (can be empty string)
@@ -45,9 +45,11 @@ contract SetDefaultRewardAllocationScript is BaseScript {
         REWARD_VAULT_USDS_HONEY_METADATA
     ];
 
+    constructor() AddressBook(_chainType) { }
+
     function run() public broadcast {
-        _validateCode("Governance", GOVERNANCE_ADDRESS);
-        _validateCode("BeraChef", BERACHEF_ADDRESS);
+        _validateCode("Governance", _governanceAddresses.governance);
+        _validateCode("BeraChef", _polAddresses.beraChef);
         _validateVaultAddresses();
 
         require(
@@ -55,17 +57,17 @@ contract SetDefaultRewardAllocationScript is BaseScript {
             "WhitelistRewardVaultsScript: vaults and metadata length must match"
         );
 
-        BerachainGovernance governance = BerachainGovernance(payable(GOVERNANCE_ADDRESS));
+        BerachainGovernance governance = BerachainGovernance(payable(_governanceAddresses.governance));
         uint256 proposalThreshold = governance.proposalThreshold();
         require(
-            IERC20(BGT_ADDRESS).balanceOf(msg.sender) >= proposalThreshold,
+            IERC20(_polAddresses.bgt).balanceOf(msg.sender) >= proposalThreshold,
             "SetDefaultRewardAllocationScript: insufficient BGT balance"
         );
 
         address[] memory targets = new address[](REWARD_VAULTS.length);
         bytes[] memory calldatas = new bytes[](REWARD_VAULTS_METADATA.length);
         for (uint8 i = 0; i < REWARD_VAULTS.length; i++) {
-            targets[i] = BERACHEF_ADDRESS;
+            targets[i] = _polAddresses.beraChef;
             calldatas[i] = abi.encodeCall(
                 IBeraChef.setVaultWhitelistedStatus, (REWARD_VAULTS[i], true, REWARD_VAULTS_METADATA[i])
             );

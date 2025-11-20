@@ -4,13 +4,12 @@ pragma solidity 0.8.26;
 import { console2 } from "forge-std/Script.sol";
 import { BaseScript } from "../../base/Base.s.sol";
 import { IERC20 } from "forge-std/interfaces/IERC20.sol";
-import { GOVERNANCE_ADDRESS } from "../../gov/GovernanceAddresses.sol";
-import { BERACHEF_ADDRESS, BGT_ADDRESS } from "../POLAddresses.sol";
 import { IBeraChef } from "src/pol/interfaces/IBeraChef.sol";
 import { BerachainGovernance } from "src/gov/BerachainGovernance.sol";
+import { AddressBook } from "../../base/AddressBook.sol";
 
 /// @notice This script create a proposal to set the default reward allocation script
-contract SetDefaultRewardAllocationScript is BaseScript {
+contract SetDefaultRewardAllocationScript is BaseScript, AddressBook {
     // default reward allocation vault address and weights
     // BERA-HONEY 30%
     address internal constant REWARD_VAULT_BERA_HONEY = address(0);
@@ -49,10 +48,12 @@ contract SetDefaultRewardAllocationScript is BaseScript {
         REWARD_VAULT_USDS_HONEY_WEIGHT
     ];
 
+    constructor() AddressBook(_chainType) { }
+
     function run() public broadcast {
-        _validateCode("Governance", GOVERNANCE_ADDRESS);
-        _validateCode("BeraChef", BERACHEF_ADDRESS);
-        _validateCode("BGT", BGT_ADDRESS);
+        _validateCode("Governance", _governanceAddresses.governance);
+        _validateCode("BeraChef", _polAddresses.beraChef);
+        _validateCode("BGT", _polAddresses.bgt);
         _validateVaultAddresses();
 
         require(
@@ -60,15 +61,15 @@ contract SetDefaultRewardAllocationScript is BaseScript {
             "SetDefaultRewardAllocationScript: vaults and weights length must match"
         );
 
-        BerachainGovernance governance = BerachainGovernance(payable(GOVERNANCE_ADDRESS));
+        BerachainGovernance governance = BerachainGovernance(payable(_governanceAddresses.governance));
         uint256 proposalThreshold = governance.proposalThreshold();
         require(
-            IERC20(BGT_ADDRESS).balanceOf(msg.sender) >= proposalThreshold,
+            IERC20(_polAddresses.bgt).balanceOf(msg.sender) >= proposalThreshold,
             "SetDefaultRewardAllocationScript: insufficient BGT balance"
         );
 
         address[] memory targets = new address[](1);
-        targets[0] = BERACHEF_ADDRESS;
+        targets[0] = _polAddresses.beraChef;
 
         IBeraChef.Weight[] memory weights = new IBeraChef.Weight[](6);
         for (uint8 i = 0; i < REWARD_VAULT_WEIGHTS.length; i++) {

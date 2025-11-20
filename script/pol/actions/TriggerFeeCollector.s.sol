@@ -6,10 +6,10 @@ import { BaseScript } from "../../base/Base.s.sol";
 import { IERC20 } from "forge-std/interfaces/IERC20.sol";
 import { Storage } from "../../base/Storage.sol";
 import { FeeCollector } from "src/pol/FeeCollector.sol";
-import { FEE_COLLECTOR_ADDRESS } from "../POLAddresses.sol";
+import { AddressBook } from "../../base/AddressBook.sol";
 
 /// @notice Claim fees and donate from/to FeeCollector
-contract TriggerFeeCollector is BaseScript, Storage {
+contract TriggerFeeCollector is BaseScript, Storage, AddressBook {
     // Placeholder. Change before running the script.
     bool internal constant DONATE_TO_FEE_COLLECTOR = true;
     uint256 internal constant DONATE_AMOUNT = 69_420 ether;
@@ -19,9 +19,11 @@ contract TriggerFeeCollector is BaseScript, Storage {
 
     address[] internal _feeTokens = [address(0)];
 
+    constructor() AddressBook(_chainType) { }
+
     function run() public broadcast {
-        _validateCode("FeeCollector", FEE_COLLECTOR_ADDRESS);
-        feeCollector = FeeCollector(FEE_COLLECTOR_ADDRESS);
+        _validateCode("FeeCollector", _polAddresses.feeCollector);
+        feeCollector = FeeCollector(_polAddresses.feeCollector);
 
         claimFees(_feeTokens);
 
@@ -37,7 +39,7 @@ contract TriggerFeeCollector is BaseScript, Storage {
         approveToFeeCollector(payoutToken, payoutAmount);
 
         for (uint256 i; i < feeTokens.length; ++i) {
-            feeCollectorBalances[feeTokens[i]] = IERC20(feeTokens[i]).balanceOf(FEE_COLLECTOR_ADDRESS);
+            feeCollectorBalances[feeTokens[i]] = IERC20(feeTokens[i]).balanceOf(_polAddresses.feeCollector);
             userBalancesBeforeClaim[feeTokens[i]] = IERC20(feeTokens[i]).balanceOf(msg.sender);
         }
 
@@ -63,7 +65,7 @@ contract TriggerFeeCollector is BaseScript, Storage {
 
     function approveToFeeCollector(address token, uint256 amount) internal {
         require(IERC20(token).balanceOf(msg.sender) >= amount, "Insufficient balance");
-        IERC20(token).approve(FEE_COLLECTOR_ADDRESS, amount);
+        IERC20(token).approve(_polAddresses.feeCollector, amount);
         console2.log("Approved %d of %s to FeeCollector", amount, token);
     }
 }

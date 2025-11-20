@@ -4,11 +4,12 @@ pragma solidity 0.8.26;
 import { console2 } from "forge-std/Script.sol";
 import { BaseScript } from "../../base/Base.s.sol";
 import { RBAC } from "../../base/RBAC.sol";
-import { TIMELOCK_ADDRESS } from "../../gov/GovernanceAddresses.sol";
-import { WBERA_STAKER_VAULT_ADDRESS, BGT_INCENTIVE_FEE_COLLECTOR_ADDRESS } from "../POLAddresses.sol";
 import "../../base/Storage.sol";
+import { AddressBook } from "../../base/AddressBook.sol";
 
-contract TransferPOLV2OwnershipScript is RBAC, BaseScript, Storage {
+contract TransferPOLV2OwnershipScript is RBAC, BaseScript, Storage, AddressBook {
+    constructor() AddressBook(_chainType) { }
+
     function run() public pure {
         console2.log("Please run specific function.");
     }
@@ -20,7 +21,7 @@ contract TransferPOLV2OwnershipScript is RBAC, BaseScript, Storage {
         console2.log("NEW_OWNER", newOwner);
 
         // create contracts instance from deployed addresses
-        if (newOwner == TIMELOCK_ADDRESS) {
+        if (newOwner == _governanceAddresses.timelock) {
             _validateCode("TimeLock", newOwner);
         }
         _loadStorageContracts();
@@ -40,19 +41,19 @@ contract TransferPOLV2OwnershipScript is RBAC, BaseScript, Storage {
     {
         RBAC.RoleDescription memory wberaStakerVaultAdminRole = RBAC.RoleDescription({
             contractName: "WBERAStakerVault",
-            contractAddr: WBERA_STAKER_VAULT_ADDRESS,
+            contractAddr: _polAddresses.wberaStakerVault,
             name: "DEFAULT_ADMIN_ROLE",
             role: wberaStakerVault.DEFAULT_ADMIN_ROLE()
         });
         RBAC.RoleDescription memory wberaStakerVaultManagerRole = RBAC.RoleDescription({
             contractName: "WBERAStakerVault",
-            contractAddr: WBERA_STAKER_VAULT_ADDRESS,
+            contractAddr: _polAddresses.wberaStakerVault,
             name: "MANAGER_ROLE",
             role: wberaStakerVault.MANAGER_ROLE()
         });
         RBAC.RoleDescription memory wberaStakerVaultPauserRole = RBAC.RoleDescription({
             contractName: "WBERAStakerVault",
-            contractAddr: WBERA_STAKER_VAULT_ADDRESS,
+            contractAddr: _polAddresses.wberaStakerVault,
             name: "PAUSER_ROLE",
             role: wberaStakerVault.PAUSER_ROLE()
         });
@@ -70,19 +71,19 @@ contract TransferPOLV2OwnershipScript is RBAC, BaseScript, Storage {
     {
         RBAC.RoleDescription memory bgtIncentiveFeeCollectorAdminRole = RBAC.RoleDescription({
             contractName: "BGTIncentiveFeeCollector",
-            contractAddr: BGT_INCENTIVE_FEE_COLLECTOR_ADDRESS,
+            contractAddr: _polAddresses.bgtIncentiveFeeCollector,
             name: "DEFAULT_ADMIN_ROLE",
             role: bgtIncentiveFeeCollector.DEFAULT_ADMIN_ROLE()
         });
         RBAC.RoleDescription memory bgtIncentiveFeeCollectorManagerRole = RBAC.RoleDescription({
             contractName: "BGTIncentiveFeeCollector",
-            contractAddr: BGT_INCENTIVE_FEE_COLLECTOR_ADDRESS,
+            contractAddr: _polAddresses.bgtIncentiveFeeCollector,
             name: "MANAGER_ROLE",
             role: bgtIncentiveFeeCollector.MANAGER_ROLE()
         });
         RBAC.RoleDescription memory bgtIncentiveFeeCollectorPauserRole = RBAC.RoleDescription({
             contractName: "BGTIncentiveFeeCollector",
-            contractAddr: BGT_INCENTIVE_FEE_COLLECTOR_ADDRESS,
+            contractAddr: _polAddresses.bgtIncentiveFeeCollector,
             name: "PAUSER_ROLE",
             role: bgtIncentiveFeeCollector.PAUSER_ROLE()
         });
@@ -93,9 +94,9 @@ contract TransferPOLV2OwnershipScript is RBAC, BaseScript, Storage {
     }
 
     function _loadStorageContracts() internal {
-        _validateCode("WBERAStakerVault", WBERA_STAKER_VAULT_ADDRESS);
-        _validateCode("BGTIncentiveFeeCollector", BGT_INCENTIVE_FEE_COLLECTOR_ADDRESS);
-        wberaStakerVault = WBERAStakerVault(payable(WBERA_STAKER_VAULT_ADDRESS));
-        bgtIncentiveFeeCollector = BGTIncentiveFeeCollector(BGT_INCENTIVE_FEE_COLLECTOR_ADDRESS);
+        _validateCode("WBERAStakerVault", _polAddresses.wberaStakerVault);
+        _validateCode("BGTIncentiveFeeCollector", _polAddresses.bgtIncentiveFeeCollector);
+        wberaStakerVault = WBERAStakerVault(payable(_polAddresses.wberaStakerVault));
+        bgtIncentiveFeeCollector = BGTIncentiveFeeCollector(_polAddresses.bgtIncentiveFeeCollector);
     }
 }

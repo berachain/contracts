@@ -3,19 +3,18 @@ pragma solidity 0.8.26;
 
 import { console2 } from "forge-std/Script.sol";
 import { HoneyDeployer } from "src/honey/HoneyDeployer.sol";
+import { Honey } from "src/honey/Honey.sol";
+import { HoneyFactory } from "src/honey/HoneyFactory.sol";
+import { HoneyFactoryReader } from "src/honey/HoneyFactoryReader.sol";
 import { BaseScript } from "../../base/Base.s.sol";
 import { RBAC } from "../../base/RBAC.sol";
-import { HONEY_ADDRESS, HONEY_FACTORY_ADDRESS, HONEY_FACTORY_READER_ADDRESS } from "../HoneyAddresses.sol";
-import { PEGGED_PRICE_ORACLE_ADDRESS } from "../../oracles/OraclesAddresses.sol";
-import { FEE_COLLECTOR_ADDRESS as POL_FEE_COLLECTOR_ADDRESS } from "../../pol/POLAddresses.sol";
-import { HONEY_SALT, HONEY_FACTORY_SALT, HONEY_FACTORY_READER_SALT } from "../HoneySalts.sol";
+import { AddressBook } from "../../base/AddressBook.sol";
 import { Storage } from "../../base/Storage.sol";
 
-contract DeployHoneyScript is RBAC, BaseScript, Storage {
-    // Placeholder. Change before deployment
-    address internal constant FEE_RECEIVER = POL_FEE_COLLECTOR_ADDRESS;
-
+contract DeployHoneyScript is RBAC, BaseScript, Storage, AddressBook {
     HoneyDeployer internal honeyDeployer;
+
+    constructor() AddressBook(_chainType) { }
 
     function run() public virtual broadcast {
         deployHoney();
@@ -23,42 +22,42 @@ contract DeployHoneyScript is RBAC, BaseScript, Storage {
 
     function deployHoney() internal {
         console2.log("Deploying Honey and HoneyFactory...");
-        _validateCode("POL FeeCollector", POL_FEE_COLLECTOR_ADDRESS);
-        _validateCode("IPriceOracle", PEGGED_PRICE_ORACLE_ADDRESS);
+        _validateCode("POL FeeCollector", _polAddresses.feeCollector);
+        _validateCode("IPriceOracle", _oraclesAddresses.peggedPriceOracle);
 
         honeyDeployer = new HoneyDeployer(
             msg.sender,
-            POL_FEE_COLLECTOR_ADDRESS,
-            FEE_RECEIVER,
-            HONEY_SALT,
-            HONEY_FACTORY_SALT,
-            HONEY_FACTORY_READER_SALT,
-            PEGGED_PRICE_ORACLE_ADDRESS
+            _polAddresses.feeCollector,
+            _polAddresses.feeCollector,
+            _saltsForProxy(type(Honey).creationCode),
+            _saltsForProxy(type(HoneyFactory).creationCode),
+            _saltsForProxy(type(HoneyFactoryReader).creationCode),
+            _oraclesAddresses.peggedPriceOracle
         );
 
         console2.log("HoneyDeployer deployed at:", address(honeyDeployer));
 
         honey = honeyDeployer.honey();
-        _checkDeploymentAddress("Honey", address(honey), HONEY_ADDRESS);
+        _checkDeploymentAddress("Honey", address(honey), _honeyAddresses.honey);
 
         honeyFactory = honeyDeployer.honeyFactory();
-        _checkDeploymentAddress("HoneyFactory", address(honeyFactory), HONEY_FACTORY_ADDRESS);
+        _checkDeploymentAddress("HoneyFactory", address(honeyFactory), _honeyAddresses.honeyFactory);
 
         honeyFactoryReader = honeyDeployer.honeyFactoryReader();
-        _checkDeploymentAddress("HoneyFactoryReader", address(honeyFactoryReader), HONEY_FACTORY_READER_ADDRESS);
+        _checkDeploymentAddress("HoneyFactoryReader", address(honeyFactoryReader), _honeyAddresses.honeyFactoryReader);
 
-        require(honeyFactory.feeReceiver() == FEE_RECEIVER, "Fee receiver not set");
-        console2.log("Fee receiver set to:", FEE_RECEIVER);
+        require(honeyFactory.feeReceiver() == _polAddresses.feeCollector, "Fee receiver not set");
+        console2.log("Fee receiver set to:", _polAddresses.feeCollector);
 
-        require(honeyFactory.polFeeCollector() == POL_FEE_COLLECTOR_ADDRESS, "Pol fee collector not set");
-        console2.log("Pol fee collector set to:", POL_FEE_COLLECTOR_ADDRESS);
+        require(honeyFactory.polFeeCollector() == _polAddresses.feeCollector, "Pol fee collector not set");
+        console2.log("Pol fee collector set to:", _polAddresses.feeCollector);
 
         // check roles
         RBAC.AccountDescription memory deployer = RBAC.AccountDescription({ name: "deployer", addr: msg.sender });
 
         RBAC.RoleDescription memory honeyAdminRole = RBAC.RoleDescription({
             contractName: "Honey",
-            contractAddr: HONEY_ADDRESS,
+            contractAddr: _honeyAddresses.honey,
             name: "DEFAULT_ADMIN_ROLE",
             role: honey.DEFAULT_ADMIN_ROLE()
         });
@@ -67,7 +66,7 @@ contract DeployHoneyScript is RBAC, BaseScript, Storage {
 
         RBAC.RoleDescription memory honeyFactoryAdminRole = RBAC.RoleDescription({
             contractName: "HoneyFactory",
-            contractAddr: HONEY_FACTORY_ADDRESS,
+            contractAddr: _honeyAddresses.honeyFactory,
             name: "DEFAULT_ADMIN_ROLE",
             role: honeyFactory.DEFAULT_ADMIN_ROLE()
         });
@@ -76,7 +75,7 @@ contract DeployHoneyScript is RBAC, BaseScript, Storage {
 
         RBAC.RoleDescription memory honeyFactoryReaderAdminRole = RBAC.RoleDescription({
             contractName: "HoneyFactoryReader",
-            contractAddr: HONEY_FACTORY_READER_ADDRESS,
+            contractAddr: _honeyAddresses.honeyFactoryReader,
             name: "DEFAULT_ADMIN_ROLE",
             role: honeyFactoryReader.DEFAULT_ADMIN_ROLE()
         });
@@ -87,7 +86,7 @@ contract DeployHoneyScript is RBAC, BaseScript, Storage {
         // setMintRate and setRedeemRate while doing `addCollateral`
         RBAC.RoleDescription memory managerRole = RBAC.RoleDescription({
             contractName: "HoneyFactory",
-            contractAddr: HONEY_FACTORY_ADDRESS,
+            contractAddr: _honeyAddresses.honeyFactory,
             name: "MANAGER_ROLE",
             role: honeyFactory.MANAGER_ROLE()
         });
@@ -96,7 +95,7 @@ contract DeployHoneyScript is RBAC, BaseScript, Storage {
         // grant the PAUSER_ROLE to msg.sender
         RBAC.RoleDescription memory pauserRole = RBAC.RoleDescription({
             contractName: "HoneyFactory",
-            contractAddr: HONEY_FACTORY_ADDRESS,
+            contractAddr: _honeyAddresses.honeyFactory,
             name: "PAUSER_ROLE",
             role: honeyFactory.PAUSER_ROLE()
         });

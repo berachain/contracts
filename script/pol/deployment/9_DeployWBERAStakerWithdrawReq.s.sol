@@ -3,12 +3,13 @@ pragma solidity 0.8.26;
 
 import { console2 } from "forge-std/Script.sol";
 import { BaseScript } from "../../base/Base.s.sol";
-import { WBERA_STAKER_VAULT_ADDRESS } from "../POLAddresses.sol";
 import { WBERAStakerWithdrawReqDeployer } from "src/pol/WBERAStakerWithdrawReqDeployer.sol";
+import { WBERAStakerVaultWithdrawalRequest } from "src/pol/WBERAStakerVaultWithdrawalRequest.sol";
+import { AddressBook } from "../../base/AddressBook.sol";
 
-import { WBERA_STAKER_VAULT_WITHDRAWAL_REQUEST_SALT } from "../POLSalts.sol";
+contract DeployWBERAStakerWithdrawReqScript is BaseScript, AddressBook {
+    constructor() AddressBook(_chainType) { }
 
-contract DeployWBERAStakerWithdrawReqScript is BaseScript {
     function run() public pure {
         console2.log("Please run specific function.");
     }
@@ -21,7 +22,9 @@ contract DeployWBERAStakerWithdrawReqScript is BaseScript {
 
         // deploy the WBERAStakerWithdrawReqDeployer
         WBERAStakerWithdrawReqDeployer wberaStakerWithdrawReqDeployer = new WBERAStakerWithdrawReqDeployer(
-            governance, WBERA_STAKER_VAULT_ADDRESS, WBERA_STAKER_VAULT_WITHDRAWAL_REQUEST_SALT
+            governance,
+            _polAddresses.wberaStakerVault,
+            _saltsForProxy(type(WBERAStakerVaultWithdrawalRequest).creationCode)
         );
         console2.log("WBERAStakerWithdrawReqDeployer deployed at", address(wberaStakerWithdrawReqDeployer));
         console2.log(

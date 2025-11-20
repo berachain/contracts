@@ -7,12 +7,13 @@ import { Create2Deployer } from "src/base/Create2Deployer.sol";
 import { IPOLErrors } from "src/pol/interfaces/IPOLErrors.sol";
 import { WBERAStakerVault } from "src/pol/WBERAStakerVault.sol";
 import { WBERAStakerVaultWithdrawalRequest } from "src/pol/WBERAStakerVaultWithdrawalRequest.sol";
-import { WBERA_ADDRESS, WBERA_STAKER_VAULT_ADDRESS } from "script/pol/POLAddresses.sol";
+import { AddressBook } from "script/base/AddressBook.sol";
+import { ChainType } from "script/base/Chain.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-contract WBERAStakerVaultUpgradeTest is Test, Create2Deployer {
-    IERC20 public constant WBERA = IERC20(WBERA_ADDRESS);
-    WBERAStakerVault public constant vault = WBERAStakerVault(payable(WBERA_STAKER_VAULT_ADDRESS));
+contract WBERAStakerVaultUpgradeTest is Test, Create2Deployer, AddressBook {
+    IERC20 public WBERA;
+    WBERAStakerVault public vault;
     WBERAStakerVaultWithdrawalRequest public withdrawals721;
 
     address safeOwner = 0xD13948F99525FB271809F45c268D72a3C00a568D;
@@ -26,6 +27,11 @@ contract WBERAStakerVaultUpgradeTest is Test, Create2Deployer {
     address public wBERAHolder = 0xf6Feb2C0ce85bE768B380C96297BB49d42fE5670;
 
     uint256 forkBlock = 8_708_746;
+
+    constructor() AddressBook(ChainType.Mainnet) {
+        WBERA = IERC20(_polAddresses.wbera);
+        vault = WBERAStakerVault(payable(_polAddresses.wberaStakerVault));
+    }
 
     function setUp() public virtual {
         vm.createSelectFork("berachain");

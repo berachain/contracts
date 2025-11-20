@@ -1,15 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.26;
 
-import { console2 } from "forge-std/console2.sol";
 import { BaseScript } from "../../base/Base.s.sol";
 import { BlockRewardController } from "../../../src/pol/rewards/BlockRewardController.sol";
-import { BLOCK_REWARD_CONTROLLER_ADDRESS } from "../POLAddresses.sol";
 import { ConfigPOL } from "../logic/ConfigPOL.sol";
 import { Storage } from "../../base/Storage.sol";
+import { AddressBook } from "../../base/AddressBook.sol";
 
 /// @dev Sender must have permission to update parameters.
-contract ChangePOLParametersScript is BaseScript, Storage, ConfigPOL {
+contract ChangePOLParametersScript is BaseScript, Storage, ConfigPOL, AddressBook {
     // POL - BlockRewardController params
     // The constant base rate for BGT.
     uint256 internal constant BASE_RATE = 0.5e18;
@@ -22,8 +21,10 @@ contract ChangePOLParametersScript is BaseScript, Storage, ConfigPOL {
     // The reward convexity param in the function, determines how fast it converges to its max, 18 dec.
     uint256 internal constant REWARD_CONVEXITY = 0.4e18;
 
+    constructor() AddressBook(_chainType) { }
+
     function run() public virtual broadcast {
-        blockRewardController = BlockRewardController(BLOCK_REWARD_CONTROLLER_ADDRESS);
+        blockRewardController = BlockRewardController(_polAddresses.blockRewardController);
         _setPOLParams(BASE_RATE, REWARD_RATE, MIN_BOOSTED_REWARD_RATE, BOOST_MULTIPLIER, REWARD_CONVEXITY);
     }
 }

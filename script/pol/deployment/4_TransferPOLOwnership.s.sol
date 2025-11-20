@@ -4,27 +4,18 @@ pragma solidity 0.8.26;
 import { console2 } from "forge-std/Script.sol";
 import { BaseScript } from "../../base/Base.s.sol";
 import { RBAC } from "../../base/RBAC.sol";
-import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
-import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
 import { UpgradeableBeacon } from "solady/src/utils/UpgradeableBeacon.sol";
-import { TIMELOCK_ADDRESS } from "../../gov/GovernanceAddresses.sol";
-import {
-    BGT_ADDRESS,
-    BERACHEF_ADDRESS,
-    BLOCK_REWARD_CONTROLLER_ADDRESS,
-    DISTRIBUTOR_ADDRESS,
-    REWARD_VAULT_FACTORY_ADDRESS,
-    BGT_STAKER_ADDRESS,
-    FEE_COLLECTOR_ADDRESS
-} from "../POLAddresses.sol";
+import { AddressBook } from "../../base/AddressBook.sol";
 import "../../base/Storage.sol";
 
-contract TransferPOLOwnershipScript is RBAC, BaseScript, Storage {
+contract TransferPOLOwnershipScript is RBAC, BaseScript, Storage, AddressBook {
     // Placholder. Change before running the script.
     address internal constant NEW_OWNER = address(0); // TIMELOCK_ADDRESS;
     address internal constant VAULT_FACTORY_MANAGER = address(0);
     address internal constant DISTRIBUTOR_MANAGER = address(0);
     address internal constant FEE_COLLECTOR_MANAGER = address(0);
+
+    constructor() AddressBook(_chainType) { }
 
     function run() public virtual broadcast {
         // Check if the new owner and managers are set
@@ -34,7 +25,7 @@ contract TransferPOLOwnershipScript is RBAC, BaseScript, Storage {
         require(FEE_COLLECTOR_MANAGER != address(0), "FEE_COLLECTOR_MANAGER must be set");
 
         // create contracts instance from deployed addresses
-        if (NEW_OWNER == TIMELOCK_ADDRESS) {
+        if (NEW_OWNER == _governanceAddresses.timelock) {
             _validateCode("TimeLock", NEW_OWNER);
         }
         _loadStorageContracts();
@@ -66,19 +57,19 @@ contract TransferPOLOwnershipScript is RBAC, BaseScript, Storage {
         // RewardVaultFactory
         RBAC.RoleDescription memory rewardVaultFactoryAdminRole = RBAC.RoleDescription({
             contractName: "RewardVaultFactory",
-            contractAddr: REWARD_VAULT_FACTORY_ADDRESS,
+            contractAddr: _polAddresses.rewardVaultFactory,
             name: "DEFAULT_ADMIN_ROLE",
             role: rewardVaultFactory.DEFAULT_ADMIN_ROLE()
         });
         RBAC.RoleDescription memory rewardVaultFactoryManagerRole = RBAC.RoleDescription({
             contractName: "RewardVaultFactory",
-            contractAddr: REWARD_VAULT_FACTORY_ADDRESS,
+            contractAddr: _polAddresses.rewardVaultFactory,
             name: "VAULT_MANAGER_ROLE",
             role: rewardVaultFactory.VAULT_MANAGER_ROLE()
         });
         RBAC.RoleDescription memory rewardVaultFactoryPauserRole = RBAC.RoleDescription({
             contractName: "RewardVaultFactory",
-            contractAddr: REWARD_VAULT_FACTORY_ADDRESS,
+            contractAddr: _polAddresses.rewardVaultFactory,
             name: "VAULT_PAUSER_ROLE",
             role: rewardVaultFactory.VAULT_PAUSER_ROLE()
         });
@@ -107,7 +98,7 @@ contract TransferPOLOwnershipScript is RBAC, BaseScript, Storage {
         // Distributor
         RBAC.RoleDescription memory distributorAdminRole = RBAC.RoleDescription({
             contractName: "Distributor",
-            contractAddr: DISTRIBUTOR_ADDRESS,
+            contractAddr: _polAddresses.distributor,
             name: "DEFAULT_ADMIN_ROLE",
             role: distributor.DEFAULT_ADMIN_ROLE()
         });
@@ -115,7 +106,7 @@ contract TransferPOLOwnershipScript is RBAC, BaseScript, Storage {
         // NOTE: the manager role on the distributor is not assigned to anyone, hence there is no need to revoke it.
         RBAC.RoleDescription memory distributorManagerRole = RBAC.RoleDescription({
             contractName: "Distributor",
-            contractAddr: DISTRIBUTOR_ADDRESS,
+            contractAddr: _polAddresses.distributor,
             name: "MANAGER_ROLE",
             role: distributor.MANAGER_ROLE()
         });
@@ -134,19 +125,19 @@ contract TransferPOLOwnershipScript is RBAC, BaseScript, Storage {
         // FeeCollector
         RBAC.RoleDescription memory feeCollectorAdminRole = RBAC.RoleDescription({
             contractName: "FeeCollector",
-            contractAddr: FEE_COLLECTOR_ADDRESS,
+            contractAddr: _polAddresses.feeCollector,
             name: "DEFAULT_ADMIN_ROLE",
             role: feeCollector.DEFAULT_ADMIN_ROLE()
         });
         RBAC.RoleDescription memory feeCollectorManagerRole = RBAC.RoleDescription({
             contractName: "FeeCollector",
-            contractAddr: FEE_COLLECTOR_ADDRESS,
+            contractAddr: _polAddresses.feeCollector,
             name: "MANAGER_ROLE",
             role: feeCollector.MANAGER_ROLE()
         });
         RBAC.RoleDescription memory feeCollectorPauserRole = RBAC.RoleDescription({
             contractName: "FeeCollector",
-            contractAddr: FEE_COLLECTOR_ADDRESS,
+            contractAddr: _polAddresses.feeCollector,
             name: "PAUSER_ROLE",
             role: feeCollector.PAUSER_ROLE()
         });
@@ -161,19 +152,19 @@ contract TransferPOLOwnershipScript is RBAC, BaseScript, Storage {
     }
 
     function _loadStorageContracts() internal {
-        _validateCode("BGT", BGT_ADDRESS);
-        bgt = BGT(BGT_ADDRESS);
-        _validateCode("BeraChef", BERACHEF_ADDRESS);
-        beraChef = BeraChef(BERACHEF_ADDRESS);
-        _validateCode("BlockRewardController", BLOCK_REWARD_CONTROLLER_ADDRESS);
-        blockRewardController = BlockRewardController(BLOCK_REWARD_CONTROLLER_ADDRESS);
-        _validateCode("Distributor", DISTRIBUTOR_ADDRESS);
-        distributor = Distributor(DISTRIBUTOR_ADDRESS);
-        _validateCode("RewardVaultFactory", REWARD_VAULT_FACTORY_ADDRESS);
-        rewardVaultFactory = RewardVaultFactory(REWARD_VAULT_FACTORY_ADDRESS);
-        _validateCode("BGTStaker", BGT_STAKER_ADDRESS);
-        bgtStaker = BGTStaker(BGT_STAKER_ADDRESS);
-        _validateCode("FeeCollector", FEE_COLLECTOR_ADDRESS);
-        feeCollector = FeeCollector(FEE_COLLECTOR_ADDRESS);
+        _validateCode("BGT", _polAddresses.bgt);
+        bgt = BGT(_polAddresses.bgt);
+        _validateCode("BeraChef", _polAddresses.beraChef);
+        beraChef = BeraChef(_polAddresses.beraChef);
+        _validateCode("BlockRewardController", _polAddresses.blockRewardController);
+        blockRewardController = BlockRewardController(_polAddresses.blockRewardController);
+        _validateCode("Distributor", _polAddresses.distributor);
+        distributor = Distributor(_polAddresses.distributor);
+        _validateCode("RewardVaultFactory", _polAddresses.rewardVaultFactory);
+        rewardVaultFactory = RewardVaultFactory(_polAddresses.rewardVaultFactory);
+        _validateCode("BGTStaker", _polAddresses.bgtStaker);
+        bgtStaker = BGTStaker(_polAddresses.bgtStaker);
+        _validateCode("FeeCollector", _polAddresses.feeCollector);
+        feeCollector = FeeCollector(_polAddresses.feeCollector);
     }
 }

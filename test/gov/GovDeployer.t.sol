@@ -7,6 +7,7 @@ import { IGovernor } from "@openzeppelin/contracts/governance/IGovernor.sol";
 import { GovernorVotesQuorumFractionUpgradeable } from
     "@openzeppelin-gov-ext/GovernorVotesQuorumFractionUpgradeable.sol";
 
+import { Salt } from "src/base/Salt.sol";
 import { BerachainGovernance } from "src/gov/BerachainGovernance.sol";
 import { GovDeployer } from "src/gov/GovDeployer.sol";
 import { TimeLock } from "src/gov/TimeLock.sol";
@@ -22,8 +23,8 @@ contract GovDeployerTest is Test {
     uint256 private constant VOTING_PERIOD = 2 seconds;
     uint256 private constant QUORUM_NUMERATOR_VALUE = 90;
     uint256 private constant TIMELOCK_MIN_DELAY = 1 days;
-    uint256 private constant GOV_SALT = 0;
-    uint256 private constant TIMELOCK_SALT = 0;
+    Salt private GOV_SALT = Salt({ implementation: 0, proxy: 0 });
+    Salt private TIMELOCK_SALT = Salt({ implementation: 0, proxy: 0 });
 
     constructor() {
         _voteToken = address(new MockBGT());

@@ -17,6 +17,7 @@ import { HoneyDeployer } from "src/honey/HoneyDeployer.sol";
 import { HoneyFactory } from "src/honey/HoneyFactory.sol";
 import { MockHoney, FaultyMockHoney } from "@mock/honey/MockHoney.sol";
 import { MockOracle } from "@mock/oracle/MockOracle.sol";
+import { Salt } from "src/base/Salt.sol";
 
 contract HoneyTest is StdCheats, SoladyTest {
     struct _TestTemps {
@@ -45,10 +46,22 @@ contract HoneyTest is StdCheats, SoladyTest {
     HoneyDeployer internal deployer;
     HoneyFactory internal factory;
 
+    Salt internal _honeySalt = Salt({ implementation: 0, proxy: 0 });
+    Salt internal _honeyFactorySalt = Salt({ implementation: 0, proxy: 1 });
+    Salt internal _honeyFactoryReaderSalt = Salt({ implementation: 0, proxy: 1 });
+
     /// @dev A function invoked before each test case is run.
     function setUp() public virtual {
         MockOracle oracle = new MockOracle();
-        deployer = new HoneyDeployer(governance, feeReceiver, polFeeCollector, 0, 1, 1, address(oracle));
+        deployer = new HoneyDeployer(
+            governance,
+            feeReceiver,
+            polFeeCollector,
+            _honeySalt,
+            _honeyFactorySalt,
+            _honeyFactoryReaderSalt,
+            address(oracle)
+        );
         honey = deployer.honey();
         factory = deployer.honeyFactory();
         assertEq(honey.hasRole(factory.DEFAULT_ADMIN_ROLE(), governance), true);

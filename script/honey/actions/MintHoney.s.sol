@@ -4,22 +4,23 @@ pragma solidity 0.8.26;
 import { console2 } from "forge-std/Script.sol";
 import { BaseScript } from "../../base/Base.s.sol";
 import { IERC20 } from "forge-std/interfaces/IERC20.sol";
-import { USDC } from "../../misc/testnet/tokens/USDC.sol";
 import { HoneyFactory } from "src/honey/HoneyFactory.sol";
 import { HoneyFactoryReader } from "src/honey/HoneyFactoryReader.sol";
-import { HONEY_ADDRESS, HONEY_FACTORY_ADDRESS, HONEY_FACTORY_READER_ADDRESS } from "../HoneyAddresses.sol";
+import { AddressBook } from "../../base/AddressBook.sol";
 
 /// @notice Add collateral to vault and mint Honey
-contract MintHoneyScript is BaseScript {
+contract MintHoneyScript is BaseScript, AddressBook {
     // Placeholders. Change before run script.
     string internal constant COLLATERAL_NAME = "COLLATERAL_NAME";
     address internal constant COLLATERAL_ADDRESS = address(0);
     uint256 internal constant AMOUNT = 1e10;
 
+    constructor() AddressBook(_chainType) { }
+
     /// @dev msg.send need to have enought collateral balance
     function run() public virtual broadcast {
-        _validateCode("Honey", HONEY_ADDRESS);
-        _validateCode("HoneyFactory", HONEY_FACTORY_ADDRESS);
+        _validateCode("Honey", _honeyAddresses.honey);
+        _validateCode("HoneyFactory", _honeyAddresses.honeyFactory);
         require(COLLATERAL_ADDRESS != address(0), "COLLATERAL_ADDRESS not set");
         _validateCode(COLLATERAL_NAME, COLLATERAL_ADDRESS);
 
@@ -28,9 +29,11 @@ contract MintHoneyScript is BaseScript {
         require(collateralToken.balanceOf(msg.sender) >= amount, "Insufficient collateral balance");
 
         // TODO: review after v2 merge
-        mintHoney(HONEY_FACTORY_ADDRESS, HONEY_FACTORY_READER_ADDRESS, COLLATERAL_ADDRESS, amount, msg.sender);
-        require(IERC20(HONEY_ADDRESS).balanceOf(msg.sender) >= amount, "Failed to mint Honey");
-        console2.log("Honey balance of %s: %d", msg.sender, IERC20(HONEY_ADDRESS).balanceOf(msg.sender));
+        mintHoney(
+            _honeyAddresses.honeyFactory, _honeyAddresses.honeyFactoryReader, COLLATERAL_ADDRESS, amount, msg.sender
+        );
+        require(IERC20(_honeyAddresses.honey).balanceOf(msg.sender) >= amount, "Failed to mint Honey");
+        console2.log("Honey balance of %s: %d", msg.sender, IERC20(_honeyAddresses.honey).balanceOf(msg.sender));
     }
 
     /// @dev Mint Honey using collateral

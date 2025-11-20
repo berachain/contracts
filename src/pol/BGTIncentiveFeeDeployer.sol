@@ -2,6 +2,7 @@
 pragma solidity 0.8.26;
 
 import { Create2Deployer } from "../base/Create2Deployer.sol";
+import { Salt } from "../base/Salt.sol";
 import { WBERAStakerVault } from "./WBERAStakerVault.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { BGTIncentiveFeeCollector } from "./BGTIncentiveFeeCollector.sol";
@@ -34,20 +35,22 @@ contract BGTIncentiveFeeDeployer is Create2Deployer {
         address governance,
         address tokenProvider,
         uint256 payoutAmount,
-        uint256 wberaStakerVaultSalt,
-        uint256 bgtIncentiveFeeCollectorSalt
+        Salt memory wberaStakerVaultSalt,
+        Salt memory bgtIncentiveFeeCollectorSalt
     ) {
         // deploy the WBERAStakerVault implementation
-        address wberaStakerVaultImpl = deployWithCreate2(0, type(WBERAStakerVault).creationCode);
+        address wberaStakerVaultImpl =
+            deployWithCreate2(wberaStakerVaultSalt.implementation, type(WBERAStakerVault).creationCode);
         // deploy the WBERAStakerVault proxy
         wberaStakerVault =
-            WBERAStakerVault(payable(deployProxyWithCreate2(wberaStakerVaultImpl, wberaStakerVaultSalt)));
+            WBERAStakerVault(payable(deployProxyWithCreate2(wberaStakerVaultImpl, wberaStakerVaultSalt.proxy)));
 
         // deploy the BGTIncentiveFeeCollector implementation
-        address bgtIncentiveFeeCollectorImpl = deployWithCreate2(0, type(BGTIncentiveFeeCollector).creationCode);
+        address bgtIncentiveFeeCollectorImpl =
+            deployWithCreate2(bgtIncentiveFeeCollectorSalt.implementation, type(BGTIncentiveFeeCollector).creationCode);
         // deploy the BGTIncentiveFeeCollector proxy
         bgtIncentiveFeeCollector = BGTIncentiveFeeCollector(
-            deployProxyWithCreate2(bgtIncentiveFeeCollectorImpl, bgtIncentiveFeeCollectorSalt)
+            deployProxyWithCreate2(bgtIncentiveFeeCollectorImpl, bgtIncentiveFeeCollectorSalt.proxy)
         );
 
         // initialize the contracts

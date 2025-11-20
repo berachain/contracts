@@ -14,6 +14,7 @@ import { BGTFeeDeployer } from "src/pol/BGTFeeDeployer.sol";
 import { POLDeployer } from "src/pol/POLDeployer.sol";
 import { WBERA } from "src/WBERA.sol";
 import { Create2Deployer } from "src/base/Create2Deployer.sol";
+import { Salt } from "src/base/Salt.sol";
 import { BeaconDepositMock } from "test/mock/pol/BeaconDepositMock.sol";
 import { BGTIncentiveDistributor } from "src/pol/rewards/BGTIncentiveDistributor.sol";
 import { BGTIncentiveDistributorDeployer } from "src/pol/BGTIncentiveDistributorDeployer.sol";
@@ -57,6 +58,12 @@ abstract contract POLTest is Test, Create2Deployer {
     address internal bgtIncentiveDistributor;
     address internal rewardVaultHelper;
 
+    Salt internal BERA_CHEF_SALT = Salt({ implementation: 0, proxy: 0 });
+    Salt internal BLOCK_REWARD_CONTROLLER_SALT = Salt({ implementation: 0, proxy: 0 });
+    Salt internal DISTRIBUTOR_SALT = Salt({ implementation: 0, proxy: 0 });
+    Salt internal REWARDS_FACTORY_SALT = Salt({ implementation: 0, proxy: 0 });
+    uint256 internal constant REWARD_VAULT_SALT = 0;
+
     /// @dev A function invoked before each test case is run.
     function setUp() public virtual {
         // read in proof data
@@ -93,7 +100,9 @@ abstract contract POLTest is Test, Create2Deployer {
     }
 
     function deployBGTIncentiveDistributor(address owner) internal {
-        BGTIncentiveDistributorDeployer bgtIncentiveDistributorDeployer = new BGTIncentiveDistributorDeployer(owner, 1);
+        Salt memory salt = Salt({ implementation: 0, proxy: 1 });
+        BGTIncentiveDistributorDeployer bgtIncentiveDistributorDeployer =
+            new BGTIncentiveDistributorDeployer(owner, salt);
 
         bgtIncentiveDistributor = address(bgtIncentiveDistributorDeployer.bgtIncentiveDistributor());
 
@@ -103,13 +112,17 @@ abstract contract POLTest is Test, Create2Deployer {
     }
 
     function deployBGTFees(address owner) internal {
-        feeDeployer = new BGTFeeDeployer(address(bgt), owner, address(wbera), 0, 0, PAYOUT_AMOUNT);
+        Salt memory bgtStakerSalt = Salt({ implementation: 0, proxy: 0 });
+        Salt memory feeCollectorSalt = Salt({ implementation: 0, proxy: 0 });
+        feeDeployer =
+            new BGTFeeDeployer(address(bgt), owner, address(wbera), bgtStakerSalt, feeCollectorSalt, PAYOUT_AMOUNT);
         bgtStaker = feeDeployer.bgtStaker();
         feeCollector = feeDeployer.feeCollector();
     }
 
     function deployRewardVaultHelper(address owner) internal {
-        RewardVaultHelperDeployer rewardVaultHelperDeployer = new RewardVaultHelperDeployer(owner, 1);
+        Salt memory salt = Salt({ implementation: 0, proxy: 1 });
+        RewardVaultHelperDeployer rewardVaultHelperDeployer = new RewardVaultHelperDeployer(owner, salt);
         rewardVaultHelper = address(rewardVaultHelperDeployer.rewardVaultHelper());
     }
 
@@ -123,7 +136,15 @@ abstract contract POLTest is Test, Create2Deployer {
         // set the operator of the validator.
         BeaconDepositMock(beaconDepositContract).setOperator(valData.pubkey, operator);
 
-        polDeployer = new POLDeployer(address(bgt), owner, 0, 0, 0, 0);
+        polDeployer = new POLDeployer(
+            address(bgt),
+            owner,
+            BERA_CHEF_SALT,
+            BLOCK_REWARD_CONTROLLER_SALT,
+            DISTRIBUTOR_SALT,
+            REWARDS_FACTORY_SALT,
+            REWARD_VAULT_SALT
+        );
         beraChef = polDeployer.beraChef();
         blockRewardController = polDeployer.blockRewardController();
         factory = polDeployer.rewardVaultFactory();

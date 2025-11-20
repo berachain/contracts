@@ -2,6 +2,7 @@
 pragma solidity 0.8.26;
 
 import { Create2Deployer } from "../base/Create2Deployer.sol";
+import { Salt } from "../base/Salt.sol";
 import { WBERAStakerVaultWithdrawalRequest } from "./WBERAStakerVaultWithdrawalRequest.sol";
 
 /// @title WBERAStakerWithdrawReqDeployer
@@ -14,13 +15,14 @@ contract WBERAStakerWithdrawReqDeployer is Create2Deployer {
     /// @notice The WBERAStakerVaultWithdrawalRequest contract.
     WBERAStakerVaultWithdrawalRequest public immutable wberaStakerVaultWithdrawalRequest;
 
-    constructor(address governance, address wberaStakerVault, uint256 wberaStakerVaultWithdrawalRequestSalt) {
+    constructor(address governance, address wberaStakerVault, Salt memory wberaStakerVaultWithdrawalRequestSalt) {
         // deploy the WBERAStakerVaultWithdrawalRequest implementation
-        wberaStakerVaultWithdrawalRequestImpl =
-            deployWithCreate2(0, type(WBERAStakerVaultWithdrawalRequest).creationCode);
+        wberaStakerVaultWithdrawalRequestImpl = deployWithCreate2(
+            wberaStakerVaultWithdrawalRequestSalt.implementation, type(WBERAStakerVaultWithdrawalRequest).creationCode
+        );
         // deploy the WBERAStakerVaultWithdrawalRequest proxy
         wberaStakerVaultWithdrawalRequest = WBERAStakerVaultWithdrawalRequest(
-            deployProxyWithCreate2(wberaStakerVaultWithdrawalRequestImpl, wberaStakerVaultWithdrawalRequestSalt)
+            deployProxyWithCreate2(wberaStakerVaultWithdrawalRequestImpl, wberaStakerVaultWithdrawalRequestSalt.proxy)
         );
         // initialize the contract
         wberaStakerVaultWithdrawalRequest.initialize(governance, wberaStakerVault);

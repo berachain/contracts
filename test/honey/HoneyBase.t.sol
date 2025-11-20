@@ -5,6 +5,7 @@ import { StdCheats } from "forge-std/StdCheats.sol";
 import { SoladyTest } from "solady/test/utils/SoladyTest.sol";
 
 import { Create2Deployer } from "src/base/Create2Deployer.sol";
+import { Salt } from "src/base/Salt.sol";
 import { PythPriceOracle } from "src/extras/PythPriceOracle.sol";
 import { Honey } from "src/honey/Honey.sol";
 import { CollateralVault } from "src/honey/CollateralVault.sol";
@@ -49,6 +50,10 @@ abstract contract HoneyBaseTest is StdCheats, SoladyTest, Create2Deployer {
 
     HoneyFactoryReader internal factoryReader;
 
+    Salt internal _honeySalt = Salt({ implementation: 0, proxy: 0 });
+    Salt internal _honeyFactorySalt = Salt({ implementation: 0, proxy: 1 });
+    Salt internal _honeyFactoryReaderSalt = Salt({ implementation: 0, proxy: 0 });
+
     /// @dev A function invoked before each test case is run.
     function setUp() public virtual {
         address _pythPriceOracleImpl = deployWithCreate2(256, type(PythPriceOracle).creationCode);
@@ -65,7 +70,15 @@ abstract contract HoneyBaseTest is StdCheats, SoladyTest, Create2Deployer {
         oracle.setPriceFeed(address(dai), daiFeed);
         pyth.setData(usdtFeed, int64(99_993_210), uint64(31_155), int32(-8), block.timestamp);
         oracle.setPriceFeed(address(usdt), usdtFeed);
-        HoneyDeployer deployer = new HoneyDeployer(governance, polFeeCollector, feeReceiver, 0, 1, 0, address(oracle));
+        HoneyDeployer deployer = new HoneyDeployer(
+            governance,
+            polFeeCollector,
+            feeReceiver,
+            _honeySalt,
+            _honeyFactorySalt,
+            _honeyFactoryReaderSalt,
+            address(oracle)
+        );
         honey = deployer.honey();
         factory = deployer.honeyFactory();
         factoryReader = deployer.honeyFactoryReader();

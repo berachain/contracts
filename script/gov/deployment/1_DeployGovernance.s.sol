@@ -4,14 +4,12 @@ pragma solidity 0.8.26;
 import { console2 } from "forge-std/Script.sol";
 import { IERC20 } from "forge-std/interfaces/IERC20.sol";
 import { GovDeployer } from "src/gov/GovDeployer.sol";
-import { BerachainGovernance, InitialGovernorParameters } from "src/gov/BerachainGovernance.sol";
+import { BerachainGovernance } from "src/gov/BerachainGovernance.sol";
 import { TimeLock } from "src/gov/TimeLock.sol";
 import { BaseScript } from "../../base/Base.s.sol";
-import { GOVERNANCE_SALT, TIMELOCK_SALT } from "../GovernanceSalts.sol";
-import { BGT_ADDRESS } from "../../pol/POLAddresses.sol";
-import { GOVERNANCE_ADDRESS, TIMELOCK_ADDRESS } from "../GovernanceAddresses.sol";
+import { AddressBook } from "../../base/AddressBook.sol";
 
-contract DeployGovernance is BaseScript {
+contract DeployGovernanceScript is BaseScript, AddressBook {
     // Placeholder. Change before deployment
     /// @notice The guardian multi-sig, if any
     /// @dev If address(0) the deployer will not grant the canceler role
@@ -30,28 +28,32 @@ contract DeployGovernance is BaseScript {
     /// @notice Time duration of the enforced time-lock
     uint256 public constant TIMELOCK_MIN_DELAY = 2 days;
 
+    constructor() AddressBook(_chainType) { }
+
     function run() public broadcast {
-        _validateCode("BGT", BGT_ADDRESS);
+        _validateCode("BGT", _polAddresses.bgt);
         require(GOV_GUARDIAN != address(0), "GOV_GUARDIAN must be set");
 
         GovDeployer govDeployer = new GovDeployer(
-            BGT_ADDRESS,
+            _polAddresses.bgt,
             GOV_GUARDIAN,
             GOV_PROPOSAL_THRESHOLD,
             GOV_VOTING_DELAY,
             GOV_VOTING_PERIOD,
             GOV_QUORUM_NUMERATOR,
             TIMELOCK_MIN_DELAY,
-            GOVERNANCE_SALT,
-            TIMELOCK_SALT
+            _saltsForProxy(type(BerachainGovernance).creationCode),
+            _saltsForProxy(type(TimeLock).creationCode)
         );
-        _checkDeploymentAddress("Governance", govDeployer.GOVERNOR(), GOVERNANCE_ADDRESS);
-        _checkDeploymentAddress("Governance timelock", govDeployer.TIMELOCK_CONTROLLER(), TIMELOCK_ADDRESS);
+        _checkDeploymentAddress("Governance", govDeployer.GOVERNOR(), _governanceAddresses.governance);
+        _checkDeploymentAddress(
+            "Governance timelock", govDeployer.TIMELOCK_CONTROLLER(), _governanceAddresses.timelock
+        );
 
         BerachainGovernance gov = BerachainGovernance(payable(govDeployer.GOVERNOR()));
-        require(address(gov.token()) == BGT_ADDRESS, "Governance token address mismatch");
-        require(address(gov.timelock()) == TIMELOCK_ADDRESS, "Governance timelock address mismatch");
-        uint256 threshold = GOV_PROPOSAL_THRESHOLD * 10 ** IERC20(BGT_ADDRESS).decimals();
+        require(address(gov.token()) == _polAddresses.bgt, "Governance token address mismatch");
+        require(address(gov.timelock()) == _governanceAddresses.timelock, "Governance timelock address mismatch");
+        uint256 threshold = GOV_PROPOSAL_THRESHOLD * 10 ** IERC20(_polAddresses.bgt).decimals();
         require(gov.proposalThreshold() == threshold, "Governance proposal threshold mismatch");
         require(gov.votingDelay() == GOV_VOTING_DELAY, "Governance voting delay mismatch");
         require(gov.votingPeriod() == GOV_VOTING_PERIOD, "Governance voting period mismatch");
@@ -61,8 +63,12 @@ contract DeployGovernance is BaseScript {
         require(timelock.getMinDelay() == TIMELOCK_MIN_DELAY, "Timelock min delay mismatch");
         require(timelock.hasRole(timelock.CANCELLER_ROLE(), GOV_GUARDIAN), "Timelock guardian mismatch");
         require(!timelock.hasRole(timelock.CANCELLER_ROLE(), address(govDeployer)), "Timelock guardian mismatch");
-        require(timelock.hasRole(timelock.PROPOSER_ROLE(), GOVERNANCE_ADDRESS), "Timelock proposer mismatch");
-        require(timelock.hasRole(timelock.EXECUTOR_ROLE(), GOVERNANCE_ADDRESS), "Timelock executor mismatch");
+        require(
+            timelock.hasRole(timelock.PROPOSER_ROLE(), _governanceAddresses.governance), "Timelock proposer mismatch"
+        );
+        require(
+            timelock.hasRole(timelock.EXECUTOR_ROLE(), _governanceAddresses.governance), "Timelock executor mismatch"
+        );
 
         console2.log("Please provide the needed roles/permissions to the TimeLock contract");
     }

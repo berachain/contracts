@@ -3,7 +3,6 @@ pragma solidity 0.8.26;
 
 import { console2 } from "forge-std/console2.sol";
 import { BaseScript } from "../../base/Base.s.sol";
-import { IERC20 } from "forge-std/interfaces/IERC20.sol";
 import { RewardVault } from "src/pol/rewards/RewardVault.sol";
 
 /// @notice Whitelist incentive tokens for a reward vault.

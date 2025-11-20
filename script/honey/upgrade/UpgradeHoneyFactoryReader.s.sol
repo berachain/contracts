@@ -2,26 +2,26 @@
 pragma solidity 0.8.26;
 
 import { console2 } from "forge-std/Script.sol";
-import { BaseScript } from "../../base/Base.s.sol";
-import { Create2Deployer } from "src/base/Create2Deployer.sol";
+import { BaseDeployScript } from "../../base/BaseDeploy.s.sol";
+import { AddressBook } from "../../base/AddressBook.sol";
 import { HoneyFactoryReader } from "src/honey/HoneyFactoryReader.sol";
-import { HONEY_FACTORY_READER_ADDRESS, HONEY_FACTORY_READER_IMPL } from "../HoneyAddresses.sol";
 
-contract DeployHoneyFactoryReaderImplScript is BaseScript, Create2Deployer {
+contract DeployHoneyFactoryReaderImplScript is BaseDeployScript, AddressBook {
+    constructor() AddressBook(_chainType) { }
+
     function run() public broadcast {
-        address newHoneyFactoryImpl = deployWithCreate2(0, type(HoneyFactoryReader).creationCode);
-        require(newHoneyFactoryImpl == HONEY_FACTORY_READER_IMPL, "implementation not deployed at desired address");
-        console2.log("HoneyFactoryReader implementation deployed successfully");
-        console2.log("HoneyFactoryReader implementation address:", newHoneyFactoryImpl);
+        _deploy("HoneyFactoryReader", type(HoneyFactoryReader).creationCode, _honeyAddresses.honeyFactoryReaderImpl);
     }
 
     /// @dev This function is only for testnet or test purposes.
     function upgradeToTestnet() public broadcast {
-        console2.log("New HoneyFactoryReader implementation address:", HONEY_FACTORY_READER_IMPL);
-        _validateCode("HoneyFactoryReader", HONEY_FACTORY_READER_IMPL);
+        console2.log("New HoneyFactoryReader implementation address:", _honeyAddresses.honeyFactoryReaderImpl);
+        _validateCode("HoneyFactoryReader", _honeyAddresses.honeyFactoryReaderImpl);
 
         bytes memory callSignature;
-        HoneyFactoryReader(HONEY_FACTORY_READER_ADDRESS).upgradeToAndCall(HONEY_FACTORY_READER_IMPL, callSignature);
+        HoneyFactoryReader(_honeyAddresses.honeyFactoryReader).upgradeToAndCall(
+            _honeyAddresses.honeyFactoryReaderImpl, callSignature
+        );
         console2.log("HoneyFactoryReader upgraded successfully");
     }
 }

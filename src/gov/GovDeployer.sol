@@ -6,6 +6,7 @@ import { IVotes } from "@openzeppelin/contracts/governance/utils/IVotes.sol";
 import { TimelockControllerUpgradeable } from "@openzeppelin-gov/TimelockControllerUpgradeable.sol";
 
 import { Create2Deployer } from "../base/Create2Deployer.sol";
+import { Salt } from "../base/Salt.sol";
 import { BerachainGovernance, InitialGovernorParameters } from "./BerachainGovernance.sol";
 import { TimeLock } from "./TimeLock.sol";
 
@@ -36,8 +37,8 @@ contract GovDeployer is Create2Deployer {
         uint256 votingPeriod,
         uint256 quorumNumeratorValue,
         uint256 timelockMinDelay,
-        uint256 govSalt,
-        uint256 timelockSalt
+        Salt memory govSalt,
+        Salt memory timelockSalt
     ) {
         // Check if the token implements ERC20Votes and ERC20 metadata
         _checkIfERC20Votes(token);
@@ -79,9 +80,9 @@ contract GovDeployer is Create2Deployer {
      * @param salt The salt value.
      * @return proxy The address of the deployed proxy.
      */
-    function _deploy(bytes memory creationCode, uint256 salt) internal returns (address payable proxy) {
-        address impl = deployWithCreate2(salt, creationCode);
-        proxy = payable(deployProxyWithCreate2(impl, salt));
+    function _deploy(bytes memory creationCode, Salt memory salt) internal returns (address payable proxy) {
+        address impl = deployWithCreate2(salt.implementation, creationCode);
+        proxy = payable(deployProxyWithCreate2(impl, salt.proxy));
     }
 
     /**

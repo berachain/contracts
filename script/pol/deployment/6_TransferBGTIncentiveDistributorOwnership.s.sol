@@ -4,11 +4,12 @@ pragma solidity 0.8.26;
 import { console2 } from "forge-std/Script.sol";
 import { BaseScript } from "../../base/Base.s.sol";
 import { RBAC } from "../../base/RBAC.sol";
-import { TIMELOCK_ADDRESS } from "../../gov/GovernanceAddresses.sol";
-import { BGT_INCENTIVE_DISTRIBUTOR_ADDRESS } from "../POLAddresses.sol";
 import "../../base/Storage.sol";
+import { AddressBook } from "../../base/AddressBook.sol";
 
-contract TransferBGTIncentiveDistributorOwnershipScript is RBAC, BaseScript, Storage {
+contract TransferBGTIncentiveDistributorOwnershipScript is RBAC, BaseScript, Storage, AddressBook {
+    constructor() AddressBook(_chainType) { }
+
     // Placholder. Change before running the script.
     address internal constant NEW_OWNER = address(0); // TIMELOCK_ADDRESS;
 
@@ -17,7 +18,7 @@ contract TransferBGTIncentiveDistributorOwnershipScript is RBAC, BaseScript, Sto
         require(NEW_OWNER != address(0), "NEW_OWNER must be set");
 
         // create contracts instance from deployed addresses
-        if (NEW_OWNER == TIMELOCK_ADDRESS) {
+        if (NEW_OWNER == _governanceAddresses.timelock) {
             _validateCode("TimeLock", NEW_OWNER);
         }
         _loadStorageContracts();
@@ -29,19 +30,19 @@ contract TransferBGTIncentiveDistributorOwnershipScript is RBAC, BaseScript, Sto
     function transferBGTIncentiveDistributorOwnership() internal {
         RBAC.RoleDescription memory bgtIncentiveDistributorAdminRole = RBAC.RoleDescription({
             contractName: "BGTIncentiveDistributor",
-            contractAddr: BGT_INCENTIVE_DISTRIBUTOR_ADDRESS,
+            contractAddr: _polAddresses.bgtIncentiveDistributor,
             name: "DEFAULT_ADMIN_ROLE",
             role: bgtIncentiveDistributor.DEFAULT_ADMIN_ROLE()
         });
         RBAC.RoleDescription memory bgtIncentiveDistributorManagerRole = RBAC.RoleDescription({
             contractName: "BGTIncentiveDistributor",
-            contractAddr: BGT_INCENTIVE_DISTRIBUTOR_ADDRESS,
+            contractAddr: _polAddresses.bgtIncentiveDistributor,
             name: "MANAGER_ROLE",
             role: bgtIncentiveDistributor.MANAGER_ROLE()
         });
         RBAC.RoleDescription memory bgtIncentiveDistributorPauserRole = RBAC.RoleDescription({
             contractName: "BGTIncentiveDistributor",
-            contractAddr: BGT_INCENTIVE_DISTRIBUTOR_ADDRESS,
+            contractAddr: _polAddresses.bgtIncentiveDistributor,
             name: "PAUSER_ROLE",
             role: bgtIncentiveDistributor.PAUSER_ROLE()
         });
@@ -55,7 +56,7 @@ contract TransferBGTIncentiveDistributorOwnershipScript is RBAC, BaseScript, Sto
     }
 
     function _loadStorageContracts() internal {
-        _validateCode("BGTIncentiveDistributor", BGT_INCENTIVE_DISTRIBUTOR_ADDRESS);
-        bgtIncentiveDistributor = BGTIncentiveDistributor(BGT_INCENTIVE_DISTRIBUTOR_ADDRESS);
+        _validateCode("BGTIncentiveDistributor", _polAddresses.bgtIncentiveDistributor);
+        bgtIncentiveDistributor = BGTIncentiveDistributor(_polAddresses.bgtIncentiveDistributor);
     }
 }

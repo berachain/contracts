@@ -7,11 +7,13 @@ import { Storage } from "../../base/Storage.sol";
 import { UpgradeableBeacon } from "solady/src/utils/UpgradeableBeacon.sol";
 import { RewardVaultFactory } from "src/pol/rewards/RewardVaultFactory.sol";
 import { RewardVault } from "src/pol/rewards/RewardVault.sol";
-import { REWARD_VAULT_FACTORY_ADDRESS } from "../POLAddresses.sol";
+import { AddressBook } from "../../base/AddressBook.sol";
 
-contract UpgradeRewardVaults is BaseScript, Storage {
+contract UpgradeRewardVaults is BaseScript, Storage, AddressBook {
+    constructor() AddressBook(_chainType) { }
+
     function run() public virtual broadcast {
-        rewardVaultFactory = RewardVaultFactory(REWARD_VAULT_FACTORY_ADDRESS);
+        rewardVaultFactory = RewardVaultFactory(_polAddresses.rewardVaultFactory);
         upgradeRewardVaults(rewardVaultFactory);
     }
 

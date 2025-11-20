@@ -2,13 +2,14 @@
 pragma solidity 0.8.26;
 
 import { console2 } from "forge-std/Script.sol";
-import { BaseScript } from "../../base/Base.s.sol";
-import { Create2Deployer } from "src/base/Create2Deployer.sol";
+import { BaseDeployScript } from "../../base/BaseDeploy.s.sol";
 import { Distributor } from "src/pol/rewards/Distributor.sol";
 
-import { DISTRIBUTOR_ADDRESS } from "../POLAddresses.sol";
+import { AddressBook } from "../../base/AddressBook.sol";
 
-contract UpgradeDistributorScript is BaseScript, Create2Deployer {
+contract UpgradeDistributorScript is BaseDeployScript, AddressBook {
+    constructor() AddressBook(_chainType) { }
+
     function run() public pure {
         console2.log("Please run specific function.");
     }
@@ -22,11 +23,11 @@ contract UpgradeDistributorScript is BaseScript, Create2Deployer {
     function upgradeToAndCallTestnet(bytes memory callSignature) public broadcast {
         address newDistributorImpl = _deployNewImplementation();
         console2.log("New Distributor implementation address:", newDistributorImpl);
-        Distributor(DISTRIBUTOR_ADDRESS).upgradeToAndCall(newDistributorImpl, callSignature);
+        Distributor(_polAddresses.distributor).upgradeToAndCall(newDistributorImpl, callSignature);
         console2.log("Distributor upgraded successfully");
     }
 
     function _deployNewImplementation() internal returns (address) {
-        return deployWithCreate2(0, type(Distributor).creationCode);
+        return _deploy("Distributor", type(Distributor).creationCode, _polAddresses.distributorImpl);
     }
 }

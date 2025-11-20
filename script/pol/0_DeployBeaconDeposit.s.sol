@@ -4,11 +4,10 @@ pragma solidity 0.8.26;
 import { console2 } from "forge-std/console2.sol";
 import { BaseScript } from "../base/Base.s.sol";
 import { BeaconDeposit } from "src/pol/BeaconDeposit.sol";
-import { Create2Deployer } from "src/base/Create2Deployer.sol";
 
 /// @dev Only for local deployment
 /// @dev This contract is deployed during genesis, it doesn't need to be deployed
-contract DeployBeaconDepositScript is BaseScript, Create2Deployer {
+contract DeployBeaconDepositScript is BaseScript {
     function run() public pure {
         console2.log("This is a genesis contract, it doesn't need to be deployed");
     }

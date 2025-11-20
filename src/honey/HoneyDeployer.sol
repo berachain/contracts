@@ -3,6 +3,7 @@ pragma solidity 0.8.26;
 
 import { UpgradeableBeacon } from "solady/src/utils/UpgradeableBeacon.sol";
 import { Create2Deployer } from "../base/Create2Deployer.sol";
+import { Salt } from "../base/Salt.sol";
 import { Honey } from "./Honey.sol";
 import { HoneyFactory } from "./HoneyFactory.sol";
 import { HoneyFactoryReader } from "./HoneyFactoryReader.sol";
@@ -27,28 +28,30 @@ contract HoneyDeployer is Create2Deployer {
         address governance,
         address polFeeCollector,
         address feeReceiver,
-        uint256 honeySalt,
-        uint256 honeyFactorySalt,
-        uint256 honeyFactoryReaderSalt,
+        Salt memory honeySalt,
+        Salt memory honeyFactorySalt,
+        Salt memory honeyFactoryReaderSalt,
         address priceOracle
     ) {
         // deploy the beacon
         address beacon = address(new UpgradeableBeacon(governance, address(new CollateralVault())));
 
         // deploy the Honey implementation
-        address honeyImpl = deployWithCreate2(0, type(Honey).creationCode);
+        address honeyImpl = deployWithCreate2(honeySalt.implementation, type(Honey).creationCode);
         // deploy the Honey proxy
-        honey = Honey(deployProxyWithCreate2(honeyImpl, honeySalt));
+        honey = Honey(deployProxyWithCreate2(honeyImpl, honeySalt.proxy));
 
         // deploy the HoneyFactory implementation
-        address honeyFactoryImpl = deployWithCreate2(0, type(HoneyFactory).creationCode);
+        address honeyFactoryImpl = deployWithCreate2(honeyFactorySalt.implementation, type(HoneyFactory).creationCode);
         // deploy the HoneyFactory proxy
-        honeyFactory = HoneyFactory(deployProxyWithCreate2(honeyFactoryImpl, honeyFactorySalt));
+        honeyFactory = HoneyFactory(deployProxyWithCreate2(honeyFactoryImpl, honeyFactorySalt.proxy));
 
         // deploy the HoneyFactoryReader implementation
-        address honeyFactoryReaderImpl = deployWithCreate2(0, type(HoneyFactoryReader).creationCode);
+        address honeyFactoryReaderImpl =
+            deployWithCreate2(honeyFactoryReaderSalt.implementation, type(HoneyFactoryReader).creationCode);
         // Deploy the HoneyFactoryReader proxy
-        honeyFactoryReader = HoneyFactoryReader(deployProxyWithCreate2(honeyFactoryReaderImpl, honeyFactoryReaderSalt));
+        honeyFactoryReader =
+            HoneyFactoryReader(deployProxyWithCreate2(honeyFactoryReaderImpl, honeyFactoryReaderSalt.proxy));
 
         // initialize the contracts
         honey.initialize(governance, address(honeyFactory));

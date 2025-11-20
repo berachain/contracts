@@ -3,13 +3,12 @@ pragma solidity 0.8.26;
 
 import { console2 } from "forge-std/Script.sol";
 import { BaseScript } from "../../base/Base.s.sol";
-import { RewardVault } from "src/pol/rewards/RewardVault.sol";
 import { RewardVaultFactory } from "src/pol/rewards/RewardVaultFactory.sol";
 import { Storage } from "../../base/Storage.sol";
-import { REWARD_VAULT_FACTORY_ADDRESS } from "../POLAddresses.sol";
+import { AddressBook } from "../../base/AddressBook.sol";
 
 /// @notice Deploy the reward vaults for the given staking tokens
-contract DeployRewardVaultScript is BaseScript, Storage {
+contract DeployRewardVaultScript is BaseScript, Storage, AddressBook {
     // Placeholder. Staking tokens to deploy reward vaults for.
     address internal constant LP_BERA_HONEY = address(0);
     address internal constant LP_BERA_ETH = address(0);
@@ -20,9 +19,11 @@ contract DeployRewardVaultScript is BaseScript, Storage {
     // Placeholder. Change before running the script.
     address[] internal STAKING_TOKENS = [LP_BERA_HONEY, LP_BERA_ETH, LP_BERA_WBTC, LP_USDC_HONEY, LP_BEE_HONEY];
 
+    constructor() AddressBook(_chainType) { }
+
     function run() public virtual broadcast {
-        _validateCode("RewardVaultFactory", REWARD_VAULT_FACTORY_ADDRESS);
-        rewardVaultFactory = RewardVaultFactory(REWARD_VAULT_FACTORY_ADDRESS);
+        _validateCode("RewardVaultFactory", _polAddresses.rewardVaultFactory);
+        rewardVaultFactory = RewardVaultFactory(_polAddresses.rewardVaultFactory);
         deployRewardVaults(STAKING_TOKENS);
     }
 

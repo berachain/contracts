@@ -2,13 +2,12 @@
 pragma solidity 0.8.26;
 
 import { Script, console2 } from "forge-std/Script.sol";
+import { ChainHelper, ChainType } from "./Chain.sol";
+import { DeployHelper } from "src/base/DeployHelper.sol";
 
-abstract contract BaseScript is Script {
+abstract contract BaseScript is DeployHelper, Script {
     /// @dev Included to enable compilation of the script without a $MNEMONIC environment variable.
     string internal constant TEST_MNEMONIC = "test test test test test test test test test test test junk";
-
-    /// @dev Needed for the deterministic deployments.
-    bytes32 internal constant ZERO_SALT = bytes32(0);
 
     /// @dev The address of the transaction broadcaster.
     address internal _broadcaster;
@@ -19,11 +18,11 @@ abstract contract BaseScript is Script {
     /// @dev Used to derive the broadcaster's address if $ETH_FROM is not defined.
     string internal _mnemonic;
 
-    /// @dev Used to determine if the script is running on the testnet.
-    bool internal _isTestnet;
-
     /// @dev Used to determine if the transactions can be signed without using an external hardware wallet.
     bool internal _useSoftwareWallet;
+
+    /// @dev Used to determine the chain environment type in which the script is running.
+    ChainType internal _chainType;
 
     /// @dev Initializes the transaction broadcaster like this:
     ///
@@ -33,11 +32,14 @@ abstract contract BaseScript is Script {
     ///
     /// The use case is to specify the broadcaster via the command line.
     constructor() {
-        _isTestnet = vm.envOr({ name: "IS_TESTNET", defaultValue: true });
+        _chainType = ChainHelper.getType();
+        console2.log("INFO: %s environment (Chain ID: %s)", ChainHelper.getLabel(_chainType), block.chainid);
+
+        _setPepper(_readPepper());
+
         _useSoftwareWallet = vm.envOr({ name: "USE_SOFTWARE_WALLET", defaultValue: false });
 
         _broadcaster = _envAddress("ETH_FROM");
-
         if (_broadcaster == address(0)) {
             _mnemonic = vm.envOr({ name: "MNEMONIC", defaultValue: TEST_MNEMONIC });
             (_broadcaster, _broadcasterPrivateKey) = deriveRememberKey({ mnemonic: _mnemonic, index: 0 });
@@ -51,7 +53,6 @@ abstract contract BaseScript is Script {
     }
 
     modifier broadcast() {
-        console2.log("Is testnet: ", _isTestnet);
         console2.log("Using hardware wallet: ", !_useSoftwareWallet);
         console2.log("Broadcaster address: ", msg.sender);
 
@@ -81,6 +82,15 @@ abstract contract BaseScript is Script {
         require(value != 0, string.concat("Missing private key in env: ", key));
     }
 
+    /// @notice Read a string from the environment.
+    /// @dev The string may be empty or the key missing.
+    function _envString(string memory key) internal view returns (string memory value) {
+        // NOTE: the default value is stored in a typed variable because the compilation of vm.envOr fails to recognize
+        // the "" tokens as a string type when used directly in the call.
+        string memory defaultValue = "";
+        value = vm.envOr(key, defaultValue);
+    }
+
     function _checkDeploymentAddress(string memory contractName, address deployed, address predicted) internal pure {
         string memory deployedStr = string.concat(contractName, " deployed at: ");
         console2.log(deployedStr, deployed);
@@ -89,5 +99,13 @@ abstract contract BaseScript is Script {
 
     function _validateCode(string memory contractName, address contractAddress) internal view {
         require(contractAddress.code.length > 0, string.concat(contractName, ": invalid code at this address"));
+    }
+
+    function _readPepper() private view returns (string memory value) {
+        value = _envString("BERACHAIN_DEPLOY_PEPPER");
+
+        if (bytes(value).length == 0) {
+            console2.log("WARNING: missing cryptographic pepper");
+        }
     }
 }

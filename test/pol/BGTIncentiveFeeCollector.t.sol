@@ -10,16 +10,16 @@ import { PausableUpgradeable } from "@openzeppelin/contracts-upgradeable/utils/P
 
 import { DistributorTest } from "./Distributor.t.sol";
 import { MockERC20 } from "../mock/token/MockERC20.sol";
+import { Salt } from "src/base/Salt.sol";
 import { BGTIncentiveFeeDeployer } from "src/pol/BGTIncentiveFeeDeployer.sol";
 import { BGTIncentiveFeeCollector } from "src/pol/BGTIncentiveFeeCollector.sol";
 import { IBGTIncentiveFeeCollector, IPOLErrors } from "src/pol/interfaces/IBGTIncentiveFeeCollector.sol";
-import {
-    BGT_INCENTIVE_FEE_DEPLOYER_SALT,
-    WBERA_STAKER_VAULT_SALT,
-    BGT_INCENTIVE_FEE_COLLECTOR_SALT
-} from "script/pol/POLSalts.sol";
 
 contract BGTIncentiveFeeCollectorTest is DistributorTest {
+    Salt public BGT_INCENTIVE_FEE_DEPLOYER_SALT = Salt({ implementation: 0, proxy: 1 });
+    Salt public WBERA_STAKER_VAULT_SALT = Salt({ implementation: 0, proxy: 1 });
+    Salt public BGT_INCENTIVE_FEE_COLLECTOR_SALT = Salt({ implementation: 0, proxy: 1 });
+
     bytes32 internal pauserRole;
     address internal pauser = makeAddr("pauser");
 
@@ -36,7 +36,7 @@ contract BGTIncentiveFeeCollectorTest is DistributorTest {
         deal(address(wbera), address(this), 10 ether);
 
         address bgtIncentiveFeeDeployer = getCreate2AddressWithArgs(
-            BGT_INCENTIVE_FEE_DEPLOYER_SALT,
+            BGT_INCENTIVE_FEE_DEPLOYER_SALT.implementation,
             type(BGTIncentiveFeeDeployer).creationCode,
             abi.encode(
                 governance, address(this), PAYOUT_AMOUNT, WBERA_STAKER_VAULT_SALT, BGT_INCENTIVE_FEE_COLLECTOR_SALT
@@ -236,7 +236,7 @@ contract BGTIncentiveFeeCollectorTest is DistributorTest {
     function _deployBGTIncentiveFee() internal {
         BGTIncentiveFeeDeployer bgtIncentiveFeeDeployer = BGTIncentiveFeeDeployer(
             deployWithCreate2WithArgs(
-                BGT_INCENTIVE_FEE_DEPLOYER_SALT,
+                BGT_INCENTIVE_FEE_DEPLOYER_SALT.implementation,
                 type(BGTIncentiveFeeDeployer).creationCode,
                 abi.encode(
                     governance, address(this), PAYOUT_AMOUNT, WBERA_STAKER_VAULT_SALT, BGT_INCENTIVE_FEE_COLLECTOR_SALT

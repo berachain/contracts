@@ -3,15 +3,14 @@ pragma solidity 0.8.26;
 
 import { console2 } from "forge-std/console2.sol";
 import { BaseScript } from "../../base/Base.s.sol";
-import { RewardVault } from "src/pol/rewards/RewardVault.sol";
 import { BeraChef } from "src/pol/rewards/BeraChef.sol";
 import { IBeraChef } from "src/pol/interfaces/IBeraChef.sol";
 import { Storage } from "../../base/Storage.sol";
-import { BERACHEF_ADDRESS } from "../POLAddresses.sol";
+import { AddressBook } from "../../base/AddressBook.sol";
 
 /// @notice Set default reward allocation.
 /// @dev This actions can be run only by an account with ADMIN role.
-contract WhitelistIncentiveTokenScript is BaseScript, Storage {
+contract WhitelistIncentiveTokenScript is BaseScript, Storage, AddressBook {
     // Placeholder. Default reward allocation vault addresses and weights.
     // BERA-HONEY 35%
     address internal constant REWARD_VAULT_BERA_HONEY = address(0);
@@ -47,9 +46,11 @@ contract WhitelistIncentiveTokenScript is BaseScript, Storage {
         REWARD_VAULT_BEE_HONEY_WEIGHT
     ];
 
+    constructor() AddressBook(_chainType) { }
+
     function run() public virtual broadcast {
-        _validateCode("BeraChef", BERACHEF_ADDRESS);
-        beraChef = BeraChef(BERACHEF_ADDRESS);
+        _validateCode("BeraChef", _polAddresses.beraChef);
+        beraChef = BeraChef(_polAddresses.beraChef);
 
         setDefaultRewardAllocation(REWARD_VAULTS, REWARD_VAULT_WEIGHTS);
     }

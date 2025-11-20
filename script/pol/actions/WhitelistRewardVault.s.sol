@@ -5,11 +5,11 @@ import { console2 } from "forge-std/Script.sol";
 import { BaseScript } from "../../base/Base.s.sol";
 import { BeraChef } from "src/pol/rewards/BeraChef.sol";
 import { Storage } from "../../base/Storage.sol";
-import { BERACHEF_ADDRESS } from "../POLAddresses.sol";
+import { AddressBook } from "../../base/AddressBook.sol";
 
 /// @notice Whitelist given reward vaults
 /// @dev This actions can be run only by an account with ADMIN role
-contract WhitelistRewardVaultScript is BaseScript, Storage {
+contract WhitelistRewardVaultScript is BaseScript, Storage, AddressBook {
     // Placeholder. Reward vault addresses to whitelist and metadata.
     // METADATAs are used from indexer to save and then display the vault's informations.
     // TDB: Format of METADATA (can be empty string)
@@ -44,9 +44,11 @@ contract WhitelistRewardVaultScript is BaseScript, Storage {
         REWARD_VAULT_USDS_HONEY_METADATA
     ];
 
+    constructor() AddressBook(_chainType) { }
+
     function run() public virtual broadcast {
-        _validateCode("BeraChef", BERACHEF_ADDRESS);
-        beraChef = BeraChef(BERACHEF_ADDRESS);
+        _validateCode("BeraChef", _polAddresses.beraChef);
+        beraChef = BeraChef(_polAddresses.beraChef);
 
         whitelistRewardVaults(REWARD_VAULTS, REWARD_VAULTS_METADATA);
     }

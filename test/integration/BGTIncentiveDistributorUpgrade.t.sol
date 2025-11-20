@@ -9,6 +9,7 @@ import { IPOLErrors } from "src/pol/interfaces/IPOLErrors.sol";
 import { BeraChef } from "src/pol/rewards/BeraChef.sol";
 import { IBeraChef } from "src/pol/interfaces/IBeraChef.sol";
 import { Create2Deployer } from "src/base/Create2Deployer.sol";
+import { Salt } from "src/base/Salt.sol";
 import { RewardVault } from "src/pol/rewards/RewardVault.sol";
 import { IDistributor } from "src/pol/interfaces/IDistributor.sol";
 import { MockHoney } from "../mock/honey/MockHoney.sol";
@@ -16,19 +17,13 @@ import { RewardVaultFactory } from "src/pol/rewards/RewardVaultFactory.sol";
 import { BGTIncentiveDistributor } from "src/pol/rewards/BGTIncentiveDistributor.sol";
 import { BGTIncentiveDistributorDeployer } from "src/pol/BGTIncentiveDistributorDeployer.sol";
 
-import {
-    BGT_ADDRESS,
-    BERACHEF_ADDRESS,
-    DISTRIBUTOR_ADDRESS,
-    BEACON_DEPOSIT_ADDRESS,
-    REWARD_VAULT_FACTORY_ADDRESS,
-    BGT_INCENTIVE_DISTRIBUTOR_ADDRESS
-} from "script/pol/POLAddresses.sol";
-
-import { BGT_INCENTIVE_DISTRIBUTOR_SALT } from "script/pol/POLSalts.sol";
+import { ChainType } from "script/base/Chain.sol";
+import { AddressBook } from "script/base/AddressBook.sol";
 
 /// @title BGTIncentiveDistributorUpgradeTest
-contract BGTIncentiveDistributorUpgradeTest is Create2Deployer, Test {
+contract BGTIncentiveDistributorUpgradeTest is Create2Deployer, Test, AddressBook {
+    Salt BGT_INCENTIVE_DISTRIBUTOR_SALT = Salt({ implementation: 0, proxy: 2 });
+
     address safeOwner = 0xD13948F99525FB271809F45c268D72a3C00a568D;
     // pubkey of BicroStrategy validator, distribution at block 2286450
     // https://berascan.com/tx/0x16592f3381629cea5ada0b1c6fedf98f92088cbe32430cb6067a0b32aa102610
@@ -39,6 +34,8 @@ contract BGTIncentiveDistributorUpgradeTest is Create2Deployer, Test {
 
     // operator of BicroStrategy validator
     address operator = 0x4595D079A06a9628F8384D7f568A29Cc95a14F1e;
+
+    constructor() AddressBook(ChainType.Mainnet) { }
 
     function setUp() public virtual {
         vm.createSelectFork("berachain");
@@ -68,97 +65,99 @@ contract BGTIncentiveDistributorUpgradeTest is Create2Deployer, Test {
 
         // upgrade the contracts
         vm.startPrank(safeOwner);
-        BeraChef(BERACHEF_ADDRESS).upgradeToAndCall(
+        BeraChef(_polAddresses.beraChef).upgradeToAndCall(
             newBeraChefImpl, abi.encodeCall(BeraChef.setCommissionChangeDelay, 2 * 8191)
         );
-        assertEq(BeraChef(BERACHEF_ADDRESS).commissionChangeDelay(), 2 * 8191);
+        assertEq(BeraChef(_polAddresses.beraChef).commissionChangeDelay(), 2 * 8191);
 
         // make sure no storage collision
-        assertEq(BeraChef(BERACHEF_ADDRESS).distributor(), DISTRIBUTOR_ADDRESS);
-        assertEq(BeraChef(BERACHEF_ADDRESS).factory(), REWARD_VAULT_FACTORY_ADDRESS);
+        assertEq(BeraChef(_polAddresses.beraChef).distributor(), _polAddresses.distributor);
+        assertEq(BeraChef(_polAddresses.beraChef).factory(), _polAddresses.rewardVaultFactory);
 
-        RewardVaultFactory(REWARD_VAULT_FACTORY_ADDRESS).upgradeToAndCall(
+        RewardVaultFactory(_polAddresses.rewardVaultFactory).upgradeToAndCall(
             newRewardVaultFactoryImpl,
             abi.encodeCall(RewardVaultFactory.setBGTIncentiveDistributor, bgtIncentiveDistributor)
         );
-        assertEq(RewardVaultFactory(REWARD_VAULT_FACTORY_ADDRESS).bgtIncentiveDistributor(), bgtIncentiveDistributor);
+        assertEq(
+            RewardVaultFactory(_polAddresses.rewardVaultFactory).bgtIncentiveDistributor(), bgtIncentiveDistributor
+        );
 
         // make sure no storage collision
-        assertEq(RewardVaultFactory(REWARD_VAULT_FACTORY_ADDRESS).bgt(), BGT_ADDRESS);
-        assertEq(RewardVaultFactory(REWARD_VAULT_FACTORY_ADDRESS).distributor(), DISTRIBUTOR_ADDRESS);
+        assertEq(RewardVaultFactory(_polAddresses.rewardVaultFactory).bgt(), _polAddresses.bgt);
+        assertEq(RewardVaultFactory(_polAddresses.rewardVaultFactory).distributor(), _polAddresses.distributor);
 
         // get the beacon from the factory
-        address beacon = RewardVaultFactory(REWARD_VAULT_FACTORY_ADDRESS).beacon();
+        address beacon = RewardVaultFactory(_polAddresses.rewardVaultFactory).beacon();
         UpgradeableBeacon(beacon).upgradeTo(newRewardVaultImpl);
         assertEq(UpgradeableBeacon(beacon).implementation(), newRewardVaultImpl);
         vm.stopPrank();
 
         // deploy a new reward vault to check no storage collision
         address stakingToken = address(new MockHoney());
-        address mockRewardVault = RewardVaultFactory(REWARD_VAULT_FACTORY_ADDRESS).createRewardVault(stakingToken);
-        assertEq(RewardVault(mockRewardVault).distributor(), DISTRIBUTOR_ADDRESS);
-        assertEq(address(RewardVault(mockRewardVault).beaconDepositContract()), BEACON_DEPOSIT_ADDRESS);
+        address mockRewardVault = RewardVaultFactory(_polAddresses.rewardVaultFactory).createRewardVault(stakingToken);
+        assertEq(RewardVault(mockRewardVault).distributor(), _polAddresses.distributor);
+        assertEq(address(RewardVault(mockRewardVault).beaconDepositContract()), _polAddresses.beaconDeposit);
 
         // test default commission post upgrade
-        assertEq(BeraChef(BERACHEF_ADDRESS).getValCommissionOnIncentiveTokens(pubkey), 0.05e4);
+        assertEq(BeraChef(_polAddresses.beraChef).getValCommissionOnIncentiveTokens(pubkey), 0.05e4);
     }
 
     function test_CommissionChange_PostUpgrade() public {
         test_Upgrade();
         vm.prank(operator);
         // queue new commission rate of 1 wei
-        BeraChef(BERACHEF_ADDRESS).queueValCommission(pubkey, 1);
+        BeraChef(_polAddresses.beraChef).queueValCommission(pubkey, 1);
 
         // check the queued commission
         BeraChef.QueuedCommissionRateChange memory queuedCommission =
-            BeraChef(BERACHEF_ADDRESS).getValQueuedCommissionOnIncentiveTokens(pubkey);
+            BeraChef(_polAddresses.beraChef).getValQueuedCommissionOnIncentiveTokens(pubkey);
         assertEq(queuedCommission.commissionRate, 1);
         assertEq(queuedCommission.blockNumberLast, block.number);
 
         // will revert if try to activate the queue before the delay
         vm.expectRevert(IPOLErrors.CommissionNotQueuedOrDelayNotPassed.selector);
-        BeraChef(BERACHEF_ADDRESS).activateQueuedValCommission(pubkey);
+        BeraChef(_polAddresses.beraChef).activateQueuedValCommission(pubkey);
 
         vm.roll(forkBlock + (2 * 8191));
         vm.expectEmit(true, true, true, true);
         emit IBeraChef.ValCommissionSet(pubkey, 0.05e4, 1);
-        BeraChef(BERACHEF_ADDRESS).activateQueuedValCommission(pubkey);
+        BeraChef(_polAddresses.beraChef).activateQueuedValCommission(pubkey);
         // check the new commission
-        assertEq(BeraChef(BERACHEF_ADDRESS).getValCommissionOnIncentiveTokens(pubkey), 1);
+        assertEq(BeraChef(_polAddresses.beraChef).getValCommissionOnIncentiveTokens(pubkey), 1);
 
         vm.prank(operator);
         // queue new commission rate of 20%
-        BeraChef(BERACHEF_ADDRESS).queueValCommission(pubkey, 0.2e4);
+        BeraChef(_polAddresses.beraChef).queueValCommission(pubkey, 0.2e4);
 
         // check the queued commission
-        queuedCommission = BeraChef(BERACHEF_ADDRESS).getValQueuedCommissionOnIncentiveTokens(pubkey);
+        queuedCommission = BeraChef(_polAddresses.beraChef).getValQueuedCommissionOnIncentiveTokens(pubkey);
         assertEq(queuedCommission.commissionRate, 0.2e4);
         assertEq(queuedCommission.blockNumberLast, block.number);
 
         // will revert if try to activate the queue before the delay
         vm.expectRevert(IPOLErrors.CommissionNotQueuedOrDelayNotPassed.selector);
-        BeraChef(BERACHEF_ADDRESS).activateQueuedValCommission(pubkey);
+        BeraChef(_polAddresses.beraChef).activateQueuedValCommission(pubkey);
 
         vm.roll(vm.getBlockNumber() + (2 * 8191));
         vm.expectEmit(true, true, true, true);
         emit IBeraChef.ValCommissionSet(pubkey, 1, 0.2e4);
-        BeraChef(BERACHEF_ADDRESS).activateQueuedValCommission(pubkey);
+        BeraChef(_polAddresses.beraChef).activateQueuedValCommission(pubkey);
         // check the new commission
-        assertEq(BeraChef(BERACHEF_ADDRESS).getValCommissionOnIncentiveTokens(pubkey), 0.2e4);
+        assertEq(BeraChef(_polAddresses.beraChef).getValCommissionOnIncentiveTokens(pubkey), 0.2e4);
 
         // new 0 commission rate
         vm.prank(operator);
-        BeraChef(BERACHEF_ADDRESS).queueValCommission(pubkey, 0);
+        BeraChef(_polAddresses.beraChef).queueValCommission(pubkey, 0);
         vm.roll(vm.getBlockNumber() + (2 * 8191));
         vm.expectEmit(true, true, true, true);
         emit IBeraChef.ValCommissionSet(pubkey, 0.2e4, 0);
-        BeraChef(BERACHEF_ADDRESS).activateQueuedValCommission(pubkey);
+        BeraChef(_polAddresses.beraChef).activateQueuedValCommission(pubkey);
         // should allow to set commission to 0.
         // default 5% commission applies only if no custom commission has been set.
-        assertEq(BeraChef(BERACHEF_ADDRESS).getValCommissionOnIncentiveTokens(pubkey), 0);
+        assertEq(BeraChef(_polAddresses.beraChef).getValCommissionOnIncentiveTokens(pubkey), 0);
 
         // activate commission change revert if not queued
         vm.expectRevert(IPOLErrors.CommissionNotQueuedOrDelayNotPassed.selector);
-        BeraChef(BERACHEF_ADDRESS).activateQueuedValCommission(pubkey);
+        BeraChef(_polAddresses.beraChef).activateQueuedValCommission(pubkey);
     }
 }

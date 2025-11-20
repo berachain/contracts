@@ -3,12 +3,6 @@ pragma solidity 0.8.26;
 
 import { console2 } from "forge-std/console2.sol";
 import { Storage } from "../../base/Storage.sol";
-import {
-    BEACON_DEPOSIT_ADDRESS,
-    BGT_STAKER_ADDRESS,
-    DISTRIBUTOR_ADDRESS,
-    BLOCK_REWARD_CONTROLLER_ADDRESS
-} from "../POLAddresses.sol";
 
 /// @dev This contract is used to configure the POL contracts.
 abstract contract ConfigPOL is Storage {
@@ -70,21 +64,21 @@ abstract contract ConfigPOL is Storage {
     }
 
     /// @dev Set deployed addresses to BGT
-    function _setBGTAddresses() internal {
+    function _setBGTAddresses(address bgtStaker, address distributor, address blockRewardController) internal {
         console2.log("\n\nSetting deployed addresses to BGT...");
         // Set the staker
-        bgt.setStaker(BGT_STAKER_ADDRESS);
-        require(address(bgt.staker()) == BGT_STAKER_ADDRESS, "ConfigPOL: failed to set staker");
-        console2.log("Set the BGTStaker to be %s.", BGT_STAKER_ADDRESS);
+        bgt.setStaker(bgtStaker);
+        require(address(bgt.staker()) == bgtStaker, "ConfigPOL: failed to set staker");
+        console2.log("Set the BGTStaker to be %s.", bgtStaker);
 
         // Set the distributor
-        bgt.whitelistSender(DISTRIBUTOR_ADDRESS, true);
-        require(bgt.isWhitelistedSender(DISTRIBUTOR_ADDRESS), "ConfigPOL: failed to whitelist distributor");
-        console2.log("Set the Distributor to be %s.", DISTRIBUTOR_ADDRESS);
+        bgt.whitelistSender(distributor, true);
+        require(bgt.isWhitelistedSender(distributor), "ConfigPOL: failed to whitelist distributor");
+        console2.log("Set the Distributor to be %s.", distributor);
 
         // set the minter
-        bgt.setMinter(BLOCK_REWARD_CONTROLLER_ADDRESS);
-        require(bgt.minter() == BLOCK_REWARD_CONTROLLER_ADDRESS, "ConfigPOL: failed to set minter");
-        console2.log("Set minter to be %s.", BLOCK_REWARD_CONTROLLER_ADDRESS);
+        bgt.setMinter(blockRewardController);
+        require(bgt.minter() == blockRewardController, "ConfigPOL: failed to set minter");
+        console2.log("Set minter to be %s.", blockRewardController);
     }
 }

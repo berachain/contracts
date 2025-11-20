@@ -2,20 +2,15 @@
 pragma solidity 0.8.26;
 
 import { console2 } from "forge-std/Script.sol";
-import { BaseScript } from "../../base/Base.s.sol";
+import { BaseDeployScript } from "../../base/BaseDeploy.s.sol";
 import { RBAC } from "../../base/RBAC.sol";
 import { Storage } from "../../base/Storage.sol";
-import { Create2Deployer } from "src/base/Create2Deployer.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { BGTIncentiveFeeDeployer } from "src/pol/BGTIncentiveFeeDeployer.sol";
+import { WBERAStakerVault } from "src/pol/WBERAStakerVault.sol";
+import { BGTIncentiveFeeCollector } from "src/pol/BGTIncentiveFeeCollector.sol";
 
-import {
-    BGT_INCENTIVE_FEE_DEPLOYER_SALT,
-    WBERA_STAKER_VAULT_SALT,
-    BGT_INCENTIVE_FEE_COLLECTOR_SALT
-} from "../POLSalts.sol";
-
-contract DeployBGTIncentiveFeeScript is BaseScript, RBAC, Storage, Create2Deployer {
+contract DeployBGTIncentiveFeeScript is BaseDeployScript, RBAC, Storage {
     // The amount to be paid out to the incentive fee collector in order to claim fees.
     uint256 internal constant PAYOUT_AMOUNT = 50_000 ether; // WBERA
 
@@ -29,13 +24,16 @@ contract DeployBGTIncentiveFeeScript is BaseScript, RBAC, Storage, Create2Deploy
         console2.log("deploying BGTIncentiveFeeDeployer");
         console2.log("Broadcaster address:", msg.sender);
         console2.log("WBERA balance of broadcaster:", WBERA.balanceOf(msg.sender));
-        address predictedAddress = getCreate2AddressWithArgs(
-            BGT_INCENTIVE_FEE_DEPLOYER_SALT,
-            type(BGTIncentiveFeeDeployer).creationCode,
-            abi.encode(
-                msg.sender, msg.sender, PAYOUT_AMOUNT, WBERA_STAKER_VAULT_SALT, BGT_INCENTIVE_FEE_COLLECTOR_SALT
-            )
+
+        bytes memory args = abi.encode(
+            msg.sender,
+            msg.sender,
+            PAYOUT_AMOUNT,
+            _saltsForProxy(type(WBERAStakerVault).creationCode),
+            _saltsForProxy(type(BGTIncentiveFeeCollector).creationCode)
         );
+
+        address predictedAddress = _predictAddressWithArgs(type(BGTIncentiveFeeDeployer).creationCode, args);
         console2.log("BGTIncentiveFeeDeployer predicted address:", predictedAddress);
         // approve the deployer to spend the tokens
         WBERA.approve(predictedAddress, INITIAL_DEPOSIT_AMOUNT);
@@ -45,12 +43,8 @@ contract DeployBGTIncentiveFeeScript is BaseScript, RBAC, Storage, Create2Deploy
 
         // deploy the BGTIncentiveFeeDeployer
         BGTIncentiveFeeDeployer bgtIncentiveFeeDeployer = BGTIncentiveFeeDeployer(
-            deployWithCreate2WithArgs(
-                BGT_INCENTIVE_FEE_DEPLOYER_SALT,
-                type(BGTIncentiveFeeDeployer).creationCode,
-                abi.encode(
-                    msg.sender, msg.sender, PAYOUT_AMOUNT, WBERA_STAKER_VAULT_SALT, BGT_INCENTIVE_FEE_COLLECTOR_SALT
-                )
+            _deployWithArgs(
+                "BGTIncentiveFeeDeployer", type(BGTIncentiveFeeDeployer).creationCode, args, predictedAddress
             )
         );
         wberaStakerVault = bgtIncentiveFeeDeployer.wberaStakerVault();

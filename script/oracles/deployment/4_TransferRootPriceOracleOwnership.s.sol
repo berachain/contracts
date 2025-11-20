@@ -1,38 +1,38 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.26;
 
-import { console2 } from "forge-std/Script.sol";
 import { BaseScript } from "../../base/Base.s.sol";
 import { RBAC } from "../../base/RBAC.sol";
 import { RootPriceOracle } from "src/extras/RootPriceOracle.sol";
-import { TIMELOCK_ADDRESS } from "../../gov/GovernanceAddresses.sol";
-import { ROOT_PRICE_ORACLE_ADDRESS } from "../OraclesAddresses.sol";
+import { AddressBook } from "../../base/AddressBook.sol";
 
-contract TransferRootPriceOracleOwnershipScript is RBAC, BaseScript {
+contract TransferRootPriceOracleOwnershipScript is RBAC, BaseScript, AddressBook {
     // Placholder. Change before running the script.
     address internal constant NEW_OWNER = address(0); // TIMELOCK_ADDRESS;
     address internal constant ROOT_PRICE_ORACLE_MANAGER = address(0);
 
+    constructor() AddressBook(_chainType) { }
+
     function run() public virtual broadcast {
         require(NEW_OWNER != address(0), "NEW_OWNER must be set");
         require(ROOT_PRICE_ORACLE_MANAGER != address(0), "Root price oracle manager address not set");
-        if (NEW_OWNER == TIMELOCK_ADDRESS) {
+        if (NEW_OWNER == _governanceAddresses.timelock) {
             _validateCode("TimeLock", NEW_OWNER);
         }
-        _validateCode("RootPriceOracle", ROOT_PRICE_ORACLE_ADDRESS);
+        _validateCode("RootPriceOracle", _oraclesAddresses.rootPriceOracle);
 
-        RootPriceOracle rootPriceOracle = RootPriceOracle(ROOT_PRICE_ORACLE_ADDRESS);
+        RootPriceOracle rootPriceOracle = RootPriceOracle(_oraclesAddresses.rootPriceOracle);
 
         RBAC.RoleDescription memory adminRole = RBAC.RoleDescription({
             contractName: "RootPriceOracle",
-            contractAddr: ROOT_PRICE_ORACLE_ADDRESS,
+            contractAddr: _oraclesAddresses.rootPriceOracle,
             name: "DEFAULT_ADMIN_ROLE",
             role: rootPriceOracle.DEFAULT_ADMIN_ROLE()
         });
 
         RBAC.RoleDescription memory managerRole = RBAC.RoleDescription({
             contractName: "RootPriceOracle",
-            contractAddr: ROOT_PRICE_ORACLE_ADDRESS,
+            contractAddr: _oraclesAddresses.rootPriceOracle,
             name: "MANAGER_ROLE",
             role: rootPriceOracle.MANAGER_ROLE()
         });

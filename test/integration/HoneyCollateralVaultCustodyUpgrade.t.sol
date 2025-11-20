@@ -9,10 +9,11 @@ import { Create2Deployer } from "src/base/Create2Deployer.sol";
 import { HoneyFactory } from "src/honey/HoneyFactory.sol";
 import { CollateralVault } from "src/honey/CollateralVault.sol";
 
-import { HONEY_FACTORY_ADDRESS } from "script/honey/HoneyAddresses.sol";
+import { AddressBook } from "script/base/AddressBook.sol";
+import { ChainType } from "script/base/Chain.sol";
 
 /// @title HoneyCollateralVaultCustodyUpgrade
-contract HoneyCollateralVaultCustodyUpgrade is Create2Deployer, Test {
+contract HoneyCollateralVaultCustodyUpgrade is Create2Deployer, Test, AddressBook(ChainType.Mainnet) {
     address safeOwner = 0xD13948F99525FB271809F45c268D72a3C00a568D;
     address usdc = 0x549943e04f40284185054145c6E4e9568C1D3241;
     address usdcVault = 0x90bc07408f5b5eAc4dE38Af76EA6069e1fcEe363;
@@ -37,8 +38,8 @@ contract HoneyCollateralVaultCustodyUpgrade is Create2Deployer, Test {
         address newCollateralVaultImpl = deployWithCreate2(0, type(CollateralVault).creationCode);
 
         vm.startPrank(safeOwner);
-        HoneyFactory(HONEY_FACTORY_ADDRESS).upgradeToAndCall(newHoneyFactoryImpl, "");
-        address beacon = HoneyFactory(HONEY_FACTORY_ADDRESS).beacon();
+        HoneyFactory(_honeyAddresses.honeyFactory).upgradeToAndCall(newHoneyFactoryImpl, "");
+        address beacon = HoneyFactory(_honeyAddresses.honeyFactory).beacon();
         UpgradeableBeacon(beacon).upgradeTo(newCollateralVaultImpl);
         vm.stopPrank();
 
@@ -50,7 +51,7 @@ contract HoneyCollateralVaultCustodyUpgrade is Create2Deployer, Test {
         ERC20(usdc).approve(usdcVault, type(uint256).max);
 
         vm.prank(safeOwner);
-        HoneyFactory(HONEY_FACTORY_ADDRESS).setCustodyInfo(usdc, true, usdcCustody);
+        HoneyFactory(_honeyAddresses.honeyFactory).setCustodyInfo(usdc, true, usdcCustody);
         // post setting custody info, the balance of USDC in usdcVault should move to custody
         assertEq(ERC20(usdc).balanceOf(address(usdcVault)), 0);
         assertEq(ERC20(usdc).balanceOf(usdcCustody), usdcBalance);
@@ -64,15 +65,15 @@ contract HoneyCollateralVaultCustodyUpgrade is Create2Deployer, Test {
         // test mint and redeem flow
         vm.startPrank(usdcHolder);
         // approve 100 USDC
-        ERC20(usdc).approve(HONEY_FACTORY_ADDRESS, 100e6);
-        HoneyFactory(HONEY_FACTORY_ADDRESS).mint(usdc, 10e6, usdcHolder, false);
+        ERC20(usdc).approve(_honeyAddresses.honeyFactory, 100e6);
+        HoneyFactory(_honeyAddresses.honeyFactory).mint(usdc, 10e6, usdcHolder, false);
         // given mint rate is 1e18, no fee will be charged
         // custody balance should increase by 10e6 (10 USDC)
         assertEq(ERC20(usdc).balanceOf(usdcCustody), usdcBalance + 10e6);
         assertEq(ERC20(usdc).balanceOf(usdcVault), 0);
 
         // redeem 5e18 HONEY (5 Honey)
-        HoneyFactory(HONEY_FACTORY_ADDRESS).redeem(usdc, 5e18, usdcHolder, false);
+        HoneyFactory(_honeyAddresses.honeyFactory).redeem(usdc, 5e18, usdcHolder, false);
         // custody balance should decrease by 5e6 (5 USDC)
         assertEq(ERC20(usdc).balanceOf(usdcCustody), usdcBalance + 5e6);
         assertEq(ERC20(usdc).balanceOf(usdcVault), 0);
@@ -80,7 +81,7 @@ contract HoneyCollateralVaultCustodyUpgrade is Create2Deployer, Test {
 
         // test the removal of custody info
         vm.prank(safeOwner);
-        HoneyFactory(HONEY_FACTORY_ADDRESS).setCustodyInfo(usdc, false, usdcCustody);
+        HoneyFactory(_honeyAddresses.honeyFactory).setCustodyInfo(usdc, false, usdcCustody);
         // This should move back all the USDC to usdcVault
         assertEq(ERC20(usdc).balanceOf(usdcCustody), 0);
         assertEq(ERC20(usdc).balanceOf(usdcVault), usdcBalance + 5e6);
@@ -91,12 +92,12 @@ contract HoneyCollateralVaultCustodyUpgrade is Create2Deployer, Test {
 
         // test deposit post removal of custody info
         vm.startPrank(usdcHolder);
-        HoneyFactory(HONEY_FACTORY_ADDRESS).mint(usdc, 10e6, usdcHolder, false);
+        HoneyFactory(_honeyAddresses.honeyFactory).mint(usdc, 10e6, usdcHolder, false);
         assertEq(ERC20(usdc).balanceOf(usdcVault), usdcBalance + 15e6);
 
         // test redeem post removal of custody info
         // redeem all the minted HONEY of usdcHolder
-        HoneyFactory(HONEY_FACTORY_ADDRESS).redeem(usdc, 15e18, usdcHolder, false);
+        HoneyFactory(_honeyAddresses.honeyFactory).redeem(usdc, 15e18, usdcHolder, false);
         assertEq(ERC20(usdc).balanceOf(usdcVault), usdcBalance);
     }
 }

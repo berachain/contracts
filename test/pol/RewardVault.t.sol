@@ -14,7 +14,6 @@ import { RewardVault } from "src/pol/rewards/RewardVault.sol";
 import { IRewardVault, IPOLErrors } from "src/pol/interfaces/IRewardVault.sol";
 import { IRewardVaultFactory } from "src/pol/interfaces/IRewardVaultFactory.sol";
 import { IStakingRewards, IStakingRewardsErrors } from "src/base/IStakingRewards.sol";
-import { POLTest } from "./POL.t.sol";
 import { DistributorTest } from "./Distributor.t.sol";
 import { StakingTest } from "./Staking.t.sol";
 import { MockDAI, MockUSDT, MockAsset } from "@mock/honey/MockAssets.sol";

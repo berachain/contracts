@@ -3,12 +3,13 @@ pragma solidity 0.8.26;
 
 import { console2 } from "forge-std/Script.sol";
 import { BaseScript } from "../../base/Base.s.sol";
-import { REWARD_VAULT_HELPER_ADDRESS, REWARD_VAULT_HELPER_IMPL_ADDRESS } from "../POLAddresses.sol";
+import { AddressBook } from "../../base/AddressBook.sol";
 import { RewardVaultHelperDeployer } from "src/pol/RewardVaultHelperDeployer.sol";
+import { RewardVaultHelper } from "src/pol/rewards/RewardVaultHelper.sol";
 
-import { REWARD_VAULT_HELPER_SALT } from "../POLSalts.sol";
+contract DeployRewardVaultHelperScript is BaseScript, AddressBook {
+    constructor() AddressBook(_chainType) { }
 
-contract DeployRewardVaultHelperScript is BaseScript {
     function run() public pure {
         console2.log("Please run specific function.");
     }
@@ -21,16 +22,18 @@ contract DeployRewardVaultHelperScript is BaseScript {
 
         // deploy the RewardVaultHelperDeployer
         RewardVaultHelperDeployer rewardVaultHelperDeployer =
-            new RewardVaultHelperDeployer(governance, REWARD_VAULT_HELPER_SALT);
+            new RewardVaultHelperDeployer(governance, _saltsForProxy(type(RewardVaultHelper).creationCode));
         console2.log("RewardVaultHelperDeployer deployed at", address(rewardVaultHelperDeployer));
 
         _checkDeploymentAddress(
             "RewardVaultHelper Impl",
             address(rewardVaultHelperDeployer.rewardVaultHelperImpl()),
-            REWARD_VAULT_HELPER_IMPL_ADDRESS
+            _polAddresses.rewardVaultHelperImpl
         );
         _checkDeploymentAddress(
-            "RewardVaultHelper", address(rewardVaultHelperDeployer.rewardVaultHelper()), REWARD_VAULT_HELPER_ADDRESS
+            "RewardVaultHelper",
+            address(rewardVaultHelperDeployer.rewardVaultHelper()),
+            _polAddresses.rewardVaultHelper
         );
     }
 }

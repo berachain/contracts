@@ -7,11 +7,11 @@ import { HoneyFactory } from "src/honey/HoneyFactory.sol";
 import { ERC4626 } from "solady/src/tokens/ERC4626.sol";
 import { IERC20 } from "forge-std/interfaces/IERC20.sol";
 import { USDT_ADDRESS, DAI_ADDRESS, USDC_ADDRESS } from "../../misc/Addresses.sol";
-import { HONEY_FACTORY_ADDRESS } from "../HoneyAddresses.sol";
+import { AddressBook } from "../../base/AddressBook.sol";
 import { IPriceOracle } from "src/extras/IPriceOracle.sol";
 
 /// @notice Creates a collateral vault for the given token.
-contract AddCollateralVaultScript is BaseScript {
+contract AddCollateralVaultScript is BaseScript, AddressBook {
     // Placeholders. Change before run script.
     string constant COLLATERAL_NAME = "COLLATERAL_NAME"; // "USDC" "pyUSD" - MAKE SURE TO SET ONE OF THOSE.
     address constant COLLATERAL_ADDRESS = address(0); // USDT_ADDRESS DAI_ADDRESS USDC_ADDRESS
@@ -20,10 +20,12 @@ contract AddCollateralVaultScript is BaseScript {
     // REMOVE AFTER TRANSFER OWNERSHIP TO THE GOVERNANCE
     uint256 constant pyUSD_RELATIVE_CAP = 0.5e18;
 
+    constructor() AddressBook(_chainType) { }
+
     function run() public virtual broadcast {
         require(COLLATERAL_ADDRESS != address(0), "COLLATERAL_ADDRESS not set");
 
-        _validateCode("HoneyFactory", HONEY_FACTORY_ADDRESS);
+        _validateCode("HoneyFactory", _honeyAddresses.honeyFactory);
         _validateCode(COLLATERAL_NAME, COLLATERAL_ADDRESS);
         addCollateralVault(COLLATERAL_ADDRESS);
     }
@@ -35,7 +37,7 @@ contract AddCollateralVaultScript is BaseScript {
         require(isUSDC || isPyUSD, "collateral not supported");
 
         _validateCode("Collateral", collateral);
-        HoneyFactory honeyFactory = HoneyFactory(HONEY_FACTORY_ADDRESS);
+        HoneyFactory honeyFactory = HoneyFactory(_honeyAddresses.honeyFactory);
 
         console2.log("Adding collateral %s", IERC20(collateral).symbol());
 

@@ -2,6 +2,7 @@
 pragma solidity 0.8.26;
 
 import { Create2Deployer } from "../base/Create2Deployer.sol";
+import { Salt } from "../base/Salt.sol";
 import { BGTStaker } from "./BGTStaker.sol";
 import { FeeCollector } from "./FeeCollector.sol";
 
@@ -21,19 +22,19 @@ contract BGTFeeDeployer is Create2Deployer {
         address bgt,
         address governance,
         address rewardToken,
-        uint256 bgtStakerSalt,
-        uint256 feeCollectorSalt,
+        Salt memory bgtStakerSalt,
+        Salt memory feeCollectorSalt,
         uint256 payoutAmount
     ) {
         // deploy the BGTStaker implementation
-        address bgtStakerImpl = deployWithCreate2(0, type(BGTStaker).creationCode);
+        address bgtStakerImpl = deployWithCreate2(bgtStakerSalt.implementation, type(BGTStaker).creationCode);
         // deploy the BGTStaker proxy
-        bgtStaker = BGTStaker(deployProxyWithCreate2(bgtStakerImpl, bgtStakerSalt));
+        bgtStaker = BGTStaker(deployProxyWithCreate2(bgtStakerImpl, bgtStakerSalt.proxy));
 
         // deploy the FeeCollector implementation
-        address feeCollectorImpl = deployWithCreate2(0, type(FeeCollector).creationCode);
+        address feeCollectorImpl = deployWithCreate2(feeCollectorSalt.implementation, type(FeeCollector).creationCode);
         // deploy the FeeCollector proxy
-        feeCollector = FeeCollector(deployProxyWithCreate2(feeCollectorImpl, feeCollectorSalt));
+        feeCollector = FeeCollector(deployProxyWithCreate2(feeCollectorImpl, feeCollectorSalt.proxy));
 
         // initialize the contracts
         bgtStaker.initialize(bgt, address(feeCollector), governance, rewardToken);

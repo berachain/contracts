@@ -2,12 +2,13 @@
 pragma solidity 0.8.26;
 
 import { console2 } from "forge-std/Script.sol";
-import { BaseScript } from "../../base/Base.s.sol";
-import { Create2Deployer } from "src/base/Create2Deployer.sol";
-import { BGT_INCENTIVE_FEE_COLLECTOR_ADDRESS } from "../POLAddresses.sol";
+import { BaseDeployScript } from "../../base/BaseDeploy.s.sol";
 import { BGTIncentiveFeeCollector } from "src/pol/BGTIncentiveFeeCollector.sol";
+import { AddressBook } from "../../base/AddressBook.sol";
 
-contract UpgradeBGTIncentiveFeeCollectorScript is BaseScript, Create2Deployer {
+contract UpgradeBGTIncentiveFeeCollectorScript is BaseDeployScript, AddressBook {
+    constructor() AddressBook(_chainType) { }
+
     function run() public pure {
         console2.log("Please run specific function.");
     }
@@ -21,13 +22,17 @@ contract UpgradeBGTIncentiveFeeCollectorScript is BaseScript, Create2Deployer {
     function upgradeToTestnet() public broadcast {
         address newBGTIncentiveFeeCollectorImpl = _deployNewImplementation();
         console2.log("New BGTIncentiveFeeCollector implementation address:", newBGTIncentiveFeeCollectorImpl);
-        BGTIncentiveFeeCollector(BGT_INCENTIVE_FEE_COLLECTOR_ADDRESS).upgradeToAndCall(
+        BGTIncentiveFeeCollector(_polAddresses.bgtIncentiveFeeCollector).upgradeToAndCall(
             newBGTIncentiveFeeCollectorImpl, bytes("")
         );
         console2.log("BGTIncentiveFeeCollector upgraded successfully");
     }
 
     function _deployNewImplementation() internal returns (address) {
-        return deployWithCreate2(0, type(BGTIncentiveFeeCollector).creationCode);
+        return _deploy(
+            "BGTIncentiveFeeCollector",
+            type(BGTIncentiveFeeCollector).creationCode,
+            _polAddresses.bgtIncentiveFeeCollectorImpl
+        );
     }
 }

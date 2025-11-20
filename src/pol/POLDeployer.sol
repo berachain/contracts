@@ -2,6 +2,7 @@
 pragma solidity 0.8.26;
 
 import { Create2Deployer } from "../base/Create2Deployer.sol";
+import { Salt } from "../base/Salt.sol";
 import { BeraChef } from "./rewards/BeraChef.sol";
 import { RewardVault } from "./rewards/RewardVault.sol";
 import { RewardVaultFactory } from "./rewards/RewardVaultFactory.sol";
@@ -45,32 +46,36 @@ contract POLDeployer is Create2Deployer {
     constructor(
         address bgt,
         address governance,
-        uint256 beraChefSalt,
-        uint256 blockRewardControllerSalt,
-        uint256 distributorSalt,
-        uint256 rewardVaultFactorySalt
+        Salt memory beraChefSalt,
+        Salt memory blockRewardControllerSalt,
+        Salt memory distributorSalt,
+        Salt memory rewardVaultFactorySalt,
+        uint256 rewardVaultSalt
     ) {
         // deploy the BeraChef implementation
-        address beraChefImpl = deployWithCreate2(0, type(BeraChef).creationCode);
+        address beraChefImpl = deployWithCreate2(beraChefSalt.implementation, type(BeraChef).creationCode);
         // deploy the BeraChef proxy
-        beraChef = BeraChef(deployProxyWithCreate2(beraChefImpl, beraChefSalt));
+        beraChef = BeraChef(deployProxyWithCreate2(beraChefImpl, beraChefSalt.proxy));
 
         // deploy the BlockRewardController implementation
-        address blockRewardControllerImpl = deployWithCreate2(0, type(BlockRewardController).creationCode);
+        address blockRewardControllerImpl =
+            deployWithCreate2(blockRewardControllerSalt.implementation, type(BlockRewardController).creationCode);
         // deploy the BlockRewardController proxy
         blockRewardController =
-            BlockRewardController(deployProxyWithCreate2(blockRewardControllerImpl, blockRewardControllerSalt));
+            BlockRewardController(deployProxyWithCreate2(blockRewardControllerImpl, blockRewardControllerSalt.proxy));
 
         // deploy the Distributor implementation
-        address distributorImpl = deployWithCreate2(0, type(Distributor).creationCode);
+        address distributorImpl = deployWithCreate2(distributorSalt.implementation, type(Distributor).creationCode);
         // deploy the Distributor proxy
-        distributor = Distributor(deployProxyWithCreate2(distributorImpl, distributorSalt));
+        distributor = Distributor(deployProxyWithCreate2(distributorImpl, distributorSalt.proxy));
 
         // deploy the RewardVault implementation
-        address vaultImpl = deployWithCreate2(0, type(RewardVault).creationCode);
-        address rewardVaultFactoryImpl = deployWithCreate2(0, type(RewardVaultFactory).creationCode);
+        address vaultImpl = deployWithCreate2(rewardVaultSalt, type(RewardVault).creationCode);
+        address rewardVaultFactoryImpl =
+            deployWithCreate2(rewardVaultFactorySalt.implementation, type(RewardVaultFactory).creationCode);
         // deploy the RewardVaultFactory proxy
-        rewardVaultFactory = RewardVaultFactory(deployProxyWithCreate2(rewardVaultFactoryImpl, rewardVaultFactorySalt));
+        rewardVaultFactory =
+            RewardVaultFactory(deployProxyWithCreate2(rewardVaultFactoryImpl, rewardVaultFactorySalt.proxy));
 
         // initialize the contracts
         beraChef.initialize(

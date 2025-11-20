@@ -2,13 +2,14 @@
 pragma solidity 0.8.26;
 
 import { console2 } from "forge-std/Script.sol";
-import { BaseScript } from "../../base/Base.s.sol";
-import { Create2Deployer } from "src/base/Create2Deployer.sol";
+import { BaseDeployScript } from "../../base/BaseDeploy.s.sol";
 import { RewardVaultFactory } from "src/pol/rewards/RewardVaultFactory.sol";
 
-import { REWARD_VAULT_FACTORY_ADDRESS, BGT_INCENTIVE_DISTRIBUTOR_ADDRESS } from "../POLAddresses.sol";
+import { AddressBook } from "../../base/AddressBook.sol";
 
-contract UpgradeRewardVaultFactoryScript is BaseScript, Create2Deployer {
+contract UpgradeRewardVaultFactoryScript is BaseDeployScript, AddressBook {
+    constructor() AddressBook(_chainType) { }
+
     function run() public pure {
         console2.log("Please run specific function.");
     }
@@ -18,9 +19,9 @@ contract UpgradeRewardVaultFactoryScript is BaseScript, Create2Deployer {
         console2.log("New RewardVaultFactory implementation address:", newRewardVaultFactoryImpl);
     }
 
-    function printSetBGTIncentiveDistributorCallSignature() public pure {
+    function printSetBGTIncentiveDistributorCallSignature() public view {
         console2.logBytes(
-            abi.encodeCall(RewardVaultFactory.setBGTIncentiveDistributor, (BGT_INCENTIVE_DISTRIBUTOR_ADDRESS))
+            abi.encodeCall(RewardVaultFactory.setBGTIncentiveDistributor, (_polAddresses.bgtIncentiveDistributor))
         );
     }
 
@@ -28,11 +29,12 @@ contract UpgradeRewardVaultFactoryScript is BaseScript, Create2Deployer {
     function upgradeToAndCallTestnet(bytes memory callSignature) public broadcast {
         address newRewardVaultFactoryImpl = _deployNewImplementation();
         console2.log("New RewardVaultFactory implementation address:", newRewardVaultFactoryImpl);
-        RewardVaultFactory(REWARD_VAULT_FACTORY_ADDRESS).upgradeToAndCall(newRewardVaultFactoryImpl, callSignature);
+        RewardVaultFactory(_polAddresses.rewardVaultFactory).upgradeToAndCall(newRewardVaultFactoryImpl, callSignature);
         console2.log("RewardVaultFactory upgraded successfully");
     }
 
     function _deployNewImplementation() internal returns (address) {
-        return deployWithCreate2(1, type(RewardVaultFactory).creationCode);
+        return
+            _deploy("RewardVaultFactory", type(RewardVaultFactory).creationCode, _polAddresses.rewardVaultFactoryImpl);
     }
 }
