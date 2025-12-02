@@ -65,6 +65,8 @@ interface IPOLErrors is IStakingRewardsErrors {
     error InvalidIncentiveFeeRate();
     // Signature: 0x6a1aee5f
     error NotRewardAllocator();
+    // Signature: 0xeb732c63
+    error InvalidRewardAllocationInactivityBlockSpan();
 
     /*                   BLOCK REWARD CONTROLLLER                  */
 
@@ -185,7 +187,7 @@ interface IPOLErrors is IStakingRewardsErrors {
     // Signature: 0x819a0d0b
     error NotNewOperator();
 
-    /*                        BGT INCENTIVE DISTRIBUTOR                */
+    /*                  BGT INCENTIVE DISTRIBUTOR                  */
     // Signature: 0x1ec5aa51
     error InvalidArray();
     // Signature: 0x68b5c198
@@ -201,7 +203,7 @@ interface IPOLErrors is IStakingRewardsErrors {
     // Signature: 0xc1ab6dc1
     error InvalidToken();
 
-    /*                        WBERA STAKER VAULT                  */
+    /*                      WBERA STAKER VAULT                     */
 
     // Signature: 0x35898e6e
     error InsufficientNativeValue();

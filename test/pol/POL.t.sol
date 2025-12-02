@@ -20,6 +20,8 @@ import { BGTIncentiveDistributor } from "src/pol/rewards/BGTIncentiveDistributor
 import { BGTIncentiveDistributorDeployer } from "src/pol/BGTIncentiveDistributorDeployer.sol";
 import { RewardVaultHelper } from "src/pol/rewards/RewardVaultHelper.sol";
 import { RewardVaultHelperDeployer } from "src/pol/RewardVaultHelperDeployer.sol";
+import { RewardAllocatorFactory } from "src/pol/rewards/RewardAllocatorFactory.sol";
+import { RewardAllocatorFactoryDeployer } from "src/pol/RewardAllocatorFactoryDeployer.sol";
 
 abstract contract POLTest is Test, Create2Deployer {
     uint256 internal constant TEST_BGT_PER_BLOCK = 5 ether;
@@ -53,6 +55,7 @@ abstract contract POLTest is Test, Create2Deployer {
     RewardVaultFactory internal factory;
     FeeCollector internal feeCollector;
     Distributor internal distributor;
+    RewardAllocatorFactory internal rewardAllocatorFactory;
     POLDeployer internal polDeployer;
     BGTFeeDeployer internal feeDeployer;
     address internal bgtIncentiveDistributor;
@@ -88,6 +91,9 @@ abstract contract POLTest is Test, Create2Deployer {
         factory.setBGTIncentiveDistributor(bgtIncentiveDistributor);
         beraChef.setCommissionChangeDelay(2 * 8191);
         beraChef.setMaxWeightPerVault(1e4);
+        beraChef.setRewardAllocatorFactory(address(rewardAllocatorFactory));
+
+        beraChef.setRewardAllocationInactivityBlockSpan(86_400); // 2 days with 2 second block time
 
         // add native token to BGT for backing
         vm.deal(address(bgt), 100_000 ether);
@@ -126,6 +132,13 @@ abstract contract POLTest is Test, Create2Deployer {
         rewardVaultHelper = address(rewardVaultHelperDeployer.rewardVaultHelper());
     }
 
+    function deployRewardAllocatorFactory(address owner, address beraChef_) internal {
+        Salt memory salt = Salt({ implementation: 0, proxy: 1 });
+        RewardAllocatorFactoryDeployer rewardAllocatorFactoryDeployer =
+            new RewardAllocatorFactoryDeployer(owner, beraChef_, salt);
+        rewardAllocatorFactory = RewardAllocatorFactory(rewardAllocatorFactoryDeployer.rewardAllocatorFactory());
+    }
+
     function deployPOL(address owner) internal {
         deployBGT(owner);
         deployBGTIncentiveDistributor(owner);
@@ -149,5 +162,7 @@ abstract contract POLTest is Test, Create2Deployer {
         blockRewardController = polDeployer.blockRewardController();
         factory = polDeployer.rewardVaultFactory();
         distributor = polDeployer.distributor();
+
+        deployRewardAllocatorFactory(owner, address(beraChef));
     }
 }

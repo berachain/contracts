@@ -55,6 +55,14 @@ contract NoopBeraChef is IBeraChef {
     }
 
     /// @inheritdoc IBeraChef
+    function maxWeightPerVault() external pure returns (uint96) {
+        return 10_000;
+    }
+
+    /// @inheritdoc IBeraChef
+    function validateWeights(IBeraChef.Weight[] calldata weights) external pure { }
+
+    /// @inheritdoc IBeraChef
     function setMaxNumWeightsPerRewardAllocation(uint8) external pure { }
 
     /// @inheritdoc IBeraChef
@@ -71,6 +79,12 @@ contract NoopBeraChef is IBeraChef {
 
     /// @inheritdoc IBeraChef
     function setDefaultRewardAllocation(RewardAllocation calldata) external pure { }
+
+    /// @inheritdoc IBeraChef
+    function setRewardAllocatorFactory(address _rewardAllocatorFactory) external pure { }
+
+    /// @inheritdoc IBeraChef
+    function setRewardAllocationInactivityBlockSpan(uint64 _rewardAllocationInactivityBlockSpan) external pure { }
 
     /// @inheritdoc IBeraChef
     function queueNewRewardAllocation(bytes calldata, uint64, Weight[] calldata) external pure { }

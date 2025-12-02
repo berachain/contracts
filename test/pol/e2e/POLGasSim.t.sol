@@ -84,7 +84,7 @@ contract POLGasSimulationSimple is GovernanceBaseTest {
         vm.roll(100);
 
         // Setup proposal actions, encoded call data for governance actions
-        address[] memory targets = new address[](9);
+        address[] memory targets = new address[](11);
         targets[0] = address(blockRewardController);
         targets[1] = address(blockRewardController);
         targets[2] = address(blockRewardController);
@@ -94,8 +94,10 @@ contract POLGasSimulationSimple is GovernanceBaseTest {
         targets[6] = address(beraChef);
         targets[7] = address(bgt);
         targets[8] = address(factory);
+        targets[9] = address(beraChef);
+        targets[10] = address(beraChef);
 
-        bytes[] memory calldatas = new bytes[](9);
+        bytes[] memory calldatas = new bytes[](11);
         calldatas[0] = abi.encodeCall(BlockRewardController.setRewardRate, (5 ether));
         calldatas[1] = abi.encodeCall(BlockRewardController.setMinBoostedRewardRate, (5 ether));
         calldatas[2] = abi.encodeCall(BlockRewardController.setBoostMultiplier, (3 ether));
@@ -106,6 +108,8 @@ contract POLGasSimulationSimple is GovernanceBaseTest {
         calldatas[7] = abi.encodeCall(BGT.setMinter, (address(blockRewardController)));
         calldatas[8] =
             abi.encodeCall(RewardVaultFactory.setBGTIncentiveDistributor, (address(bgtIncentiveDistributor)));
+        calldatas[9] = abi.encodeCall(BeraChef.setRewardAllocatorFactory, (address(rewardAllocatorFactory)));
+        calldatas[10] = abi.encodeCall(BeraChef.setRewardAllocationInactivityBlockSpan, (86_400));
 
         // Create and execute governance proposals
         governanceHelper(targets, calldatas);

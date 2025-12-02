@@ -864,4 +864,44 @@ contract BeraChefTest is POLTest {
         vm.expectRevert(IPOLErrors.NotRewardAllocator.selector);
         beraChef.queueNewRewardAllocation(valData.pubkey, startBlock, weights);
     }
+
+    function test_SetRewardAllocatorFactory() public {
+        address newRewardAllocatorFactory = makeAddr("newRewardAllocatorFactory");
+        vm.prank(governance);
+        vm.expectEmit(true, true, true, true);
+        emit IBeraChef.RewardAllocatorFactorySet(address(rewardAllocatorFactory), newRewardAllocatorFactory);
+        beraChef.setRewardAllocatorFactory(newRewardAllocatorFactory);
+    }
+
+    function test_SetRewardAllocatorFactory_FailIfZeroAddress() public {
+        vm.prank(governance);
+        vm.expectRevert(IPOLErrors.ZeroAddress.selector);
+        beraChef.setRewardAllocatorFactory(address(0));
+    }
+
+    function test_SetRewardAllocatorFactory_FailIfNotOwner() public {
+        vm.expectRevert(abi.encodeWithSelector(OwnableUpgradeable.OwnableUnauthorizedAccount.selector, address(this)));
+        beraChef.setRewardAllocatorFactory(address(rewardAllocatorFactory));
+    }
+
+    function testFuzz_SetRewardAllocationInactivityBlockSpan(uint64 blockSpan) public {
+        blockSpan = uint64(_bound(blockSpan, beraChef.MIN_REWARD_ALLOCATION_INACTIVITY_BLOCK_SPAN(), type(uint64).max));
+        vm.prank(governance);
+        vm.expectEmit(true, true, true, true);
+        emit IBeraChef.RewardAllocationInactivityBlockSpanSet(blockSpan);
+        beraChef.setRewardAllocationInactivityBlockSpan(blockSpan);
+        assertEq(beraChef.rewardAllocationInactivityBlockSpan(), blockSpan);
+    }
+
+    function test_SetRewardAllocationInactivityBlockSpan_FailIfNotOwner() public {
+        vm.expectRevert(abi.encodeWithSelector(OwnableUpgradeable.OwnableUnauthorizedAccount.selector, address(this)));
+        beraChef.setRewardAllocationInactivityBlockSpan(1000);
+    }
+
+    function test_SetRewardAllocationInactivityBlockSpan_FailIfBlockSpanIsLessThanMin() public {
+        uint64 blockSpan = beraChef.MIN_REWARD_ALLOCATION_INACTIVITY_BLOCK_SPAN() - 1;
+        vm.prank(governance);
+        vm.expectRevert(IPOLErrors.InvalidRewardAllocationInactivityBlockSpan.selector);
+        beraChef.setRewardAllocationInactivityBlockSpan(blockSpan);
+    }
 }

@@ -30,6 +30,8 @@ struct POLAddresses {
     address wberaStakerVaultWithdrawalRequestImpl;
     address rewardVaultHelper;
     address rewardVaultHelperImpl;
+    address rewardAllocatorFactory;
+    address rewardAllocatorFactoryImpl;
 }
 
 abstract contract POLAddressBook {
@@ -56,7 +58,7 @@ abstract contract POLAddressBook {
             wbera: 0x6969696969696969696969696969696969696969, // From genesis files
             bgt: 0x656b95E550C07a9ffe548bd4085c72418Ceb1dba,
             beraChef: 0xdf960E8F3F19C481dDE769edEDD439ea1a63426a,
-            beraChefImpl: 0xd98ABAbDBae762B7dB60A41227ceD2ba312Bc49A,
+            beraChefImpl: 0x45F31D709518ddBD93d537bE99facc0b0869363A,
             blockRewardController: 0x1AE7dD7AE06F6C58B4524d9c1f816094B1bcCD8e,
             blockRewardControllerImpl: 0x971aF0c15E15F1F31ff60C6Ed2c2234B88D5d25a,
             distributor: 0xD2f19a79b026Fb636A7c300bF5947df113940761,
@@ -77,7 +79,9 @@ abstract contract POLAddressBook {
             wberaStakerVaultWithdrawalRequest: 0x30e47fd0452a14Caf18A0444cb6f35eaCaC899DA,
             wberaStakerVaultWithdrawalRequestImpl: 0x9d77351A50eba1D50A77B1b86b94b7bD9f42f216,
             rewardVaultHelper: 0xEe233a69A36Db7fC10E03e921D90DEC52Cdce6e2,
-            rewardVaultHelperImpl: 0xa64951392198b4c9739d336Da22F853d8a66a8C5
+            rewardVaultHelperImpl: 0xa64951392198b4c9739d336Da22F853d8a66a8C5,
+            rewardAllocatorFactory: 0xc8FD9a3fB3Dad4C22c9F8Cfa7cecC318A667A791,
+            rewardAllocatorFactoryImpl: 0x7e80F890Ac3752711BC40fE18FDbbe23BEB88f2B
         });
     }
 
@@ -90,7 +94,7 @@ abstract contract POLAddressBook {
             wbera: 0x6969696969696969696969696969696969696969, // From genesis files
             bgt: 0x656b95E550C07a9ffe548bd4085c72418Ceb1dba,
             beraChef: 0xdf960E8F3F19C481dDE769edEDD439ea1a63426a,
-            beraChefImpl: 0x8122B1ddC224AC5D31ABA9fd195851E0E6cCA76d,
+            beraChefImpl: 0x3f86340DC9F3C69D421f1CF6a7E271a436D6c6D4,
             blockRewardController: 0x1AE7dD7AE06F6C58B4524d9c1f816094B1bcCD8e,
             blockRewardControllerImpl: 0x401479c852286F702536613dA8De237401621161,
             distributor: 0xD2f19a79b026Fb636A7c300bF5947df113940761,
@@ -111,7 +115,9 @@ abstract contract POLAddressBook {
             wberaStakerVaultWithdrawalRequest: 0x30e47fd0452a14Caf18A0444cb6f35eaCaC899DA,
             wberaStakerVaultWithdrawalRequestImpl: 0x1a1b50F511feb89a92DA0ACB2732cfebfB66B096,
             rewardVaultHelper: 0xEe233a69A36Db7fC10E03e921D90DEC52Cdce6e2,
-            rewardVaultHelperImpl: 0x3026AD38f797B311F9B0d35891eD1D2C35b4F40C
+            rewardVaultHelperImpl: 0x3026AD38f797B311F9B0d35891eD1D2C35b4F40C,
+            rewardAllocatorFactory: 0x7f09Cf6958631513aF0400488F65c7B5c0313F52,
+            rewardAllocatorFactoryImpl: 0xA3b40aB9c6f7B45625cBD81a1F05027f5507Ee0d
         });
     }
 
@@ -121,8 +127,8 @@ abstract contract POLAddressBook {
             beaconDeposit: 0x4242424242424242424242424242424242424242, // From genesis files
             wbera: 0x6969696969696969696969696969696969696969, // From genesis files
             bgt: 0xEE0BD9569e41fA26A79305Fc31a663986Deb79FB,
-            beraChef: 0x5280412f1bDB05bb70D411C830215DDF6400e035,
-            beraChefImpl: 0xf572210097B08afdBA5Af062BD9f06bcCB1d29F2,
+            beraChef: 0x11D327E93F251e6cCE267e392CdA9eEF8Ff9099B,
+            beraChefImpl: 0xB1610b3f7C539e79933EC7cde7FE0dc79f556a2D,
             blockRewardController: 0x4A2452Fd7e9FCA389d98063c5C3A8FC63838E451,
             blockRewardControllerImpl: 0xf1774D66392999268a40c8c9Df1708f220662aba,
             distributor: 0x9dD639638B46899CED46ef58b3A3c21E9feF9d7c,
@@ -143,7 +149,9 @@ abstract contract POLAddressBook {
             wberaStakerVaultWithdrawalRequest: 0xa48b32DE980349893de3C2Eb6cC2C5505E8A53c6,
             wberaStakerVaultWithdrawalRequestImpl: 0xC99dbe0679AAa9c95B1C1d00d8D25a3EA5Bf552a,
             rewardVaultHelper: 0x41BE38f22F6D04D2D8A2e6b13fB71B8a4b8B4bD3,
-            rewardVaultHelperImpl: 0xA88C548a1160fc28e9DA6F91cfA2Ef76dEBFAE70
+            rewardVaultHelperImpl: 0xA88C548a1160fc28e9DA6F91cfA2Ef76dEBFAE70,
+            rewardAllocatorFactory: 0xF9451D2Ca42C703bc86Ca8aE76336527EAA5d63A,
+            rewardAllocatorFactoryImpl: 0xf6503F1c149bB6c12f1F25c500c580335578A520
         });
     }
 
@@ -153,8 +161,8 @@ abstract contract POLAddressBook {
             beaconDeposit: 0x4242424242424242424242424242424242424242, // From genesis files
             wbera: 0x6969696969696969696969696969696969696969, // From genesis files
             bgt: 0xe804A615556BB2c4B530057DdBc77E5385957a25,
-            beraChef: 0x55444933005bC9Ad57c6F6bB186F26ebec79C5Cc,
-            beraChefImpl: 0x13906bb227077B24320f7609e34c6edA5f2E457A,
+            beraChef: 0x4898c5fb3af0Be5E709e35E75800a5E313BF6e8a,
+            beraChefImpl: 0x043a056462860e874A3eC25349613F5d165cb176,
             blockRewardController: 0xf1aDf7a50773FF65c7cE8662A309F8e277Cd7Ec6,
             blockRewardControllerImpl: 0x147585c9E870f1CE7F3320A30ff2E43410463e58,
             distributor: 0x046e3BeED5090A8f6EF88eeFD1a1877360560F71,
@@ -175,7 +183,9 @@ abstract contract POLAddressBook {
             wberaStakerVaultWithdrawalRequest: 0x8bbFF3F485B1263CFb1960e7505FC6456dC14D5B,
             wberaStakerVaultWithdrawalRequestImpl: 0x2C7231a59EeC62658D7ca01f1d4A557bda1029A3,
             rewardVaultHelper: 0x3dD313F3d08fAD4220CA0f153A0b984932567716,
-            rewardVaultHelperImpl: 0x19DA32A86BFfee117527c34243ccba7B3d155b65
+            rewardVaultHelperImpl: 0x19DA32A86BFfee117527c34243ccba7B3d155b65,
+            rewardAllocatorFactory: 0x36886B62Cbfd2d7278C3F045B44f29E42153Ea89,
+            rewardAllocatorFactoryImpl: 0x9aC5cB10145085cf84a8291243F5e832C62534A2
         });
     }
 }

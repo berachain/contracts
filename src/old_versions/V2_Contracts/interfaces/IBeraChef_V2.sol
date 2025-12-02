@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.26;
 
-import { IPOLErrors } from "./IPOLErrors.sol";
+import { IPOLErrors } from "src/pol/interfaces/IPOLErrors.sol";
 
 /// @notice Interface of the BeraChef module
-interface IBeraChef is IPOLErrors {
+interface IBeraChef_V2 is IPOLErrors {
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
     /*                          STRUCTS                           */
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
@@ -123,19 +123,6 @@ interface IBeraChef is IPOLErrors {
      */
     event ValRewardAllocatorSet(bytes indexed valPubkey, address rewardAllocator);
 
-    /**
-     * @notice Emitted when the RewardAllocatorFactory contract address has been set.
-     * @param oldFactory The old RewardAllocatorFactory contract address.
-     * @param newFactory The new RewardAllocatorFactory contract address.
-     */
-    event RewardAllocatorFactorySet(address indexed oldFactory, address indexed newFactory);
-
-    /**
-     * @notice Emitted when the block span to consider a reward allocation inactive has been set.
-     * @param rewardAllocationInactivityBlockSpan The block span to consider a reward allocation inactive.
-     */
-    event RewardAllocationInactivityBlockSpanSet(uint64 rewardAllocationInactivityBlockSpan);
-
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
     /*                          GETTERS                           */
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
@@ -222,12 +209,6 @@ interface IBeraChef is IPOLErrors {
         view
         returns (uint256);
 
-    /**
-     * @notice Returns the maximum weight a vault can assume in a reward allocation.
-     * @return maxWeightPerVault The weight in basis points.
-     */
-    function maxWeightPerVault() external view returns (uint96);
-
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
     /*                       ADMIN FUNCTIONS                      */
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
@@ -264,20 +245,6 @@ interface IBeraChef is IPOLErrors {
      * @param rewardAllocation The default reward allocation.
      */
     function setDefaultRewardAllocation(RewardAllocation calldata rewardAllocation) external;
-
-    /**
-     * @notice Sets the RewardAllocatorFactory contract address.
-     * @dev Only callable by the governance module account.
-     * @param _rewardAllocatorFactory The address of the RewardAllocatorFactory contract.
-     */
-    function setRewardAllocatorFactory(address _rewardAllocatorFactory) external;
-
-    /**
-     * @notice Sets the block span to consider a reward allocation inactive.
-     * @dev Only callable by the governance module account.
-     * @param _rewardAllocationInactivityBlockSpan The block span to consider a reward allocation inactive.
-     */
-    function setRewardAllocationInactivityBlockSpan(uint64 _rewardAllocationInactivityBlockSpan) external;
 
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
     /*                          SETTERS                           */
@@ -336,12 +303,4 @@ interface IBeraChef is IPOLErrors {
      * @param rewardAllocator The reward allocator address.
      */
     function setValRewardAllocator(bytes calldata valPubkey, address rewardAllocator) external;
-
-    /**
-     * @notice Validates the weights of a reward allocation.
-     * @dev Reverts if the weights are invalid.
-     * @dev Not a view since it needs storage to check for dups.
-     * @param weights The weights of the reward allocation.
-     */
-    function validateWeights(Weight[] calldata weights) external;
 }

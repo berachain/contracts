@@ -15,6 +15,7 @@ import { BGTIncentiveFeeCollector } from "src/pol/BGTIncentiveFeeCollector.sol";
 import { BGTIncentiveDistributor } from "src/pol/rewards/BGTIncentiveDistributor.sol";
 import { WBERAStakerVaultWithdrawalRequest } from "src/pol/WBERAStakerVaultWithdrawalRequest.sol";
 import { RewardVaultHelper } from "src/pol/rewards/RewardVaultHelper.sol";
+import { RewardAllocatorFactory } from "src/pol/rewards/RewardAllocatorFactory.sol";
 import { AddressBook } from "../base/AddressBook.sol";
 
 contract POLPredictAddressesScript is BasePredictScript, AddressBook {
@@ -50,5 +51,7 @@ contract POLPredictAddressesScript is BasePredictScript, AddressBook {
         );
         _predictProxyAddress("RewardVaultHelper", type(RewardVaultHelper).creationCode);
         _predictAddress("RewardVaultHelper Impl", type(RewardVaultHelper).creationCode);
+        _predictProxyAddress("RewardAllocatorFactory", type(RewardAllocatorFactory).creationCode);
+        _predictAddress("RewardAllocatorFactory Impl", type(RewardAllocatorFactory).creationCode);
     }
 }
