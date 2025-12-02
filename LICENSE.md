@@ -1,7 +1,6 @@
 Business Source License 1.1
 
-License text copyright © 2023 MariaDB plc, All Rights Reserved. “Business Source License” is a trademark of MariaDB
-plc.
+License text copyright © 2023 MariaDB plc, All Rights Reserved. “Business Source License” is a trademark of MariaDB plc.
 
 ---
 
