@@ -169,11 +169,9 @@ contract BGTIncentiveDistributor is
         uint256 lifeTimeAmount = claimed[_identifier][_account] + _amount;
 
         // Verify the merkle proof
-        if (
-            !MerkleProof.verifyCalldata(
+        if (!MerkleProof.verifyCalldata(
                 _merkleProof, reward.merkleRoot, keccak256(abi.encodePacked(_account, lifeTimeAmount))
-            )
-        ) InvalidProof.selector.revertWith();
+            )) InvalidProof.selector.revertWith();
 
         // Update the claimed amount to the current total
         claimed[_identifier][_account] = lifeTimeAmount;

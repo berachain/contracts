@@ -215,7 +215,7 @@ contract BlockRewardControllerTest is POLTest {
         uint256 multiplier = 3 ether;
         int256 convexity = 0.5 ether;
 
-        uint256 maxDelta = 0.00001 ether;
+        uint256 maxDelta = 0.000_01 ether;
 
         // check for different values of boosts
 
@@ -231,11 +231,11 @@ contract BlockRewardControllerTest is POLTest {
         assertApproxEqAbs(reward, expected, maxDelta);
 
         reward = blockRewardController.computeReward(0.01 ether, rewardRate, multiplier, convexity);
-        expected = 1.38462 ether;
+        expected = 1.384_62 ether;
         assertApproxEqAbs(reward, expected, maxDelta);
 
         reward = blockRewardController.computeReward(0.95 ether, rewardRate, multiplier, convexity);
-        expected = 4.47096 ether;
+        expected = 4.470_96 ether;
         assertApproxEqAbs(reward, expected, maxDelta);
 
         // check for different values of convexity
@@ -253,7 +253,7 @@ contract BlockRewardControllerTest is POLTest {
         expected = 4.5 ether;
         assertApproxEqAbs(reward, expected, maxDelta);
 
-        reward = blockRewardController.computeReward(1, rewardRate, multiplier, 0.0000001 ether);
+        reward = blockRewardController.computeReward(1, rewardRate, multiplier, 0.000_000_1 ether);
         expected = 4.5 ether;
         assertApproxEqAbs(reward, expected, maxDelta);
     }

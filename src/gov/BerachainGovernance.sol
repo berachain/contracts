@@ -9,8 +9,9 @@ import { GovernorCountingSimpleUpgradeable } from "@openzeppelin-gov-ext/Governo
 import { GovernorStorageUpgradeable } from "@openzeppelin-gov-ext/GovernorStorageUpgradeable.sol";
 import { GovernorVotesUpgradeable } from "@openzeppelin-gov-ext/GovernorVotesUpgradeable.sol";
 import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
-import { GovernorVotesQuorumFractionUpgradeable } from
-    "@openzeppelin-gov-ext/GovernorVotesQuorumFractionUpgradeable.sol";
+import {
+    GovernorVotesQuorumFractionUpgradeable
+} from "@openzeppelin-gov-ext/GovernorVotesQuorumFractionUpgradeable.sol";
 import { GovernorTimelockControlUpgradeable } from "@openzeppelin-gov-ext/GovernorTimelockControlUpgradeable.sol";
 import { IVotes } from "@openzeppelin/contracts/governance/utils/IVotes.sol";
 import { Utils } from "../libraries/Utils.sol";
@@ -191,9 +192,10 @@ contract BerachainGovernance is
         override(GovernorUpgradeable, GovernorTimelockControlUpgradeable)
         returns (uint48)
     {
-        return GovernorTimelockControlUpgradeable._queueOperations(
-            proposalId, targets, values, calldatas, descriptionHash
-        );
+        return
+            GovernorTimelockControlUpgradeable._queueOperations(
+                proposalId, targets, values, calldatas, descriptionHash
+            );
     }
 
     function _executeOperations(

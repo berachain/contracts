@@ -37,14 +37,15 @@ contract DeployProver is Create2Deployer, Script {
         address distributorProxy = deployProxyWithCreate2(distributorImpl, SALT);
         console2.log("Distributor proxy deployed at: %s", address(distributorProxy));
 
-        Distributor(distributorProxy).initialize(
-            beraChef,
-            address(bgt),
-            blockRewardController,
-            governance,
-            ZERO_VALIDATOR_PUBKEY_G_INDEX,
-            PROPOSER_INDEX_G_INDEX
-        );
+        Distributor(distributorProxy)
+            .initialize(
+                beraChef,
+                address(bgt),
+                blockRewardController,
+                governance,
+                ZERO_VALIDATOR_PUBKEY_G_INDEX,
+                PROPOSER_INDEX_G_INDEX
+            );
 
         vm.stopBroadcast();
     }

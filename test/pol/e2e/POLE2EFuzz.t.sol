@@ -26,7 +26,7 @@ contract POLE2EFuzz is POLGasSimulationSimple {
 
         normalizeWeights(weights, numVaults); // Normalize weights
         RewardVault[] memory vaults = setUpFuzz(weights, numVaults, incentivesCount); // Setup the
-            // environment with fuzzed data
+        // environment with fuzzed data
 
         // Total rewards for the block are set by super.setUp() to TEST_BGT_PER_BLOCK
         uint256 totalRewards = TEST_BGT_PER_BLOCK;

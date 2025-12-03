@@ -45,7 +45,8 @@ contract MockVault {
     string private _symbol;
     string private _newName;
 
-    bytes32 private constant PAUSABLE_STORAGE_SLOT = 0xcd5ed15c6e187e77e9aee88184c21f4f2182ab5827cb3b7e07fbedcd63f03300;
+    bytes32 private constant PAUSABLE_STORAGE_SLOT =
+        0xcd5ed15c6e187e77e9aee88184c21f4f2182ab5827cb3b7e07fbedcd63f03300;
 
     function VERSION() public pure returns (uint256) {
         return 2;

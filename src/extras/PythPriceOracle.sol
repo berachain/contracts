@@ -80,8 +80,7 @@ contract PythPriceOracle is IPriceOracle, AccessControlUpgradeable, UUPSUpgradea
 
     function _wrapData(PythStructs.Price memory response) internal pure returns (IPriceOracle.Data memory) {
         return IPriceOracle.Data({
-            price: PythUtils.convertToUint(response.price, response.expo, 18),
-            publishTime: response.publishTime
+            price: PythUtils.convertToUint(response.price, response.expo, 18), publishTime: response.publishTime
         });
     }
 

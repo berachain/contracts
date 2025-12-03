@@ -69,10 +69,7 @@ contract POLGasSimulationSimple is GovernanceBaseTest {
         // Provide initial tokens for testing
         deal(address(bgt), address(this), 100_000_000_000 ether);
         InitialGovernorParameters memory params = InitialGovernorParameters({
-            proposalThreshold: 1e9,
-            quorumNumeratorValue: 10,
-            votingDelay: uint48(5400),
-            votingPeriod: uint32(5400)
+            proposalThreshold: 1e9, quorumNumeratorValue: 10, votingDelay: uint48(5400), votingPeriod: uint32(5400)
         });
         gov.initialize(IVotes(address(bgt)), timelock, params);
 

@@ -373,11 +373,7 @@ contract WBERAStakerVault is
         // Storing for caller to keep the same logic of ERC4626 where during withdraw/redeem, the caller is able to
         // withdraw funds to the receiver address
         withdrawalRequests[caller] = IWBERAStakerVaultWithdrawalRequest.WithdrawalRequest({
-            assets: assets,
-            shares: shares,
-            requestTime: block.timestamp,
-            owner: owner,
-            receiver: receiver
+            assets: assets, shares: shares, requestTime: block.timestamp, owner: owner, receiver: receiver
         });
         reservedAssets += assets;
 

@@ -78,17 +78,16 @@ library Utils {
     function allowance(address token, address owner, address spender) internal view returns (uint256 amount) {
         assembly ("memory-safe") {
             mstore(0, 0xdd62ed3e00000000000000000000000000000000000000000000000000000000) // Store function selector of
-                // `allowance(address,address)`.
+            // `allowance(address,address)`.
             mstore(0x04, owner) // Store the `owner` argument.
             mstore(0x24, spender) // Store the `spender` argument.
-            amount :=
-                mul( // The arguments of `mul` are evaluated from right to left.
-                    mload(0),
-                    and( // The arguments of `and` are evaluated from right to left.
-                        gt(returndatasize(), 0x1f), // At least 32 bytes returned.
-                        staticcall(gas(), token, 0, 0x44, 0, 0x20)
-                    )
+            amount := mul( // The arguments of `mul` are evaluated from right to left.
+                mload(0),
+                and( // The arguments of `and` are evaluated from right to left.
+                    gt(returndatasize(), 0x1f), // At least 32 bytes returned.
+                    staticcall(gas(), token, 0, 0x44, 0, 0x20)
                 )
+            )
             mstore(0x24, 0) // clear the upper bits of free memory pointer.
         }
     }
@@ -102,11 +101,10 @@ library Utils {
             mstore(0x00, 0xa9059cbb000000000000000000000000) // `transfer(address,uint256)` function selector.
 
             // Perform the transfer, returning success status.
-            success :=
-                and(
-                    or(eq(mload(0x00), 1), iszero(returndatasize())), // Returned 1 or nothing.
-                    call(TRANSFER_GAS_LIMIT, token, 0, 0x10, 0x44, 0x00, 0x20)
-                )
+            success := and(
+                or(eq(mload(0x00), 1), iszero(returndatasize())), // Returned 1 or nothing.
+                call(TRANSFER_GAS_LIMIT, token, 0, 0x10, 0x44, 0x00, 0x20)
+            )
 
             mstore(0x34, 0) // Restore the part of the free memory pointer that was overwritten.
         }

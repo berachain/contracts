@@ -3,8 +3,9 @@ pragma solidity 0.8.26;
 
 import { IERC721 } from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import { OwnableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
-import { ERC721EnumerableUpgradeable } from
-    "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721EnumerableUpgradeable.sol";
+import {
+    ERC721EnumerableUpgradeable
+} from "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721EnumerableUpgradeable.sol";
 import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import { ERC721Upgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC721/ERC721Upgradeable.sol";
 
@@ -92,15 +93,7 @@ contract WBERAStakerVaultWithdrawalRequest is
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
 
     /// @dev Make this non-transferable.
-    function transferFrom(
-        address from,
-        address to,
-        uint256 tokenId
-    )
-        public
-        pure
-        override(ERC721Upgradeable, IERC721)
-    {
+    function transferFrom(address from, address to, uint256 tokenId) public pure override(ERC721Upgradeable, IERC721) {
         from;
         to;
         tokenId;
@@ -155,11 +148,7 @@ contract WBERAStakerVaultWithdrawalRequest is
         uint256 newRequestId = _nextRequestId++;
 
         WithdrawalRequest memory newRequest = WithdrawalRequest({
-            assets: assets,
-            shares: shares,
-            requestTime: block.timestamp,
-            receiver: receiver,
-            owner: owner
+            assets: assets, shares: shares, requestTime: block.timestamp, receiver: receiver, owner: owner
         });
 
         _safeMint(caller, newRequestId);

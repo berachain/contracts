@@ -11,8 +11,9 @@ contract DeployBGTIncentiveDistributorScript is BaseScript, RBAC, AddressBook {
     constructor() AddressBook(_chainType) { }
 
     function run() public broadcast {
-        BGTIncentiveDistributorDeployer bgtIncentiveDistributor =
-            new BGTIncentiveDistributorDeployer(msg.sender, _saltsForProxy(type(BGTIncentiveDistributor).creationCode));
+        BGTIncentiveDistributorDeployer bgtIncentiveDistributor = new BGTIncentiveDistributorDeployer(
+            msg.sender, _saltsForProxy(type(BGTIncentiveDistributor).creationCode)
+        );
         address bgtIncentiveDistributorAddress = address(bgtIncentiveDistributor.bgtIncentiveDistributor());
         _checkDeploymentAddress(
             "BGTIncentiveDistributor", bgtIncentiveDistributorAddress, _polAddresses.bgtIncentiveDistributor

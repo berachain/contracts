@@ -24,13 +24,7 @@ import { IRewardVaultFactory } from "../interfaces/IRewardVaultFactory.sol";
 /// https://github.com/Synthetixio/synthetix/blob/develop/contracts/StakingRewards.sol
 /// We are using this model instead of 4626 because we want to incentivize staying in the vault for x period of time
 /// to be considered a 'miner' and not a 'trader'.
-contract RewardVault is
-    PausableUpgradeable,
-    ReentrancyGuardUpgradeable,
-    FactoryOwnable,
-    StakingRewards,
-    IRewardVault
-{
+contract RewardVault is PausableUpgradeable, ReentrancyGuardUpgradeable, FactoryOwnable, StakingRewards, IRewardVault {
     using Utils for bytes4;
     using SafeERC20 for IERC20;
     using Utils for address;
@@ -60,7 +54,7 @@ contract RewardVault is
     }
 
     uint256 private constant MAX_INCENTIVE_RATE = 1e36; // for 18 decimal token, this will mean 1e18 incentiveTokens
-        // per BGT emission.
+    // per BGT emission.
 
     // Safe gas limit for low level call operations to avoid griefing.
     // This is mostly for low level call like approve, receiveIncentive (IBGTIncentiveDistributor which uses

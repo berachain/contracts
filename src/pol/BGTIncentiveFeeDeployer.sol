@@ -46,8 +46,9 @@ contract BGTIncentiveFeeDeployer is Create2Deployer {
             WBERAStakerVault(payable(deployProxyWithCreate2(wberaStakerVaultImpl, wberaStakerVaultSalt.proxy)));
 
         // deploy the BGTIncentiveFeeCollector implementation
-        address bgtIncentiveFeeCollectorImpl =
-            deployWithCreate2(bgtIncentiveFeeCollectorSalt.implementation, type(BGTIncentiveFeeCollector).creationCode);
+        address bgtIncentiveFeeCollectorImpl = deployWithCreate2(
+            bgtIncentiveFeeCollectorSalt.implementation, type(BGTIncentiveFeeCollector).creationCode
+        );
         // deploy the BGTIncentiveFeeCollector proxy
         bgtIncentiveFeeCollector = BGTIncentiveFeeCollector(
             deployProxyWithCreate2(bgtIncentiveFeeCollectorImpl, bgtIncentiveFeeCollectorSalt.proxy)

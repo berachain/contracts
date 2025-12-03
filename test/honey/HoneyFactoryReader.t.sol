@@ -65,14 +65,7 @@ contract HoneyFactoryReaderTest is HoneyBaseTest {
         }
     }
 
-    function _factoryMint(
-        ERC20 asset,
-        uint256 amount,
-        bool expectBasketMode
-    )
-        internal
-        returns (uint256 mintedHoneys)
-    {
+    function _factoryMint(ERC20 asset, uint256 amount, bool expectBasketMode) internal returns (uint256 mintedHoneys) {
         asset.approve(address(factory), amount);
         mintedHoneys = factory.mint(address(asset), amount, address(this), expectBasketMode);
     }

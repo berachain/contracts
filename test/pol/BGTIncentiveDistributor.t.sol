@@ -42,9 +42,8 @@ contract BGTIncentiveReceiverTest is POLTest {
         assertEq(token.balanceOf(address(this)), 0);
         assertEq(token.balanceOf(address(bgtIncentiveDistributor)), amount);
         assertEq(
-            BGTIncentiveDistributor(bgtIncentiveDistributor).incentiveTokensPerValidator(
-                valData.pubkey, address(token)
-            ),
+            BGTIncentiveDistributor(bgtIncentiveDistributor)
+                .incentiveTokensPerValidator(valData.pubkey, address(token)),
             amount
         );
     }
@@ -156,10 +155,7 @@ contract BGTIncentiveReceiverTest is POLTest {
         assertEq(token.balanceOf(address(bgtIncentiveDistributor)), claimAmount);
 
         IBGTIncentiveDistributor.Claim memory claim = IBGTIncentiveDistributor.Claim({
-            identifier: identifier,
-            account: claimUser,
-            amount: claimAmount,
-            merkleProof: validProof
+            identifier: identifier, account: claimUser, amount: claimAmount, merkleProof: validProof
         });
 
         IBGTIncentiveDistributor.Claim[] memory claims = new IBGTIncentiveDistributor.Claim[](1);
@@ -182,10 +178,7 @@ contract BGTIncentiveReceiverTest is POLTest {
         assertEq(token.balanceOf(address(bgtIncentiveDistributor)), claimAmount);
 
         IBGTIncentiveDistributor.Claim memory claim = IBGTIncentiveDistributor.Claim({
-            identifier: identifier,
-            account: claimUser,
-            amount: claimAmount,
-            merkleProof: validProof
+            identifier: identifier, account: claimUser, amount: claimAmount, merkleProof: validProof
         });
 
         IBGTIncentiveDistributor.Claim[] memory claims = new IBGTIncentiveDistributor.Claim[](1);
@@ -206,10 +199,7 @@ contract BGTIncentiveReceiverTest is POLTest {
         assertEq(token.balanceOf(address(bgtIncentiveDistributor)), claimAmount);
 
         IBGTIncentiveDistributor.Claim memory claim = IBGTIncentiveDistributor.Claim({
-            identifier: identifier,
-            account: claimUser,
-            amount: claimAmount,
-            merkleProof: invalidProof
+            identifier: identifier, account: claimUser, amount: claimAmount, merkleProof: invalidProof
         });
 
         IBGTIncentiveDistributor.Claim[] memory claims = new IBGTIncentiveDistributor.Claim[](1);

@@ -19,9 +19,8 @@ contract DeployHoneyFactoryReaderImplScript is BaseDeployScript, AddressBook {
         _validateCode("HoneyFactoryReader", _honeyAddresses.honeyFactoryReaderImpl);
 
         bytes memory callSignature;
-        HoneyFactoryReader(_honeyAddresses.honeyFactoryReader).upgradeToAndCall(
-            _honeyAddresses.honeyFactoryReaderImpl, callSignature
-        );
+        HoneyFactoryReader(_honeyAddresses.honeyFactoryReader)
+            .upgradeToAndCall(_honeyAddresses.honeyFactoryReaderImpl, callSignature);
         console2.log("HoneyFactoryReader upgraded successfully");
     }
 }

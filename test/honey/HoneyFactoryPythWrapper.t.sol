@@ -1005,12 +1005,7 @@ contract HoneyFactoryPythWrapperTest is HoneyBaseTest {
         factoryWrapper.recapitalize(empty, address(dai), 1e18);
     }
 
-    function testFuzz_recapitalize_failsWhenExceedRelativeCap(
-        uint256 daiToMint,
-        uint256 usdtToRecapitalize
-    )
-        external
-    {
+    function testFuzz_recapitalize_failsWhenExceedRelativeCap(uint256 daiToMint, uint256 usdtToRecapitalize) external {
         daiToMint = _bound(daiToMint, 1e18, daiBalance);
         uint256 usdtToMint = daiToMint / 10 ** 12;
         usdtToRecapitalize = _bound(usdtToRecapitalize, 1e6, usdtBalance - usdtToMint);

@@ -422,9 +422,7 @@ contract HoneyFactoryTest is HoneyBaseTest {
         assertTrue(factory.isBasketModeEnabled(true));
     }
 
-    function testFuzz_BasketModeDisabledWhenAnAssetDepegUnderOneDollarAndItIsNotUsedAsCollateral_WhenRedeem(
-        uint256 pegOffset
-    )
+    function testFuzz_BasketModeDisabledWhenAnAssetDepegUnderOneDollarAndItIsNotUsedAsCollateral_WhenRedeem(uint256 pegOffset)
         public
     {
         pegOffset = _bound(pegOffset, PEG_OFFSET + 0.1e18, 1e18 - 0.1e18);
@@ -476,9 +474,7 @@ contract HoneyFactoryTest is HoneyBaseTest {
         assertTrue(factory.isBasketModeEnabled(true));
     }
 
-    function testFuzz_BasketModeDisabledWhenAnAssetDepegOverOneDollarButItIsNotUsedAsCollateral_WhenRedeem(
-        uint256 pegOffset
-    )
+    function testFuzz_BasketModeDisabledWhenAnAssetDepegOverOneDollarButItIsNotUsedAsCollateral_WhenRedeem(uint256 pegOffset)
         public
     {
         pegOffset = _bound(pegOffset, PEG_OFFSET + 1e10, 1e18);
@@ -1664,12 +1660,7 @@ contract HoneyFactoryTest is HoneyBaseTest {
         factory.recapitalize(address(dai), 1e18);
     }
 
-    function testFuzz_recapitalize_failsWhenExceedRelativeCap(
-        uint256 daiToMint,
-        uint256 usdtToRecapitalize
-    )
-        external
-    {
+    function testFuzz_recapitalize_failsWhenExceedRelativeCap(uint256 daiToMint, uint256 usdtToRecapitalize) external {
         daiToMint = _bound(daiToMint, 1e18, daiBalance);
         uint256 usdtToMint = daiToMint / 10 ** 12;
         usdtToRecapitalize = _bound(usdtToRecapitalize, 1e6, usdtBalance - usdtToMint);
@@ -2198,9 +2189,7 @@ contract HoneyFactoryTest is HoneyBaseTest {
         _assertEqVaultBalance(address(dai), _daiToMint * daiMintRate / 1e18);
     }
 
-    function testFuzz_PreviewRequiredCollateralReturnsAllZeroWhenBasketModeIsEnabledWithoutAnyDeposit(
-        uint256 _mintedHoneys
-    )
+    function testFuzz_PreviewRequiredCollateralReturnsAllZeroWhenBasketModeIsEnabledWithoutAnyDeposit(uint256 _mintedHoneys)
         external
     {
         _forceBasketMode();
@@ -2264,11 +2253,9 @@ contract HoneyFactoryTest is HoneyBaseTest {
                 // Calculate delta tolerance for approximation
                 uint256 deltaTolerance = previewAssetDecimals > collateralAssetDecimals
                     ? 10 ** (previewAssetDecimals - collateralAssetDecimals)
-                    : (
-                        previewAssetDecimals == collateralAssetDecimals
+                    : (previewAssetDecimals == collateralAssetDecimals
                             ? 10 ** previewAssetDeltaToWad
-                            : 10 ** (collateralAssetDecimals - previewAssetDecimals)
-                    );
+                            : 10 ** (collateralAssetDecimals - previewAssetDecimals));
 
                 assertApproxEqAbs(requiredCollaterals[i][j], requiredAmount, deltaTolerance);
             }

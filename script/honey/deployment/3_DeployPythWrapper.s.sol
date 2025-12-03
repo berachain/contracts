@@ -24,7 +24,9 @@ contract DeployPythWrapperScript is BaseDeployScript, AddressBook {
             _deployWithArgs(
                 "HoneyFactoryPythWrapper",
                 type(HoneyFactoryPythWrapper).creationCode,
-                abi.encode(_honeyAddresses.honeyFactory, _oraclesAddresses.extPyth, _honeyAddresses.honeyFactoryReader),
+                abi.encode(
+                    _honeyAddresses.honeyFactory, _oraclesAddresses.extPyth, _honeyAddresses.honeyFactoryReader
+                ),
                 _honeyAddresses.honeyFactoryPythWrapper
             )
         );

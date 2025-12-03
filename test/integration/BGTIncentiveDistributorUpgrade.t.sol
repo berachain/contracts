@@ -65,19 +65,19 @@ contract BGTIncentiveDistributorUpgradeTest is Create2Deployer, Test, AddressBoo
 
         // upgrade the contracts
         vm.startPrank(safeOwner);
-        BeraChef(_polAddresses.beraChef).upgradeToAndCall(
-            newBeraChefImpl, abi.encodeCall(BeraChef.setCommissionChangeDelay, 2 * 8191)
-        );
+        BeraChef(_polAddresses.beraChef)
+            .upgradeToAndCall(newBeraChefImpl, abi.encodeCall(BeraChef.setCommissionChangeDelay, 2 * 8191));
         assertEq(BeraChef(_polAddresses.beraChef).commissionChangeDelay(), 2 * 8191);
 
         // make sure no storage collision
         assertEq(BeraChef(_polAddresses.beraChef).distributor(), _polAddresses.distributor);
         assertEq(BeraChef(_polAddresses.beraChef).factory(), _polAddresses.rewardVaultFactory);
 
-        RewardVaultFactory(_polAddresses.rewardVaultFactory).upgradeToAndCall(
-            newRewardVaultFactoryImpl,
-            abi.encodeCall(RewardVaultFactory.setBGTIncentiveDistributor, bgtIncentiveDistributor)
-        );
+        RewardVaultFactory(_polAddresses.rewardVaultFactory)
+            .upgradeToAndCall(
+                newRewardVaultFactoryImpl,
+                abi.encodeCall(RewardVaultFactory.setBGTIncentiveDistributor, bgtIncentiveDistributor)
+            );
         assertEq(
             RewardVaultFactory(_polAddresses.rewardVaultFactory).bgtIncentiveDistributor(), bgtIncentiveDistributor
         );

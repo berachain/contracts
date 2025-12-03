@@ -22,9 +22,8 @@ contract UpgradeBGTIncentiveFeeCollectorScript is BaseDeployScript, AddressBook 
     function upgradeToTestnet() public broadcast {
         address newBGTIncentiveFeeCollectorImpl = _deployNewImplementation();
         console2.log("New BGTIncentiveFeeCollector implementation address:", newBGTIncentiveFeeCollectorImpl);
-        BGTIncentiveFeeCollector(_polAddresses.bgtIncentiveFeeCollector).upgradeToAndCall(
-            newBGTIncentiveFeeCollectorImpl, bytes("")
-        );
+        BGTIncentiveFeeCollector(_polAddresses.bgtIncentiveFeeCollector)
+            .upgradeToAndCall(newBGTIncentiveFeeCollectorImpl, bytes(""));
         console2.log("BGTIncentiveFeeCollector upgraded successfully");
     }
 

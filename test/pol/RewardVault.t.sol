@@ -1260,13 +1260,13 @@ contract RewardVaultTest is DistributorTest, StakingTest {
 
         // make sure the book keeping is correct inside bgtIncentiveDistributor
         assertEq(
-            IBGTIncentiveDistributor(bgtIncentiveDistributor).incentiveTokensPerValidator(valData.pubkey, address(dai)),
+            IBGTIncentiveDistributor(bgtIncentiveDistributor)
+                .incentiveTokensPerValidator(valData.pubkey, address(dai)),
             bgtIncentiveDistributorShare
         );
         assertEq(
-            IBGTIncentiveDistributor(bgtIncentiveDistributor).incentiveTokensPerValidator(
-                valData.pubkey, address(honey)
-            ),
+            IBGTIncentiveDistributor(bgtIncentiveDistributor)
+                .incentiveTokensPerValidator(valData.pubkey, address(honey)),
             bgtIncentiveDistributorShare
         );
     }
@@ -1281,7 +1281,7 @@ contract RewardVaultTest is DistributorTest, StakingTest {
         uint256 incentiveFee1 = 100 * 1e18 * 33 / 100;
         uint256 incentiveFee2 = 100 * 1e18 * 33 / 100;
         uint256 incentiveFee = incentiveFee1 + incentiveFee2; // for keeping exact calculation and not have not
-            // rounding mismatch during assert.
+        // rounding mismatch during assert.
         uint256 validatorShare1 = (100 * 1e18 - incentiveFee1) * 5 / 100;
         uint256 validatorShare2 = (100 * 1e18 - incentiveFee2) * 5 / 100;
         uint256 validatorShare = validatorShare1 + validatorShare2;
@@ -1292,13 +1292,13 @@ contract RewardVaultTest is DistributorTest, StakingTest {
         assertEq(honey.balanceOf(bgtIncentiveDistributor), bgtIncentiveDistributorShare);
         // make sure the book keeping is correct inside bgtIncentiveDistributor
         assertEq(
-            IBGTIncentiveDistributor(bgtIncentiveDistributor).incentiveTokensPerValidator(valData.pubkey, address(dai)),
+            IBGTIncentiveDistributor(bgtIncentiveDistributor)
+                .incentiveTokensPerValidator(valData.pubkey, address(dai)),
             bgtIncentiveDistributorShare
         );
         assertEq(
-            IBGTIncentiveDistributor(bgtIncentiveDistributor).incentiveTokensPerValidator(
-                valData.pubkey, address(honey)
-            ),
+            IBGTIncentiveDistributor(bgtIncentiveDistributor)
+                .incentiveTokensPerValidator(valData.pubkey, address(honey)),
             bgtIncentiveDistributorShare
         );
     }
@@ -1862,12 +1862,7 @@ contract RewardVaultTest is DistributorTest, StakingTest {
         testFuzz_GetPartialRewardFailsIfAmountGreaterThanReward(user, 1000 ether);
     }
 
-    function testFuzz_GetPartialRewardFailsIfAmountGreaterThanReward(
-        address _account,
-        uint256 _partialAmount
-    )
-        public
-    {
+    function testFuzz_GetPartialRewardFailsIfAmountGreaterThanReward(address _account, uint256 _partialAmount) public {
         vm.assume(_partialAmount > 0);
         vm.assume(_account != address(0));
 
@@ -2202,7 +2197,7 @@ contract RewardVaultTest is DistributorTest, StakingTest {
     {
         // Bound the parameters to reasonable values
         targetRewardsPerSecond = bound(targetRewardsPerSecond, 1e33, 1e39); // 0.001 to 1000 BGT per second, with
-            // precision
+        // precision
         rewardAmount = bound(rewardAmount, 1e18, 1e25); // 1 to 10M BGT
         minRewardDurationForTargetRate = bound(minRewardDurationForTargetRate, 3 days, 7 days);
 

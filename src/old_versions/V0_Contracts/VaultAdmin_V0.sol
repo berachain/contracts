@@ -69,6 +69,7 @@ abstract contract VaultAdmin_V0 is AccessControlUpgradeable, PausableUpgradeable
 
     /// @dev This gap is used to prevent storage collisions.
     uint256[49] private __gap;
+
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
     /*                         INITIALIZER                        */
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/

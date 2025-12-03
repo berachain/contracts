@@ -4,8 +4,9 @@ pragma solidity 0.8.26;
 import { Test } from "forge-std/Test.sol";
 
 import { IGovernor } from "@openzeppelin/contracts/governance/IGovernor.sol";
-import { GovernorVotesQuorumFractionUpgradeable } from
-    "@openzeppelin-gov-ext/GovernorVotesQuorumFractionUpgradeable.sol";
+import {
+    GovernorVotesQuorumFractionUpgradeable
+} from "@openzeppelin-gov-ext/GovernorVotesQuorumFractionUpgradeable.sol";
 
 import { Salt } from "src/base/Salt.sol";
 import { BerachainGovernance } from "src/gov/BerachainGovernance.sol";

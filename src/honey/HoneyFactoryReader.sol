@@ -161,10 +161,7 @@ contract HoneyFactoryReader is AccessControlUpgradeable, UUPSUpgradeable, IHoney
 
     /// @inheritdoc IHoneyFactoryReader
     /// @dev Implementation is copied 1:1 from HoneyFactory to not edit the original contract.
-    function isBasketModeEnabledWithPrices(
-        bool isMint,
-        uint256[] memory prices
-    )
+    function isBasketModeEnabledWithPrices(bool isMint, uint256[] memory prices)
         public
         view
         returns (bool basketMode)
@@ -203,8 +200,9 @@ contract HoneyFactoryReader is AccessControlUpgradeable, UUPSUpgradeable, IHoney
 
     /// @inheritdoc IHoneyFactoryReader
     function isPeggedWithPrice(address asset, uint256 price) public view returns (bool) {
-        return (1e18 - honeyFactory.lowerPegOffsets(asset) <= price)
-            && (price <= 1e18 + honeyFactory.upperPegOffsets(asset));
+        return
+            (1e18 - honeyFactory.lowerPegOffsets(asset) <= price)
+                && (price <= 1e18 + honeyFactory.upperPegOffsets(asset));
     }
 
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/

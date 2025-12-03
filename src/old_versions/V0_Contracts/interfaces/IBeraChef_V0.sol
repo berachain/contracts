@@ -113,13 +113,7 @@ interface IBeraChef_V0 is IPOLErrors {
      * @param blockNumber The block number to be queried.
      * @return isReady True if the queued reward allocation is ready to be activated, false otherwise.
      */
-    function isQueuedRewardAllocationReady(
-        bytes calldata valPubkey,
-        uint256 blockNumber
-    )
-        external
-        view
-        returns (bool);
+    function isQueuedRewardAllocationReady(bytes calldata valPubkey, uint256 blockNumber) external view returns (bool);
 
     /**
      * @notice Returns the status of whether the BeraChef contract is ready to be used.
@@ -176,12 +170,7 @@ interface IBeraChef_V0 is IPOLErrors {
      * @param startBlock The block that the reward allocation goes into effect.
      * @param weights The weights of the reward allocation.
      */
-    function queueNewRewardAllocation(
-        bytes calldata valPubkey,
-        uint64 startBlock,
-        Weight[] calldata weights
-    )
-        external;
+    function queueNewRewardAllocation(bytes calldata valPubkey, uint64 startBlock, Weight[] calldata weights) external;
 
     /// @notice Activates the queued reward allocation for a validator if its ready for the current block.
     /// @dev Should be called by the distribution contract.

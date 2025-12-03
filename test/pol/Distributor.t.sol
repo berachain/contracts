@@ -170,11 +170,13 @@ contract DistributorTest is BeaconRootsHelperTest {
         bytes memory data =
             abi.encodeCall(IBlockRewardController.processRewards, (valData.pubkey, DISTRIBUTE_FOR_TIMESTAMP, true));
         vm.expectCall(address(blockRewardController), data, 1);
-        data =
-            abi.encodeCall(IBlockRewardController.processRewards, (valData.pubkey, DISTRIBUTE_FOR_TIMESTAMP + 1, true));
+        data = abi.encodeCall(
+            IBlockRewardController.processRewards, (valData.pubkey, DISTRIBUTE_FOR_TIMESTAMP + 1, true)
+        );
         vm.expectCall(address(blockRewardController), data, 1);
-        data =
-            abi.encodeCall(IBlockRewardController.processRewards, (valData.pubkey, DISTRIBUTE_FOR_TIMESTAMP + 2, true));
+        data = abi.encodeCall(
+            IBlockRewardController.processRewards, (valData.pubkey, DISTRIBUTE_FOR_TIMESTAMP + 2, true)
+        );
         vm.expectCall(address(blockRewardController), data, 1);
         // expect 3 calls to mint the BGT to the distributor
         data = abi.encodeCall(IBGT.mint, (address(distributor), TEST_BGT_PER_BLOCK));
