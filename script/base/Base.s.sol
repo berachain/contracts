@@ -2,7 +2,7 @@
 pragma solidity 0.8.26;
 
 import { Script, console2 } from "forge-std/Script.sol";
-import { ChainHelper, ChainType } from "./Chain.sol";
+import { ChainHelper } from "./Chain.sol";
 import { DeployHelper } from "src/base/DeployHelper.sol";
 
 abstract contract BaseScript is DeployHelper, Script {
@@ -21,9 +21,6 @@ abstract contract BaseScript is DeployHelper, Script {
     /// @dev Used to determine if the transactions can be signed without using an external hardware wallet.
     bool internal _useSoftwareWallet;
 
-    /// @dev Used to determine the chain environment type in which the script is running.
-    ChainType internal _chainType;
-
     /// @dev Initializes the transaction broadcaster like this:
     ///
     /// - If $ETH_FROM is defined, use it.
@@ -32,8 +29,7 @@ abstract contract BaseScript is DeployHelper, Script {
     ///
     /// The use case is to specify the broadcaster via the command line.
     constructor() {
-        _chainType = ChainHelper.getType();
-        console2.log("INFO: %s environment (Chain ID: %s)", ChainHelper.getLabel(_chainType), block.chainid);
+        console2.log("INFO: %s environment (Chain ID: %s)", ChainHelper.getLabel(ChainHelper.getType()), block.chainid);
 
         _setPepper(_readPepper());
 

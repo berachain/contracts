@@ -11,8 +11,6 @@ contract TransferRootPriceOracleOwnershipScript is RBAC, BaseScript, AddressBook
     address internal constant NEW_OWNER = address(0); // TIMELOCK_ADDRESS;
     address internal constant ROOT_PRICE_ORACLE_MANAGER = address(0);
 
-    constructor() AddressBook(_chainType) { }
-
     function run() public virtual broadcast {
         require(NEW_OWNER != address(0), "NEW_OWNER must be set");
         require(ROOT_PRICE_ORACLE_MANAGER != address(0), "Root price oracle manager address not set");

@@ -7,8 +7,6 @@ import { BGTIncentiveFeeCollector } from "src/pol/BGTIncentiveFeeCollector.sol";
 import { AddressBook } from "../../base/AddressBook.sol";
 
 contract UpgradeBGTIncentiveFeeCollectorScript is BaseDeployScript, AddressBook {
-    constructor() AddressBook(_chainType) { }
-
     function run() public pure {
         console2.log("Please run specific function.");
     }

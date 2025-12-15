@@ -19,8 +19,6 @@ import { RewardAllocatorFactory } from "src/pol/rewards/RewardAllocatorFactory.s
 import { AddressBook } from "../base/AddressBook.sol";
 
 contract POLPredictAddressesScript is BasePredictScript, AddressBook {
-    constructor() AddressBook(_chainType) { }
-
     function run() public view {
         console2.log("POL Contracts will be deployed at: ");
         _predictAddress("BGT", type(BGT).creationCode);

@@ -44,8 +44,6 @@ contract WhitelistRewardVaultScript is BaseScript, Storage, AddressBook {
         REWARD_VAULT_USDS_HONEY_METADATA
     ];
 
-    constructor() AddressBook(_chainType) { }
-
     function run() public virtual broadcast {
         _validateCode("BeraChef", _polAddresses.beraChef);
         beraChef = BeraChef(_polAddresses.beraChef);

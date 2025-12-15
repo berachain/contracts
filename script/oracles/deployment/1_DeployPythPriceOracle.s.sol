@@ -8,8 +8,6 @@ import { PythPriceOracle } from "src/extras/PythPriceOracle.sol";
 import { AddressBook } from "../../base/AddressBook.sol";
 
 contract DeployPythPriceOracleScript is RBAC, BaseScript, AddressBook {
-    constructor() AddressBook(_chainType) { }
-
     function run() public broadcast {
         PythPriceOracleDeployer oracleDeployer =
             new PythPriceOracleDeployer(msg.sender, _saltsForProxy(type(PythPriceOracle).creationCode));

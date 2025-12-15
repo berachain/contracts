@@ -8,8 +8,6 @@ import { RewardVaultHelperDeployer } from "src/pol/RewardVaultHelperDeployer.sol
 import { RewardVaultHelper } from "src/pol/rewards/RewardVaultHelper.sol";
 
 contract DeployRewardVaultHelperScript is BaseScript, AddressBook {
-    constructor() AddressBook(_chainType) { }
-
     function run() public pure {
         console2.log("Please run specific function.");
     }

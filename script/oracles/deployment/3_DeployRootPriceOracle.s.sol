@@ -9,8 +9,6 @@ import { RootPriceOracleDeployer } from "src/extras/RootPriceOracleDeployer.sol"
 import { AddressBook } from "../../base/AddressBook.sol";
 
 contract DeployRootPriceOracleScript is RBAC, BaseScript, AddressBook {
-    constructor() AddressBook(_chainType) { }
-
     function run() public broadcast {
         RootPriceOracleDeployer oracleDeployer =
             new RootPriceOracleDeployer(msg.sender, _salt(type(RootPriceOracle).creationCode));

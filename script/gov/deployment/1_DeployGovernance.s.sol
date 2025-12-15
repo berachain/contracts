@@ -28,8 +28,6 @@ contract DeployGovernanceScript is BaseScript, AddressBook {
     /// @notice Time duration of the enforced time-lock
     uint256 public constant TIMELOCK_MIN_DELAY = 2 days;
 
-    constructor() AddressBook(_chainType) { }
-
     function run() public broadcast {
         _validateCode("BGT", _polAddresses.bgt);
         require(GOV_GUARDIAN != address(0), "GOV_GUARDIAN must be set");

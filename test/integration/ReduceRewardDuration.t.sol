@@ -13,9 +13,9 @@ import { MockERC20 } from "../mock/token/MockERC20.sol";
 import { IRewardVault, IPOLErrors } from "src/pol/interfaces/IRewardVault.sol";
 
 import { ChainType } from "script/base/Chain.sol";
-import { AddressBook } from "script/base/AddressBook.sol";
+import { POLAddressBook } from "script/pol/POLAddresses.sol";
 
-contract ReduceRewardDurationTest is Create2Deployer, Test, AddressBook {
+contract ReduceRewardDurationTest is Create2Deployer, Test, POLAddressBook {
     address factoryVaultAdmin = 0xD13948F99525FB271809F45c268D72a3C00a568D;
     address factoryVaultManager = 0xD13948F99525FB271809F45c268D72a3C00a568D;
 
@@ -28,7 +28,7 @@ contract ReduceRewardDurationTest is Create2Deployer, Test, AddressBook {
         0x1Fe3C13B009eCfCe196E480180Db5f8990FFf5Fe
     ];
 
-    constructor() AddressBook(ChainType.Mainnet) { }
+    constructor() POLAddressBook(ChainType.Mainnet) { }
 
     function setUp() public virtual {
         vm.createSelectFork("berachain");

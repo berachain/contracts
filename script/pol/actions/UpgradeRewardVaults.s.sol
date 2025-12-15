@@ -10,8 +10,6 @@ import { RewardVault } from "src/pol/rewards/RewardVault.sol";
 import { AddressBook } from "../../base/AddressBook.sol";
 
 contract UpgradeRewardVaults is BaseScript, Storage, AddressBook {
-    constructor() AddressBook(_chainType) { }
-
     function run() public virtual broadcast {
         rewardVaultFactory = RewardVaultFactory(_polAddresses.rewardVaultFactory);
         upgradeRewardVaults(rewardVaultFactory);

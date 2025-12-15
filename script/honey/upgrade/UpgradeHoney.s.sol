@@ -7,8 +7,6 @@ import { Honey } from "src/honey/Honey.sol";
 import { AddressBook } from "../../base/AddressBook.sol";
 
 contract UpgradeHoneyImplScript is BaseDeployScript, AddressBook {
-    constructor() AddressBook(_chainType) { }
-
     function run() public broadcast {
         address newHoneyImpl = _deploy("Honey Implementation", type(Honey).creationCode, _honeyAddresses.honeyImpl);
         console2.log("Honey implementation deployed successfully");

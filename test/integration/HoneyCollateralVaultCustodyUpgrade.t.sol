@@ -9,11 +9,11 @@ import { Create2Deployer } from "src/base/Create2Deployer.sol";
 import { HoneyFactory } from "src/honey/HoneyFactory.sol";
 import { CollateralVault } from "src/honey/CollateralVault.sol";
 
-import { AddressBook } from "script/base/AddressBook.sol";
+import { HoneyAddressBook } from "script/honey/HoneyAddresses.sol";
 import { ChainType } from "script/base/Chain.sol";
 
 /// @title HoneyCollateralVaultCustodyUpgrade
-contract HoneyCollateralVaultCustodyUpgrade is Create2Deployer, Test, AddressBook(ChainType.Mainnet) {
+contract HoneyCollateralVaultCustodyUpgrade is Create2Deployer, Test, HoneyAddressBook(ChainType.Mainnet) {
     address safeOwner = 0xD13948F99525FB271809F45c268D72a3C00a568D;
     address usdc = 0x549943e04f40284185054145c6E4e9568C1D3241;
     address usdcVault = 0x90bc07408f5b5eAc4dE38Af76EA6069e1fcEe363;

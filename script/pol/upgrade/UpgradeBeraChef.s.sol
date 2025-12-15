@@ -12,8 +12,6 @@ contract UpgradeBeraChefScript is BaseDeployScript, AddressBook {
 
     uint64 constant STARTING_VALUE_MAX_WEIGHT_PER_VAULT = 1e4;
 
-    constructor() AddressBook(_chainType) { }
-
     function run() public pure {
         console2.log("Please run specific function.");
     }

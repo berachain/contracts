@@ -7,8 +7,6 @@ import { AddressBook } from "../../base/AddressBook.sol";
 import { HoneyFactoryPythWrapper } from "src/honey/HoneyFactoryPythWrapper.sol";
 
 contract DeployPythWrapperScript is BaseDeployScript, AddressBook {
-    constructor() AddressBook(_chainType) { }
-
     function run() public virtual broadcast {
         deployHoneyFactoryPythWrapper();
     }

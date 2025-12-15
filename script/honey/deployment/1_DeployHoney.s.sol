@@ -14,8 +14,6 @@ import { Storage } from "../../base/Storage.sol";
 contract DeployHoneyScript is RBAC, BaseScript, Storage, AddressBook {
     HoneyDeployer internal honeyDeployer;
 
-    constructor() AddressBook(_chainType) { }
-
     function run() public virtual broadcast {
         deployHoney();
     }

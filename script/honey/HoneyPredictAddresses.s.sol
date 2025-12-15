@@ -10,8 +10,6 @@ import { HoneyFactoryPythWrapper } from "src/honey/HoneyFactoryPythWrapper.sol";
 import { AddressBook } from "../base/AddressBook.sol";
 
 contract HoneyPredictAddressesScript is BasePredictScript, AddressBook {
-    constructor() AddressBook(_chainType) { }
-
     function run() public view {
         // Proxies:
         _predictProxyAddress("Honey", type(Honey).creationCode);

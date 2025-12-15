@@ -21,8 +21,6 @@ contract ChangePOLParametersScript is BaseScript, Storage, ConfigPOL, AddressBoo
     // The reward convexity param in the function, determines how fast it converges to its max, 18 dec.
     uint256 internal constant REWARD_CONVEXITY = 0.4e18;
 
-    constructor() AddressBook(_chainType) { }
-
     function run() public virtual broadcast {
         blockRewardController = BlockRewardController(_polAddresses.blockRewardController);
         _setPOLParams(BASE_RATE, REWARD_RATE, MIN_BOOSTED_REWARD_RATE, BOOST_MULTIPLIER, REWARD_CONVEXITY);

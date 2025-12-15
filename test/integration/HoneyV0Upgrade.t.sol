@@ -6,16 +6,16 @@ import { Test } from "forge-std/Test.sol";
 import { Create2Deployer } from "src/base/Create2Deployer.sol";
 import { Honey } from "src/honey/Honey.sol";
 
-import { AddressBook } from "script/base/AddressBook.sol";
+import { HoneyAddressBook } from "script/honey/HoneyAddresses.sol";
 import { ChainType } from "script/base/Chain.sol";
 
 /// @title HoneyV0Upgrade
-contract HoneyV0Upgrade is Create2Deployer, Test, AddressBook {
+contract HoneyV0Upgrade is Create2Deployer, Test, HoneyAddressBook {
     address safeOwner = 0xD13948F99525FB271809F45c268D72a3C00a568D;
     uint256 forkBlock = 12_627_746;
     uint256 forkTimestamp = 1_762_164_265;
 
-    constructor() AddressBook(ChainType.Mainnet) { }
+    constructor() HoneyAddressBook(ChainType.Mainnet) { }
 
     function setUp() public virtual {
         vm.createSelectFork("berachain");

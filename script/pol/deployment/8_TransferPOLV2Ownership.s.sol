@@ -8,8 +8,6 @@ import "../../base/Storage.sol";
 import { AddressBook } from "../../base/AddressBook.sol";
 
 contract TransferPOLV2OwnershipScript is RBAC, BaseScript, Storage, AddressBook {
-    constructor() AddressBook(_chainType) { }
-
     function run() public pure {
         console2.log("Please run specific function.");
     }

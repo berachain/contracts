@@ -13,8 +13,6 @@ contract TransferHoneyOwnership is RBAC, BaseScript, Storage, AddressBook {
     address constant NEW_OWNER = address(0); // TIMELOCK_ADDRESS
     address constant HONEY_FACTORY_MANAGER = address(0);
 
-    constructor() AddressBook(_chainType) { }
-
     function run() public virtual broadcast {
         require(HONEY_FACTORY_MANAGER != address(0), "HONEY_FACTORY_MANAGER not set");
         require(NEW_OWNER != address(0), "NEW_OWNER not set");

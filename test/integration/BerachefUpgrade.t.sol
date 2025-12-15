@@ -7,10 +7,10 @@ import { IBeraChef } from "src/pol/interfaces/IBeraChef.sol";
 import { Create2Deployer } from "src/base/Create2Deployer.sol";
 import { BeraChef } from "src/pol/rewards/BeraChef.sol";
 
-import { AddressBook } from "script/base/AddressBook.sol";
+import { POLAddressBook } from "script/pol/POLAddresses.sol";
 import { ChainType } from "script/base/Chain.sol";
 
-contract BeraChefUpgradeTest is Create2Deployer, Test, AddressBook {
+contract BeraChefUpgradeTest is Create2Deployer, Test, POLAddressBook {
     address safeOwner = 0xD13948F99525FB271809F45c268D72a3C00a568D;
     // pubkey of Infrared by Stakelab which has 100% of commission rate
     bytes pubkey =
@@ -21,7 +21,7 @@ contract BeraChefUpgradeTest is Create2Deployer, Test, AddressBook {
     // operator of  Infrared by Stakelab validator
     address operator = 0xb71b3DaEA39012Fb0f2B14D2a9C86da9292fC126;
 
-    constructor() AddressBook(ChainType.Mainnet) { }
+    constructor() POLAddressBook(ChainType.Mainnet) { }
 
     function setUp() public virtual {
         vm.createSelectFork("berachain");

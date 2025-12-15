@@ -10,8 +10,6 @@ import { RewardAllocatorFactory } from "src/pol/rewards/RewardAllocatorFactory.s
 import { RewardAllocatorFactoryDeployer } from "src/pol/RewardAllocatorFactoryDeployer.sol";
 
 contract DeployRewardAllocatorFactoryScript is RBAC, BaseScript, AddressBook {
-    constructor() AddressBook(_chainType) { }
-
     function run() public pure {
         console2.log("Please run specific function.");
     }

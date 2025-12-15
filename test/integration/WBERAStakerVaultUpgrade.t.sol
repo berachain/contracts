@@ -7,11 +7,11 @@ import { Create2Deployer } from "src/base/Create2Deployer.sol";
 import { IPOLErrors } from "src/pol/interfaces/IPOLErrors.sol";
 import { WBERAStakerVault } from "src/pol/WBERAStakerVault.sol";
 import { WBERAStakerVaultWithdrawalRequest } from "src/pol/WBERAStakerVaultWithdrawalRequest.sol";
-import { AddressBook } from "script/base/AddressBook.sol";
+import { POLAddressBook } from "script/pol/POLAddresses.sol";
 import { ChainType } from "script/base/Chain.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-contract WBERAStakerVaultUpgradeTest is Test, Create2Deployer, AddressBook {
+contract WBERAStakerVaultUpgradeTest is Test, Create2Deployer, POLAddressBook {
     IERC20 public WBERA;
     WBERAStakerVault public vault;
     WBERAStakerVaultWithdrawalRequest public withdrawals721;
@@ -28,7 +28,7 @@ contract WBERAStakerVaultUpgradeTest is Test, Create2Deployer, AddressBook {
 
     uint256 forkBlock = 8_708_746;
 
-    constructor() AddressBook(ChainType.Mainnet) {
+    constructor() POLAddressBook(ChainType.Mainnet) {
         WBERA = IERC20(_polAddresses.wbera);
         vault = WBERAStakerVault(payable(_polAddresses.wberaStakerVault));
     }

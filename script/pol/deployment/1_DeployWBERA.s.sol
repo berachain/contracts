@@ -8,8 +8,6 @@ import { AddressBook } from "../../base/AddressBook.sol";
 
 /// @dev Deprecated. WBERA is deployed during genesis.
 contract DeployWBERAScript is BaseScript, WBERADeployer, AddressBook {
-    constructor() AddressBook(_chainType) { }
-
     function run() public broadcast {
         address wbera = deployWBERA(_salt(type(WBERA).creationCode));
         _checkDeploymentAddress("WBERA", wbera, _polAddresses.wbera);

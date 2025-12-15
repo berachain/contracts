@@ -46,8 +46,6 @@ contract WhitelistIncentiveTokenScript is BaseScript, Storage, AddressBook {
         REWARD_VAULT_BEE_HONEY_WEIGHT
     ];
 
-    constructor() AddressBook(_chainType) { }
-
     function run() public virtual broadcast {
         _validateCode("BeraChef", _polAddresses.beraChef);
         beraChef = BeraChef(_polAddresses.beraChef);

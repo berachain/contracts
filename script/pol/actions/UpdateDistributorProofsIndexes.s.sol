@@ -11,8 +11,6 @@ contract UpdateDistributorProofsIndexes is BaseScript, Storage, AddressBook {
     uint64 internal constant ZERO_VALIDATOR_PUBKEY_G_INDEX = 6_350_779_162_034_176;
     uint64 internal constant PROPOSER_INDEX_G_INDEX = 9;
 
-    constructor() AddressBook(_chainType) { }
-
     function run() public virtual broadcast {
         console2.log("Run specific script to update distributor proofs indexes:");
         console2.log("- setZeroValidatorPubkeyGIndex()");

@@ -28,8 +28,6 @@ contract DeployPoLScript is BaseScript, ConfigPOL, RBAC, AddressBook {
     // The block delay for activate queued reward allocation.
     uint64 internal constant REWARD_ALLOCATION_BLOCK_DELAY = 8191;
 
-    constructor() AddressBook(_chainType) { }
-
     function run() public broadcast {
         console2.log("BeaconDeposit: ", _polAddresses.beaconDeposit);
         _validateCode("BeaconDeposit", _polAddresses.beaconDeposit);

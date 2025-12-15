@@ -8,8 +8,6 @@ import { WBERAStakerVaultWithdrawalRequest } from "src/pol/WBERAStakerVaultWithd
 import { AddressBook } from "../../base/AddressBook.sol";
 
 contract DeployWBERAStakerWithdrawReqScript is BaseScript, AddressBook {
-    constructor() AddressBook(_chainType) { }
-
     function run() public pure {
         console2.log("Please run specific function.");
     }

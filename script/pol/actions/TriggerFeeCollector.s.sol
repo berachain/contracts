@@ -19,8 +19,6 @@ contract TriggerFeeCollector is BaseScript, Storage, AddressBook {
 
     address[] internal _feeTokens = [address(0)];
 
-    constructor() AddressBook(_chainType) { }
-
     function run() public broadcast {
         _validateCode("FeeCollector", _polAddresses.feeCollector);
         feeCollector = FeeCollector(_polAddresses.feeCollector);

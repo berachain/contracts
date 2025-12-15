@@ -6,8 +6,6 @@ import { PeggedPriceOracle } from "src/extras/PeggedPriceOracle.sol";
 import { AddressBook } from "../../base/AddressBook.sol";
 
 contract DeployPeggedPriceOracleScript is BaseDeployScript, AddressBook {
-    constructor() AddressBook(_chainType) { }
-
     function run() public broadcast {
         _deploy("PeggedPriceOracle", type(PeggedPriceOracle).creationCode, _oraclesAddresses.peggedPriceOracle);
     }

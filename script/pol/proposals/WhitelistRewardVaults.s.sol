@@ -45,8 +45,6 @@ contract SetDefaultRewardAllocationScript is BaseScript, AddressBook {
         REWARD_VAULT_USDS_HONEY_METADATA
     ];
 
-    constructor() AddressBook(_chainType) { }
-
     function run() public broadcast {
         _validateCode("Governance", _governanceAddresses.governance);
         _validateCode("BeraChef", _polAddresses.beraChef);

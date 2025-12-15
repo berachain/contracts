@@ -8,8 +8,6 @@ import { BGTIncentiveDistributorDeployer } from "src/pol/BGTIncentiveDistributor
 import { AddressBook } from "../../base/AddressBook.sol";
 
 contract DeployBGTIncentiveDistributorScript is BaseScript, RBAC, AddressBook {
-    constructor() AddressBook(_chainType) { }
-
     function run() public broadcast {
         BGTIncentiveDistributorDeployer bgtIncentiveDistributor = new BGTIncentiveDistributorDeployer(
             msg.sender, _saltsForProxy(type(BGTIncentiveDistributor).creationCode)

@@ -7,8 +7,6 @@ import { AddressBook } from "../../base/AddressBook.sol";
 import { HoneyFactory } from "src/honey/HoneyFactory.sol";
 
 contract DeployHoneyFactoryImplScript is BaseDeployScript, AddressBook {
-    constructor() AddressBook(_chainType) { }
-
     function run() public broadcast {
         _deploy("HoneyFactory", type(HoneyFactory).creationCode, _honeyAddresses.honeyFactoryImpl);
     }

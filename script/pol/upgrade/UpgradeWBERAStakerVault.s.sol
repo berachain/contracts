@@ -8,8 +8,6 @@ import { WBERAStakerVault } from "src/pol/WBERAStakerVault.sol";
 import { AddressBook } from "../../base/AddressBook.sol";
 
 contract UpgradeWBERAStakerVaultScript is BaseDeployScript, AddressBook {
-    constructor() AddressBook(_chainType) { }
-
     function run() public pure {
         console2.log("Please run specific function.");
     }

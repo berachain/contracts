@@ -9,8 +9,6 @@ import { HoneyFactory } from "src/honey/HoneyFactory.sol";
 import { AddressBook } from "../../base/AddressBook.sol";
 
 contract DeployCollateralVaultImplScript is BaseDeployScript, AddressBook {
-    constructor() AddressBook(_chainType) { }
-
     function run() public broadcast {
         _deploy("CollateralVault", type(CollateralVault).creationCode, _honeyAddresses.collateralVaultImpl);
     }

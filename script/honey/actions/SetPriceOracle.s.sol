@@ -7,8 +7,6 @@ import { AddressBook } from "../../base/AddressBook.sol";
 
 /// @notice Creates a collateral vault for the given token.
 contract SetPriceOracleScript is BaseScript, AddressBook {
-    constructor() AddressBook(_chainType) { }
-
     function run() public virtual broadcast {
         address priceOracle = _oraclesAddresses.pythPriceOracle; // choose the preferred oracle
 

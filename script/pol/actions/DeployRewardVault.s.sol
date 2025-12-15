@@ -19,8 +19,6 @@ contract DeployRewardVaultScript is BaseScript, Storage, AddressBook {
     // Placeholder. Change before running the script.
     address[] internal STAKING_TOKENS = [LP_BERA_HONEY, LP_BERA_ETH, LP_BERA_WBTC, LP_USDC_HONEY, LP_BEE_HONEY];
 
-    constructor() AddressBook(_chainType) { }
-
     function run() public virtual broadcast {
         _validateCode("RewardVaultFactory", _polAddresses.rewardVaultFactory);
         rewardVaultFactory = RewardVaultFactory(_polAddresses.rewardVaultFactory);

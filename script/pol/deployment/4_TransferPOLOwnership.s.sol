@@ -15,8 +15,6 @@ contract TransferPOLOwnershipScript is RBAC, BaseScript, Storage, AddressBook {
     address internal constant DISTRIBUTOR_MANAGER = address(0);
     address internal constant FEE_COLLECTOR_MANAGER = address(0);
 
-    constructor() AddressBook(_chainType) { }
-
     function run() public virtual broadcast {
         // Check if the new owner and managers are set
         require(NEW_OWNER != address(0), "NEW_OWNER must be set");

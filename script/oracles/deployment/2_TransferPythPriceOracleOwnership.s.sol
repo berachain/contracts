@@ -7,8 +7,6 @@ import { PythPriceOracle } from "src/extras/PythPriceOracle.sol";
 import { AddressBook } from "../../base/AddressBook.sol";
 
 contract TransferPythPriceOracleOwnershipScript is RBAC, BaseScript, AddressBook {
-    constructor() AddressBook(_chainType) { }
-
     // Placholder. Change before running the script.
     address internal constant NEW_OWNER = address(0); // TIMELOCK_ADDRESS;
     address internal constant PYTH_PRICE_ORACLE_MANAGER = address(0);

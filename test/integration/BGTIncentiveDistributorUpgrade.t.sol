@@ -18,10 +18,10 @@ import { BGTIncentiveDistributor } from "src/pol/rewards/BGTIncentiveDistributor
 import { BGTIncentiveDistributorDeployer } from "src/pol/BGTIncentiveDistributorDeployer.sol";
 
 import { ChainType } from "script/base/Chain.sol";
-import { AddressBook } from "script/base/AddressBook.sol";
+import { POLAddressBook } from "script/pol/POLAddresses.sol";
 
 /// @title BGTIncentiveDistributorUpgradeTest
-contract BGTIncentiveDistributorUpgradeTest is Create2Deployer, Test, AddressBook {
+contract BGTIncentiveDistributorUpgradeTest is Create2Deployer, Test, POLAddressBook {
     Salt BGT_INCENTIVE_DISTRIBUTOR_SALT = Salt({ implementation: 0, proxy: 2 });
 
     address safeOwner = 0xD13948F99525FB271809F45c268D72a3C00a568D;
@@ -35,7 +35,7 @@ contract BGTIncentiveDistributorUpgradeTest is Create2Deployer, Test, AddressBoo
     // operator of BicroStrategy validator
     address operator = 0x4595D079A06a9628F8384D7f568A29Cc95a14F1e;
 
-    constructor() AddressBook(ChainType.Mainnet) { }
+    constructor() POLAddressBook(ChainType.Mainnet) { }
 
     function setUp() public virtual {
         vm.createSelectFork("berachain");

@@ -15,8 +15,6 @@ contract MintHoneyScript is BaseScript, AddressBook {
     address internal constant COLLATERAL_ADDRESS = address(0);
     uint256 internal constant AMOUNT = 1e10;
 
-    constructor() AddressBook(_chainType) { }
-
     /// @dev msg.send need to have enought collateral balance
     function run() public virtual broadcast {
         _validateCode("Honey", _honeyAddresses.honey);

@@ -20,8 +20,6 @@ contract AddCollateralVaultScript is BaseScript, AddressBook {
     // REMOVE AFTER TRANSFER OWNERSHIP TO THE GOVERNANCE
     uint256 constant pyUSD_RELATIVE_CAP = 0.5e18;
 
-    constructor() AddressBook(_chainType) { }
-
     function run() public virtual broadcast {
         require(COLLATERAL_ADDRESS != address(0), "COLLATERAL_ADDRESS not set");
 

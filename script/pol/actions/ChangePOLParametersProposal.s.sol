@@ -23,8 +23,6 @@ contract ChangePOLParametersProposalScript is BaseScript, AddressBook {
 
     string internal constant PROPOSAL_DESCRIPTION = "Update POL parameters";
 
-    constructor() AddressBook(_chainType) { }
-
     function run() public virtual broadcast {
         console2.log("Creating proposal to change POL parameters...");
         BerachainGovernance gov = BerachainGovernance(payable(_governanceAddresses.governance));
