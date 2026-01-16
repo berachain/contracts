@@ -20,6 +20,9 @@ import { BGTIncentiveDistributor } from "src/pol/rewards/BGTIncentiveDistributor
 import { WBERAStakerVault } from "src/pol/WBERAStakerVault.sol";
 import { WBERAStakerVaultWithdrawalRequest } from "src/pol/WBERAStakerVaultWithdrawalRequest.sol";
 import { BGTIncentiveFeeCollector } from "src/pol/BGTIncentiveFeeCollector.sol";
+import { LSTStakerVaultFactory } from "src/pol/lst/LSTStakerVaultFactory.sol";
+import { LSTStakerVault } from "src/pol/lst/LSTStakerVault.sol";
+import { LSTStakerVaultWithdrawalRequest } from "src/pol/lst/LSTStakerVaultWithdrawalRequest.sol";
 
 abstract contract Storage {
     BGT internal bgt;
@@ -41,4 +44,7 @@ abstract contract Storage {
     WBERAStakerVault internal wberaStakerVault;
     WBERAStakerVaultWithdrawalRequest internal wberaStakerVaultWithdrawalRequest;
     BGTIncentiveFeeCollector internal bgtIncentiveFeeCollector;
+    LSTStakerVaultFactory internal lstStakerVaultFactory;
+    LSTStakerVault internal lstStakerVault;
+    LSTStakerVaultWithdrawalRequest internal lstStakerVaultWithdrawalRequest;
 }

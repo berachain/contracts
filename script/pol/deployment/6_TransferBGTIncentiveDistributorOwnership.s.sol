@@ -8,7 +8,7 @@ import "../../base/Storage.sol";
 import { AddressBook } from "../../base/AddressBook.sol";
 
 contract TransferBGTIncentiveDistributorOwnershipScript is RBAC, BaseScript, Storage, AddressBook {
-    // Placholder. Change before running the script.
+    // Placeholder. Change before running the script.
     address internal constant NEW_OWNER = address(0); // TIMELOCK_ADDRESS;
 
     function run() public virtual broadcast {

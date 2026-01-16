@@ -9,7 +9,7 @@ import { AddressBook } from "../../base/AddressBook.sol";
 import "../../base/Storage.sol";
 
 contract TransferPOLOwnershipScript is RBAC, BaseScript, Storage, AddressBook {
-    // Placholder. Change before running the script.
+    // Placeholder. Change before running the script.
     address internal constant NEW_OWNER = address(0); // TIMELOCK_ADDRESS;
     address internal constant VAULT_FACTORY_MANAGER = address(0);
     address internal constant DISTRIBUTOR_MANAGER = address(0);

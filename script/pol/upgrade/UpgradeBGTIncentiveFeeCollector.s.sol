@@ -2,9 +2,10 @@
 pragma solidity 0.8.26;
 
 import { console2 } from "forge-std/Script.sol";
-import { BaseDeployScript } from "../../base/BaseDeploy.s.sol";
+import { AddressBook } from "script/base/AddressBook.sol";
+import { BaseDeployScript } from "script/base/BaseDeploy.s.sol";
+import { ChainHelper } from "script/base/Chain.sol";
 import { BGTIncentiveFeeCollector } from "src/pol/BGTIncentiveFeeCollector.sol";
-import { AddressBook } from "../../base/AddressBook.sol";
 
 contract UpgradeBGTIncentiveFeeCollectorScript is BaseDeployScript, AddressBook {
     function run() public pure {

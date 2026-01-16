@@ -1,68 +1,51 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.26;
 
-import { IPOLErrors } from "./IPOLErrors.sol";
+import { IPOLErrors } from "src/pol/interfaces/IPOLErrors.sol";
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
-import { IWBERAStakerVaultWithdrawalRequest } from "./IWBERAStakerVaultWithdrawalRequest.sol";
+import { IStakerVaultWithdrawalRequest } from "./IStakerVaultWithdrawalRequest.sol";
 
-interface IWBERAStakerVault is IPOLErrors {
+interface IStakerVault is IPOLErrors {
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
     /*                         EVENTS                             */
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
 
-    /**
-     * @notice Emitted when a token has been recovered.
-     * @param token The token that has been recovered.
-     * @param amount The amount of token recovered.
-     */
+    /// @notice Emitted when a token has been recovered.
+    /// @param token The token that has been recovered.
+    /// @param amount The amount of token recovered.
     event ERC20Recovered(address token, uint256 amount);
 
-    /**
-     * @notice Emitted when rewards are received.
-     * @param sender The account that sent the rewards.
-     * @param amount The amount of rewards received.
-     */
+    /// @notice Emitted when rewards are received.
+    /// @param sender The account that sent the rewards.
+    /// @param amount The amount of rewards received.
     event RewardsReceived(address indexed sender, uint256 indexed amount, uint256 totalAssets);
 
-    /**
-     * @notice Emitted when the withdrawal requests contract address is updated.
-     * @param oldAddress The previous address of the withdrawal requests contract.
-     * @param newAddress The new address of the withdrawal requests contract.
-     */
-    event WithdrawalRequests721Updated(address oldAddress, address newAddress);
-
-    /**
-     * @notice Emitted when a withdrawal request is made.
-     * @param sender The account that made the withdrawal request.
-     * @param receiver The address to receive the shares.
-     * @param owner The address that owns the shares.
-     * @param assets The amount of assets requested to be withdrawn.
-     * @param shares The amount of shares burnt.
-     */
+    /// @notice Emitted when a withdrawal request is made.
+    /// @param sender The account that made the withdrawal request.
+    /// @param receiver The address to receive the shares.
+    /// @param owner The address that owns the shares.
+    /// @param assets The amount of assets requested to be withdrawn.
+    /// @param shares The amount of shares burnt.
     event WithdrawalRequested(
         address indexed sender, address indexed receiver, address indexed owner, uint256 assets, uint256 shares
     );
 
-    /**
-     * @notice Emitted when a withdrawal request is cancelled.
-     * @param sender The account that owned the NFT of the withdrawal request.
-     * @param owner The address that owned the shares.
-     * @param assets The amount of assets corresponding to the queued withdrawal.
-     * @param shares The amount of shares burnt during the withdrawal request enqueuing.
-     * @param newSharesMinted The amount of shares minted back to the NFT owner.
-     */
+    /// @notice Emitted when a withdrawal request is cancelled.
+    /// @param sender The account that owned the NFT of the withdrawal request.
+    /// @param owner The address that owned the shares.
+    /// @param assets The amount of assets corresponding to the queued withdrawal.
+    /// @param shares The amount of shares burnt during the withdrawal request enqueuing.
+    /// @param newSharesMinted The amount of shares minted back to the NFT owner.
     event WithdrawalCancelled(
         address indexed sender, address indexed owner, uint256 assets, uint256 shares, uint256 newSharesMinted
     );
 
-    /**
-     * @notice Emitted when a withdrawal is completed.
-     * @param sender The account that made the withdrawal.
-     * @param receiver The address to receive the shares.
-     * @param owner The address that owns the shares.
-     * @param assets The amount of assets requested to be withdrawn.
-     * @param shares The amount of shares burnt while requesting the withdrawal.
-     */
+    /// @notice Emitted when a withdrawal is completed.
+    /// @param sender The account that made the withdrawal.
+    /// @param receiver The address to receive the shares.
+    /// @param owner The address that owns the shares.
+    /// @param assets The amount of assets requested to be withdrawn.
+    /// @param shares The amount of shares burnt while requesting the withdrawal.
     event WithdrawalCompleted(
         address indexed sender, address indexed receiver, address indexed owner, uint256 assets, uint256 shares
     );
@@ -71,70 +54,37 @@ interface IWBERAStakerVault is IPOLErrors {
     /*                        ADMIN FUNCTIONS                     */
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
 
-    /**
-     * @notice Recover ERC20 tokens.
-     * @dev Recovering WBERA is not allowed.
-     * @dev Can only be called by `DEFAULT_ADMIN_ROLE`.
-     * @param tokenAddress The address of the token to recover.
-     * @param tokenAmount The amount of token to recover.
-     */
+    /// @notice Recover ERC20 tokens.
+    /// @dev Recovering the staking token is not allowed.
+    /// @dev Can only be called by the factory admin.
+    /// @param tokenAddress The address of the token to recover.
+    /// @param tokenAmount The amount of token to recover.
     function recoverERC20(address tokenAddress, uint256 tokenAmount) external;
 
-    /**
-     * @notice Set the withdrawal request contract address.
-     * @dev Can only be called by `DEFAULT_ADMIN_ROLE`.
-     * @param withdrawalRequests_ The address of the WBERAStakerVaultWithdrawalRequest contract.
-     */
-    function setWithdrawalRequests721(address withdrawalRequests_) external;
-
-    /**
-     * @notice Pause the contract.
-     * @dev Can only be called by `PAUSER_ROLE`.
-     */
+    /// @notice Pause the contract.
+    /// @dev Can only be called by the factory pauser.
     function pause() external;
 
-    /**
-     * @notice Unpause the contract.
-     * @dev Can only be called by `MANAGER_ROLE`.
-     */
+    /// @notice Unpause the contract.
+    /// @dev Can only be called by the factory manager.
     function unpause() external;
 
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
     /*                  STATE MUTATING FUNCTIONS                  */
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
 
-    /**
-     * @notice Receive rewards.
-     * @dev Rewards are received from `BGTIncentiveFeeCollector` contract and this function is being introduced
-     * for better tracking of rewards.
-     * @param amount The amount of rewards to receive.
-     */
+    /// @notice Receive rewards.
+    /// @dev Rewards are received from `BGTIncentiveFeeCollector` contract and this function is being introduced
+    /// for better tracking of rewards.
+    /// @param amount The amount of rewards to receive.
     function receiveRewards(uint256 amount) external;
-
-    /**
-     * @notice Deposit BERA.
-     * @dev Allows depositing BERA in the vault, msg.value must be equal to amount.
-     * @param assets The amount of BERA to deposit.
-     * @param receiver The address to receive the shares.
-     * @return The amount of shares received.
-     */
-    function depositNative(uint256 assets, address receiver) external payable returns (uint256);
-
-    /**
-     * @notice Complete a withdrawal requested with `withdraw` or `redeem`.
-     * @dev Now those functions are not allowed anymore, and the flow is to call
-     * `queueRedeem` or `queueWithdraw`, then the `completeWithdrawal` overloaded with requestId.
-     * @dev Only the caller of `withdraw`/`redeem` can complete the withdrawal.
-     * @param isNative Whether the withdrawal is in native currency.
-     */
-    function completeWithdrawal(bool isNative) external;
 
     /// @notice Queue a withdrawal request, with the amount of shares to withdraw.
     /// @dev Burns the shares to not allow farming during the cooldown period.
-    /// @param shares The amount of sWBERA shares to withdraw.
+    /// @param shares The amount of shares to withdraw.
     /// @param receiver The address to receive the shares.
     /// @param owner The address that owns the shares.
-    /// @return assets The amount of BERA to withdraw.
+    /// @return assets The amount of staked tokens to withdraw.
     /// @return withdrawalId The ID of the withdrawal request created.
     function queueRedeem(
         uint256 shares,
@@ -146,10 +96,10 @@ interface IWBERAStakerVault is IPOLErrors {
 
     /// @notice Queue a withdrawal request, with the amount of assets to receive.
     /// @dev Burns the shares to not allow farming during the cooldown period.
-    /// @param assets The amount of BERA to withdraw.
+    /// @param assets The amount of assets to withdraw.
     /// @param receiver The address to receive the shares.
     /// @param owner The address that owns the shares.
-    /// @return shares The amount of sWBERA shares burnt for the withdrawal.
+    /// @return shares The amount of shares burnt for the withdrawal.
     /// @return withdrawalId The ID of the withdrawal request created.
     function queueWithdraw(
         uint256 assets,
@@ -170,11 +120,10 @@ interface IWBERAStakerVault is IPOLErrors {
     /// @param requestId The ID of the withdrawal request to cancel.
     function cancelQueuedWithdrawal(uint256 requestId) external;
 
-    /// @notice Complete a requested withdrawal with a specific WBERAStakerVaultWithdrawalRequest ID.
+    /// @notice Complete a requested withdrawal with a specific LSTStakerVaultWithdrawalRequest ID.
     /// @dev Permissionless, so not mandatory to call it by token owner, which is the `caller` of queue methods.
-    /// @param isNative Whether the withdrawal is in native currency.
     /// @param requestId The ID of the withdrawal request to complete.
-    function completeWithdrawal(bool isNative, uint256 requestId) external;
+    function completeWithdrawal(uint256 requestId) external;
 
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
     /*                        VIEW FUNCTIONS                      */
@@ -196,7 +145,7 @@ interface IWBERAStakerVault is IPOLErrors {
     function getERC721WithdrawalRequest(uint256 requestId)
         external
         view
-        returns (IWBERAStakerVaultWithdrawalRequest.WithdrawalRequest memory);
+        returns (IStakerVaultWithdrawalRequest.WithdrawalRequest memory);
 
     /// @notice Returns the number of active withdrawal requests created by the user.
     /// @dev This is a helper function to get the number of active withdrawal requests created by the user.

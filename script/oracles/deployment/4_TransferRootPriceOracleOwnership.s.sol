@@ -7,7 +7,7 @@ import { RootPriceOracle } from "src/extras/RootPriceOracle.sol";
 import { AddressBook } from "../../base/AddressBook.sol";
 
 contract TransferRootPriceOracleOwnershipScript is RBAC, BaseScript, AddressBook {
-    // Placholder. Change before running the script.
+    // Placeholder. Change before running the script.
     address internal constant NEW_OWNER = address(0); // TIMELOCK_ADDRESS;
     address internal constant ROOT_PRICE_ORACLE_MANAGER = address(0);
 

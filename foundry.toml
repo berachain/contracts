@@ -61,3 +61,6 @@ polygon = "https://polygon-mainnet.infura.io/v3/${API_KEY_INFURA}"
 sepolia = "https://sepolia.infura.io/v3/${API_KEY_INFURA}"
 berachain = "https://rpc.berachain.com"
 bepolia = "https://bepolia.rpc.berachain.com/"
+
+[lint]
+lint_on_build = false

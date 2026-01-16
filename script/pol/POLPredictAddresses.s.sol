@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.26;
 
+import { AddressBook } from "script/base/AddressBook.sol";
 import { BasePredictScript, console2 } from "../base/BasePredict.s.sol";
 import { BGT } from "src/pol/BGT.sol";
 import { BeraChef } from "src/pol/rewards/BeraChef.sol";
@@ -16,6 +17,9 @@ import { BGTIncentiveDistributor } from "src/pol/rewards/BGTIncentiveDistributor
 import { WBERAStakerVaultWithdrawalRequest } from "src/pol/WBERAStakerVaultWithdrawalRequest.sol";
 import { RewardVaultHelper } from "src/pol/rewards/RewardVaultHelper.sol";
 import { RewardAllocatorFactory } from "src/pol/rewards/RewardAllocatorFactory.sol";
+import { LSTStakerVaultFactory } from "src/pol/lst/LSTStakerVaultFactory.sol";
+import { LSTStakerVault } from "src/pol/lst/LSTStakerVault.sol";
+import { LSTStakerVaultWithdrawalRequest } from "src/pol/lst/LSTStakerVaultWithdrawalRequest.sol";
 import { AddressBook } from "../base/AddressBook.sol";
 
 contract POLPredictAddressesScript is BasePredictScript, AddressBook {
@@ -51,5 +55,9 @@ contract POLPredictAddressesScript is BasePredictScript, AddressBook {
         _predictAddress("RewardVaultHelper Impl", type(RewardVaultHelper).creationCode);
         _predictProxyAddress("RewardAllocatorFactory", type(RewardAllocatorFactory).creationCode);
         _predictAddress("RewardAllocatorFactory Impl", type(RewardAllocatorFactory).creationCode);
+        _predictProxyAddress("LST Staker Vault Factory", type(LSTStakerVaultFactory).creationCode);
+        _predictAddress("LST Staker Vault Factory Impl", type(LSTStakerVaultFactory).creationCode);
+        _predictAddress("LST Staker Vault Impl", type(LSTStakerVault).creationCode);
+        _predictAddress("LST Staker Vault Withdrawal Request Impl", type(LSTStakerVaultWithdrawalRequest).creationCode);
     }
 }

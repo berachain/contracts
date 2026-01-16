@@ -223,4 +223,13 @@ interface IPOLErrors is IStakingRewardsErrors {
     error MethodNotAllowed();
     // Signature: 0x891ec151
     error OnlyNFTOwnerAllowed();
+
+    /*                       LST STAKER VAULT                      */
+
+    // Signature: 0xad74abc1
+    error LSTStakerVaultAlreadyAdded();
+    // Signature: 0xd53e3116
+    error LSTStakerVaultNotFound();
+    // Signature: 0x40a3833d
+    error NotStakerVault();
 }

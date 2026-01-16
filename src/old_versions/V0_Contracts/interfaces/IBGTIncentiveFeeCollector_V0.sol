@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.26;
 
-import { IPOLErrors } from "./IPOLErrors.sol";
+import { IPOLErrors } from "src/pol/interfaces/IPOLErrors.sol";
 
-interface IBGTIncentiveFeeCollector is IPOLErrors {
+interface IBGTIncentiveFeeCollector_V0 is IPOLErrors {
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
     /*                           EVENTS                           */
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
@@ -39,27 +39,6 @@ interface IBGTIncentiveFeeCollector is IPOLErrors {
         address indexed caller, address indexed recipient, address indexed feeToken, uint256 amount
     );
 
-    /**
-     * @notice Emitted when a new LST staker vault is added.
-     * @param lstStakerVault The address of the LST staker vault.
-     * @param lstAdapter The address of the LST adapter.
-     */
-    event LstStakerVaultAdded(address indexed lstStakerVault, address indexed lstAdapter);
-
-    /**
-     * @notice Emitted when a LST staker vault is removed.
-     * @param lstStakerVault The address of the LST staker vault.
-     */
-    event LstStakerVaultRemoved(address indexed lstStakerVault);
-
-    /**
-     * @notice Emitted when a WBERA denominated reward is converted to LST.
-     * @param lstStakerVault The address of the LST staker vault.
-     * @param amountBera The amount of BERA being swapped.
-     * @param amountLST The amount of LST received.
-     */
-    event RewardConverted(address indexed lstStakerVault, uint256 amountBera, uint256 amountLST);
-
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
     /*                           Getters                          */
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
@@ -82,26 +61,6 @@ interface IBGTIncentiveFeeCollector is IPOLErrors {
      */
     function wberaStakerVault() external view returns (address);
 
-    /**
-     * @notice Get the size of the LST staker vault address array.
-     * @return The length of the LST staker vault address array.
-     */
-    function lstStakerVaultsLength() external view returns (uint256);
-
-    /**
-     * @notice Getter for the LST staker vault address array.
-     * @param index The index of the LST staker vault.
-     * @return The LST staker vault address at the given index.
-     */
-    function lstStakerVaults(uint256 index) external view returns (address);
-
-    /**
-     * @notice Getter for the LST adapter address for a given LST staker vault.
-     * @param lstStakerVault The address of the LST staker vault.
-     * @return The LST adapter address for the given LST staker vault.
-     */
-    function lstAdapters(address lstStakerVault) external view returns (address);
-
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
     /*                    PERMISSIONED FUNCTIONS                  */
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
@@ -112,22 +71,6 @@ interface IBGTIncentiveFeeCollector is IPOLErrors {
      * @param _newPayoutAmount The new payout amount.
      */
     function queuePayoutAmountChange(uint256 _newPayoutAmount) external;
-
-    /**
-     * @notice Add a new LST staker vault to be considered for incentive fee distribution.
-     * @dev Can only be called by `DEFAULT_ADMIN_ROLE`.
-     * @dev Only supports 18 decimals tokens.
-     * @param lstStakerVault The address of the LST staker vault.
-     * @param lstAdapter The address of the LST adapter.
-     */
-    function addLstStakerVault(address lstStakerVault, address lstAdapter) external;
-
-    /**
-     * @notice Remove an existing LST staker vault from the incentive fee distribution list.
-     * @dev Can only be called by `DEFAULT_ADMIN_ROLE`.
-     * @param lstStakerVault The address of the LST staker vault.
-     */
-    function removeLstStakerVault(address lstStakerVault) external;
 
     /**
      * @notice Pause the contract.
