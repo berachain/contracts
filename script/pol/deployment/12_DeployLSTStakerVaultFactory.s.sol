@@ -40,27 +40,6 @@ contract DeployLSTStakerVaultFactoryScript is BaseScript, RBAC, Storage, Address
         _checkDeploymentAddress(
             "LSTStakerVaultFactory", address(lstStakerVaultFactory), _polAddresses.lstStakerVaultFactory
         );
-
-        // grant roles
-
-        RBAC.AccountDescription memory deployer = RBAC.AccountDescription({ name: "deployer", addr: governance });
-
-        RBAC.RoleDescription memory lstStakerVaultFactoryManagerRole = RBAC.RoleDescription({
-            contractName: "LSTStakerVaultFactory",
-            contractAddr: _polAddresses.lstStakerVaultFactory,
-            name: "VAULT_MANAGER_ROLE",
-            role: lstStakerVaultFactory.VAULT_MANAGER_ROLE()
-        });
-
-        RBAC.RoleDescription memory lstStakerVaultFactoryPauserRole = RBAC.RoleDescription({
-            contractName: "LSTStakerVaultFactory",
-            contractAddr: _polAddresses.lstStakerVaultFactory,
-            name: "VAULT_PAUSER_ROLE",
-            role: lstStakerVaultFactory.VAULT_PAUSER_ROLE()
-        });
-
-        _grantRole(lstStakerVaultFactoryManagerRole, deployer);
-        _grantRole(lstStakerVaultFactoryPauserRole, deployer);
     }
 
     function deployInfraredBeraAdapter() public broadcast {
