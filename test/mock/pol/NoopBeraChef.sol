@@ -2,6 +2,7 @@
 pragma solidity 0.8.26;
 
 import { IBeraChef } from "src/pol/interfaces/IBeraChef.sol";
+import { IRewardAllocation } from "src/pol/interfaces/IRewardAllocation.sol";
 
 /// @notice A no-op implementation of the BeraChef.
 contract NoopBeraChef is IBeraChef {
@@ -60,7 +61,12 @@ contract NoopBeraChef is IBeraChef {
     }
 
     /// @inheritdoc IBeraChef
-    function validateWeights(IBeraChef.Weight[] calldata weights) external pure { }
+    function isWhitelistedVault(address receiver) external pure returns (bool) {
+        return receiver == address(0) ? false : true;
+    }
+
+    /// @inheritdoc IBeraChef
+    function validateWeights(IRewardAllocation.Weight[] calldata weights) external pure { }
 
     /// @inheritdoc IBeraChef
     function setMaxNumWeightsPerRewardAllocation(uint8) external pure { }

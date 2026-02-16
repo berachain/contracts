@@ -23,7 +23,7 @@ import { ApprovalPauseERC20 } from "@mock/token/ApprovalPauseERC20.sol";
 import { MaxGasConsumeERC20 } from "@mock/token/MaxGasConsumeERC20.sol";
 import { IBGTIncentiveDistributor } from "src/pol/interfaces/IBGTIncentiveDistributor.sol";
 import { IRewardVaultHelper } from "src/pol/interfaces/IRewardVaultHelper.sol";
-import { IBeraChef } from "src/pol/interfaces/IBeraChef.sol";
+import { IRewardAllocation } from "src/pol/interfaces/IRewardAllocation.sol";
 
 contract RewardVaultTest is DistributorTest, StakingTest {
     using SafeERC20 for IERC20;
@@ -607,12 +607,12 @@ contract RewardVaultTest is DistributorTest, StakingTest {
 
         // Set up reward allocation with equal weights between vaults
         vm.startPrank(governance);
-        IBeraChef.Weight[] memory weights = new IBeraChef.Weight[](2);
-        weights[0] = IBeraChef.Weight(address(vault), 5000);
-        weights[1] = IBeraChef.Weight(address(vault2), 5000);
+        IRewardAllocation.Weight[] memory weights = new IRewardAllocation.Weight[](2);
+        weights[0] = IRewardAllocation.Weight(address(vault), 5000);
+        weights[1] = IRewardAllocation.Weight(address(vault2), 5000);
         beraChef.setVaultWhitelistedStatus(address(vault), true, "");
         beraChef.setVaultWhitelistedStatus(address(vault2), true, "");
-        beraChef.setDefaultRewardAllocation(IBeraChef.RewardAllocation(1, weights));
+        beraChef.setDefaultRewardAllocation(IRewardAllocation.RewardAllocation(1, weights));
         vm.stopPrank();
 
         // Distribute rewards

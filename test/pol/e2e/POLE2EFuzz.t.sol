@@ -50,7 +50,7 @@ contract POLE2EFuzz is POLGasSimulationSimple {
     }
 
     function verifyWeights(uint256 numVaults, uint96[] memory weights) internal view {
-        IBeraChef.RewardAllocation memory ra = beraChef.getActiveRewardAllocation(valData.pubkey);
+        IRewardAllocation.RewardAllocation memory ra = beraChef.getActiveRewardAllocation(valData.pubkey);
         assertEq(ra.weights.length, numVaults, "Mismatch in number of weights");
         for (uint256 i; i < numVaults; ++i) {
             assertEq(ra.weights[i].percentageNumerator, weights[i], "Mismatch in weight configuration");

@@ -9,7 +9,7 @@ import { ERC1967Utils } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Utils
 import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 
 import { MockHoney } from "@mock/honey/MockHoney.sol";
-import { IBeraChef } from "src/pol/interfaces/IBeraChef.sol";
+import { IRewardAllocation } from "src/pol/interfaces/IRewardAllocation.sol";
 import { IPOLErrors } from "src/pol/interfaces/IPOLErrors.sol";
 import { RewardAllocatorFactory } from "src/pol/rewards/RewardAllocatorFactory.sol";
 
@@ -40,16 +40,16 @@ contract RewardAllocatorFactoryTest is POLTest {
     }
 
     function test_setBaselineAllocation() public {
-        IBeraChef.Weight[] memory weights = new IBeraChef.Weight[](2);
-        weights[0] = IBeraChef.Weight({ receiver: _receiver, percentageNumerator: 6000 });
-        weights[1] = IBeraChef.Weight({ receiver: _receiver2, percentageNumerator: 4000 });
+        IRewardAllocation.Weight[] memory weights = new IRewardAllocation.Weight[](2);
+        weights[0] = IRewardAllocation.Weight({ receiver: _receiver, percentageNumerator: 6000 });
+        weights[1] = IRewardAllocation.Weight({ receiver: _receiver2, percentageNumerator: 4000 });
 
         vm.prank(allocationBot);
         rewardAllocatorFactory.setBaselineAllocation(weights);
 
         uint256 currentBlock = block.number;
 
-        IBeraChef.RewardAllocation memory alloc = rewardAllocatorFactory.getBaselineAllocation();
+        IRewardAllocation.RewardAllocation memory alloc = rewardAllocatorFactory.getBaselineAllocation();
         assertEq(alloc.startBlock, uint64(currentBlock));
         assertEq(alloc.weights[0].receiver, _receiver);
         assertEq(alloc.weights[0].percentageNumerator, 6000);
@@ -58,7 +58,7 @@ contract RewardAllocatorFactoryTest is POLTest {
     }
 
     function test_getBaselineAllocation_defaultIsEmpty() public view {
-        IBeraChef.RewardAllocation memory alloc = rewardAllocatorFactory.getBaselineAllocation();
+        IRewardAllocation.RewardAllocation memory alloc = rewardAllocatorFactory.getBaselineAllocation();
         // startBlock is 0 and no weights set yet in a fresh factory before setBaselineAllocation
         // Note: setUp() called initialize only; we did not set allocation yet in this test
         assertEq(alloc.startBlock, 0);
@@ -66,8 +66,8 @@ contract RewardAllocatorFactoryTest is POLTest {
     }
 
     function test_setBaselineAllocation_requiresAllocationSetter() public {
-        IBeraChef.Weight[] memory weights = new IBeraChef.Weight[](1);
-        weights[0] = IBeraChef.Weight({ receiver: makeAddr("vault1"), percentageNumerator: 10_000 });
+        IRewardAllocation.Weight[] memory weights = new IRewardAllocation.Weight[](1);
+        weights[0] = IRewardAllocation.Weight({ receiver: makeAddr("vault1"), percentageNumerator: 10_000 });
 
         vm.expectRevert(
             abi.encodeWithSelector(
@@ -81,9 +81,9 @@ contract RewardAllocatorFactoryTest is POLTest {
 
     function test_setBaselineAllocation_revertsIfWeightsAreInvalid() public {
         address invalidReceiver = makeAddr("invalidReceiver");
-        IBeraChef.Weight[] memory weights = new IBeraChef.Weight[](2);
-        weights[0] = IBeraChef.Weight({ receiver: invalidReceiver, percentageNumerator: 5000 });
-        weights[1] = IBeraChef.Weight({ receiver: _receiver2, percentageNumerator: 5000 });
+        IRewardAllocation.Weight[] memory weights = new IRewardAllocation.Weight[](2);
+        weights[0] = IRewardAllocation.Weight({ receiver: invalidReceiver, percentageNumerator: 5000 });
+        weights[1] = IRewardAllocation.Weight({ receiver: _receiver2, percentageNumerator: 5000 });
 
         vm.prank(allocationBot);
         vm.expectRevert();

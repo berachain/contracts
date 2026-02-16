@@ -5,6 +5,7 @@ import { IERC1967 } from "@openzeppelin/contracts/interfaces/IERC1967.sol";
 import { ERC1967Utils } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Utils.sol";
 import { OwnableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import { IBeraChef, IPOLErrors } from "src/pol/interfaces/IBeraChef.sol";
+import { IRewardAllocation } from "src/pol/interfaces/IRewardAllocation.sol";
 import { BeraChef } from "src/pol/rewards/BeraChef.sol";
 import { RewardVault } from "src/pol/rewards/RewardVault.sol";
 import { BeaconDepositMock } from "test/mock/pol/BeaconDepositMock.sol";
@@ -60,9 +61,9 @@ contract BeraChefTest is POLTest {
         beraChef.setVaultWhitelistedStatus(receiver, true, "");
 
         vm.expectRevert();
-        IBeraChef.Weight[] memory weights = new IBeraChef.Weight[](1);
-        weights[0] = IBeraChef.Weight(governance, 10_000);
-        beraChef.setDefaultRewardAllocation(IBeraChef.RewardAllocation(0, weights));
+        IRewardAllocation.Weight[] memory weights = new IRewardAllocation.Weight[](1);
+        weights[0] = IRewardAllocation.Weight(governance, 10_000);
+        beraChef.setDefaultRewardAllocation(IRewardAllocation.RewardAllocation(0, weights));
 
         address newImpl = address(new BeraChef());
         vm.expectRevert();
@@ -93,13 +94,13 @@ contract BeraChefTest is POLTest {
 
     function test_SetMaxNumWeightsPerRewardAllocation_FailIfInvalidateDefaultRewardAllocation() public {
         vm.startPrank(governance);
-        IBeraChef.Weight[] memory weights = new IBeraChef.Weight[](2);
-        weights[0] = IBeraChef.Weight(receiver, 5000);
-        weights[1] = IBeraChef.Weight(receiver2, 5000);
+        IRewardAllocation.Weight[] memory weights = new IRewardAllocation.Weight[](2);
+        weights[0] = IRewardAllocation.Weight(receiver, 5000);
+        weights[1] = IRewardAllocation.Weight(receiver2, 5000);
 
         vm.expectEmit(true, true, true, true);
-        emit IBeraChef.SetDefaultRewardAllocation(IBeraChef.RewardAllocation(1, weights));
-        beraChef.setDefaultRewardAllocation(IBeraChef.RewardAllocation(1, weights));
+        emit IBeraChef.SetDefaultRewardAllocation(IRewardAllocation.RewardAllocation(1, weights));
+        beraChef.setDefaultRewardAllocation(IRewardAllocation.RewardAllocation(1, weights));
 
         // Default reward allocation is set with 2 weights
         vm.expectRevert(IPOLErrors.InvalidateDefaultRewardAllocation.selector);
@@ -135,13 +136,13 @@ contract BeraChefTest is POLTest {
 
     function test_SetMaxWeightPerVault_FailIfInvalidateDefaultRewardAllocation() public {
         vm.startPrank(governance);
-        IBeraChef.Weight[] memory weights = new IBeraChef.Weight[](2);
-        weights[0] = IBeraChef.Weight(receiver, 5000);
-        weights[1] = IBeraChef.Weight(receiver2, 5000);
+        IRewardAllocation.Weight[] memory weights = new IRewardAllocation.Weight[](2);
+        weights[0] = IRewardAllocation.Weight(receiver, 5000);
+        weights[1] = IRewardAllocation.Weight(receiver2, 5000);
 
         vm.expectEmit(true, true, true, true);
-        emit IBeraChef.SetDefaultRewardAllocation(IBeraChef.RewardAllocation(1, weights));
-        beraChef.setDefaultRewardAllocation(IBeraChef.RewardAllocation(1, weights));
+        emit IBeraChef.SetDefaultRewardAllocation(IRewardAllocation.RewardAllocation(1, weights));
+        beraChef.setDefaultRewardAllocation(IRewardAllocation.RewardAllocation(1, weights));
 
         // Default reward allocation is set with 2 weights
         vm.expectRevert(IPOLErrors.InvalidateDefaultRewardAllocation.selector);
@@ -236,11 +237,11 @@ contract BeraChefTest is POLTest {
 
     /// @dev Should revert because invalidating the default reward allocation
     function test_FailIfRemovingAVaultFromWhitelistInvalidatesDefaultRewardAllocation() public {
-        IBeraChef.Weight[] memory weights = new IBeraChef.Weight[](2);
-        weights[0] = IBeraChef.Weight(receiver, 5000);
-        weights[1] = IBeraChef.Weight(receiver2, 5000);
+        IRewardAllocation.Weight[] memory weights = new IRewardAllocation.Weight[](2);
+        weights[0] = IRewardAllocation.Weight(receiver, 5000);
+        weights[1] = IRewardAllocation.Weight(receiver2, 5000);
         vm.startPrank(governance);
-        beraChef.setDefaultRewardAllocation(IBeraChef.RewardAllocation(0, weights));
+        beraChef.setDefaultRewardAllocation(IRewardAllocation.RewardAllocation(0, weights));
         vm.expectRevert(IPOLErrors.InvalidateDefaultRewardAllocation.selector);
         beraChef.setVaultWhitelistedStatus(receiver, false, "");
     }
@@ -251,15 +252,15 @@ contract BeraChefTest is POLTest {
         vm.startPrank(governance);
         address receiver3 = factory.createRewardVault(address(stakeTokenVault3));
 
-        IBeraChef.Weight[] memory weights = new IBeraChef.Weight[](1);
+        IRewardAllocation.Weight[] memory weights = new IRewardAllocation.Weight[](1);
         vm.startPrank(governance);
         beraChef.setVaultWhitelistedStatus(receiver3, true, ""); // Whitelist receiver3
 
         // Set default reward allocation with receiver and receiver2
         test_FailIfRemovingAVaultFromWhitelistInvalidatesDefaultRewardAllocation();
 
-        weights[0] = IBeraChef.Weight(receiver3, 10_000);
-        beraChef.setDefaultRewardAllocation(IBeraChef.RewardAllocation(0, weights));
+        weights[0] = IRewardAllocation.Weight(receiver3, 10_000);
+        beraChef.setDefaultRewardAllocation(IRewardAllocation.RewardAllocation(0, weights));
 
         beraChef.setVaultWhitelistedStatus(receiver, false, "");
         assertFalse(beraChef.isWhitelistedVault(receiver));
@@ -277,14 +278,14 @@ contract BeraChefTest is POLTest {
         assertFalse(beraChef.isReady());
 
         vm.prank(governance);
-        IBeraChef.Weight[] memory weights = new IBeraChef.Weight[](1);
-        weights[0] = IBeraChef.Weight(receiver2, 10_000);
+        IRewardAllocation.Weight[] memory weights = new IRewardAllocation.Weight[](1);
+        weights[0] = IRewardAllocation.Weight(receiver2, 10_000);
 
         vm.expectEmit(true, true, true, true);
-        emit IBeraChef.SetDefaultRewardAllocation(IBeraChef.RewardAllocation(1, weights));
-        beraChef.setDefaultRewardAllocation(IBeraChef.RewardAllocation(1, weights));
+        emit IBeraChef.SetDefaultRewardAllocation(IRewardAllocation.RewardAllocation(1, weights));
+        beraChef.setDefaultRewardAllocation(IRewardAllocation.RewardAllocation(1, weights));
 
-        IBeraChef.RewardAllocation memory ra = beraChef.getDefaultRewardAllocation();
+        IRewardAllocation.RewardAllocation memory ra = beraChef.getDefaultRewardAllocation();
         assertEq(ra.startBlock, 1);
         assertEq(ra.weights.length, 1);
         assertEq(ra.weights[0].receiver, receiver2);
@@ -293,21 +294,21 @@ contract BeraChefTest is POLTest {
     }
 
     function test_FailSetDefaultRewardAllocationIfDuplicateReceivers() public {
-        IBeraChef.Weight[] memory weights = new IBeraChef.Weight[](2);
-        weights[0] = IBeraChef.Weight(receiver, 5000);
-        weights[1] = IBeraChef.Weight(receiver, 5000);
+        IRewardAllocation.Weight[] memory weights = new IRewardAllocation.Weight[](2);
+        weights[0] = IRewardAllocation.Weight(receiver, 5000);
+        weights[1] = IRewardAllocation.Weight(receiver, 5000);
 
         vm.prank(governance);
         vm.expectRevert(abi.encodeWithSelector(IPOLErrors.DuplicateReceiver.selector, receiver));
-        beraChef.setDefaultRewardAllocation(IBeraChef.RewardAllocation(1, weights));
+        beraChef.setDefaultRewardAllocation(IRewardAllocation.RewardAllocation(1, weights));
     }
 
     /* Queueing a new reward allocation */
 
     /// @dev Should fail if the new reward allocation is in the past
     function test_FailIfTheNewRewardAllocationIsInThePast() public {
-        IBeraChef.Weight[] memory weights = new IBeraChef.Weight[](1);
-        weights[0] = IBeraChef.Weight(receiver, 10_000);
+        IRewardAllocation.Weight[] memory weights = new IRewardAllocation.Weight[](1);
+        weights[0] = IRewardAllocation.Weight(receiver, 10_000);
         vm.prank(operator);
         vm.expectRevert(IPOLErrors.InvalidStartBlock.selector);
         beraChef.queueNewRewardAllocation(valData.pubkey, uint64(block.number - 1), weights);
@@ -315,9 +316,9 @@ contract BeraChefTest is POLTest {
 
     /// @dev Should fail if the new reward allocation has too many weights
     function test_FailIfTheNewRewardAllocationHasTooManyWeights() public {
-        IBeraChef.Weight[] memory weights = new IBeraChef.Weight[](1000);
+        IRewardAllocation.Weight[] memory weights = new IRewardAllocation.Weight[](1000);
         for (uint256 i; i < 1000; ++i) {
-            weights[i] = IBeraChef.Weight(receiver, 10);
+            weights[i] = IRewardAllocation.Weight(receiver, 10);
         }
         vm.prank(operator);
         vm.expectRevert(IPOLErrors.TooManyWeights.selector);
@@ -329,10 +330,10 @@ contract BeraChefTest is POLTest {
         vm.prank(governance);
         beraChef.setMaxWeightPerVault(uint96(0.2e4));
 
-        IBeraChef.Weight[] memory weights = new IBeraChef.Weight[](2);
+        IRewardAllocation.Weight[] memory weights = new IRewardAllocation.Weight[](2);
 
-        weights[0] = IBeraChef.Weight(receiver, 5000);
-        weights[1] = IBeraChef.Weight(makeAddr("receiverOne"), 5000);
+        weights[0] = IRewardAllocation.Weight(receiver, 5000);
+        weights[1] = IRewardAllocation.Weight(makeAddr("receiverOne"), 5000);
 
         vm.prank(operator);
         vm.expectRevert(IPOLErrors.InvalidWeight.selector);
@@ -340,9 +341,9 @@ contract BeraChefTest is POLTest {
     }
 
     function test_FailIfDuplicateReceivers() public {
-        IBeraChef.Weight[] memory weights = new IBeraChef.Weight[](2);
-        weights[0] = IBeraChef.Weight(receiver, 5000);
-        weights[1] = IBeraChef.Weight(receiver, 5000);
+        IRewardAllocation.Weight[] memory weights = new IRewardAllocation.Weight[](2);
+        weights[0] = IRewardAllocation.Weight(receiver, 5000);
+        weights[1] = IRewardAllocation.Weight(receiver, 5000);
         vm.prank(operator);
         vm.expectRevert(abi.encodeWithSelector(IPOLErrors.DuplicateReceiver.selector, receiver));
         beraChef.queueNewRewardAllocation(valData.pubkey, uint64(block.number + 1), weights);
@@ -353,14 +354,14 @@ contract BeraChefTest is POLTest {
         vm.prank(governance);
         beraChef.setVaultWhitelistedStatus(receiver2, true, "");
 
-        IBeraChef.Weight[] memory defaultWeights = new IBeraChef.Weight[](2);
-        defaultWeights[0] = IBeraChef.Weight(receiver, 5000);
-        defaultWeights[1] = IBeraChef.Weight(receiver2, 5000);
+        IRewardAllocation.Weight[] memory defaultWeights = new IRewardAllocation.Weight[](2);
+        defaultWeights[0] = IRewardAllocation.Weight(receiver, 5000);
+        defaultWeights[1] = IRewardAllocation.Weight(receiver2, 5000);
         vm.prank(governance);
-        beraChef.setDefaultRewardAllocation(IBeraChef.RewardAllocation(0, defaultWeights));
+        beraChef.setDefaultRewardAllocation(IRewardAllocation.RewardAllocation(0, defaultWeights));
 
-        IBeraChef.Weight[] memory weights = new IBeraChef.Weight[](1);
-        weights[0] = IBeraChef.Weight(receiver, 10_000);
+        IRewardAllocation.Weight[] memory weights = new IRewardAllocation.Weight[](1);
+        weights[0] = IRewardAllocation.Weight(receiver, 10_000);
 
         vm.prank(operator);
         beraChef.queueNewRewardAllocation(valData.pubkey, uint64(block.number + 1), weights);
@@ -368,14 +369,14 @@ contract BeraChefTest is POLTest {
         vm.roll(block.number + 1);
         vm.prank(address(distributor));
         beraChef.activateReadyQueuedRewardAllocation(valData.pubkey);
-        IBeraChef.RewardAllocation memory ra = beraChef.getActiveRewardAllocation(valData.pubkey);
+        IRewardAllocation.RewardAllocation memory ra = beraChef.getActiveRewardAllocation(valData.pubkey);
         assertEq(1, ra.weights.length);
 
         vm.prank(governance);
         beraChef.setMaxWeightPerVault(uint96(6000)); // invalidates queued reward allocation
 
         ra = beraChef.getActiveRewardAllocation(valData.pubkey);
-        IBeraChef.RewardAllocation memory dra = beraChef.getDefaultRewardAllocation();
+        IRewardAllocation.RewardAllocation memory dra = beraChef.getDefaultRewardAllocation();
         assertEq(dra.weights.length, ra.weights.length);
         assertEq(dra.weights[0].percentageNumerator, ra.weights[0].percentageNumerator);
         assertEq(dra.weights[1].percentageNumerator, ra.weights[1].percentageNumerator);
@@ -385,8 +386,8 @@ contract BeraChefTest is POLTest {
     function test_FailIfNotWhitelistedVault() public {
         vm.prank(governance);
         beraChef.setVaultWhitelistedStatus(receiver, false, "");
-        IBeraChef.Weight[] memory weights = new IBeraChef.Weight[](1);
-        weights[0] = IBeraChef.Weight(receiver, 10_000);
+        IRewardAllocation.Weight[] memory weights = new IRewardAllocation.Weight[](1);
+        weights[0] = IRewardAllocation.Weight(receiver, 10_000);
         vm.prank(operator);
         vm.expectRevert(IPOLErrors.NotWhitelistedVault.selector);
         beraChef.queueNewRewardAllocation(valData.pubkey, uint64(block.number + 1), weights);
@@ -394,8 +395,8 @@ contract BeraChefTest is POLTest {
 
     /// @dev Should fail if reward allocation weights don't add up to 100%
     function test_FailIfInvalidRewardAllocationWeights() public {
-        IBeraChef.Weight[] memory weights = new IBeraChef.Weight[](1);
-        weights[0] = IBeraChef.Weight(receiver, 5000);
+        IRewardAllocation.Weight[] memory weights = new IRewardAllocation.Weight[](1);
+        weights[0] = IRewardAllocation.Weight(receiver, 5000);
         vm.prank(operator);
         vm.expectRevert(IPOLErrors.InvalidRewardAllocationWeights.selector);
         beraChef.queueNewRewardAllocation(valData.pubkey, uint64(block.number + 1), weights);
@@ -403,10 +404,10 @@ contract BeraChefTest is POLTest {
 
     /// @dev Should fail if reward allocation contains a weight percentage equal to 0
     function test_FailIfZeroRewardAllocationWeight() public {
-        IBeraChef.Weight[] memory weights = new IBeraChef.Weight[](3);
-        weights[0] = IBeraChef.Weight(receiver, 5000);
-        weights[1] = IBeraChef.Weight(makeAddr("receiverOne"), 0);
-        weights[2] = IBeraChef.Weight(makeAddr("receiverTwo"), 5000);
+        IRewardAllocation.Weight[] memory weights = new IRewardAllocation.Weight[](3);
+        weights[0] = IRewardAllocation.Weight(receiver, 5000);
+        weights[1] = IRewardAllocation.Weight(makeAddr("receiverOne"), 0);
+        weights[2] = IRewardAllocation.Weight(makeAddr("receiverTwo"), 5000);
 
         vm.prank(operator);
         vm.expectRevert(IPOLErrors.InvalidWeight.selector);
@@ -415,13 +416,13 @@ contract BeraChefTest is POLTest {
 
     /// @dev Should queue a new reward allocation
     function test_QueueANewRewardAllocation() public {
-        IBeraChef.Weight[] memory weights = new IBeraChef.Weight[](1);
-        weights[0] = IBeraChef.Weight(receiver, 10_000);
+        IRewardAllocation.Weight[] memory weights = new IRewardAllocation.Weight[](1);
+        weights[0] = IRewardAllocation.Weight(receiver, 10_000);
         uint64 startBlock = uint64(block.number + 2);
         vm.prank(operator);
         beraChef.queueNewRewardAllocation(valData.pubkey, startBlock, weights);
 
-        IBeraChef.RewardAllocation memory ra = beraChef.getQueuedRewardAllocation(valData.pubkey);
+        IRewardAllocation.RewardAllocation memory ra = beraChef.getQueuedRewardAllocation(valData.pubkey);
         assertEq(ra.startBlock, startBlock);
         assertEq(ra.weights.length, 1);
         assertEq(ra.weights[0].receiver, receiver);
@@ -429,11 +430,11 @@ contract BeraChefTest is POLTest {
     }
 
     function test_QueueANewRewardAllocation_SameBlock() public {
-        IBeraChef.Weight[] memory weights = new IBeraChef.Weight[](1);
-        weights[0] = IBeraChef.Weight(receiver, 10_000);
+        IRewardAllocation.Weight[] memory weights = new IRewardAllocation.Weight[](1);
+        weights[0] = IRewardAllocation.Weight(receiver, 10_000);
         vm.prank(operator);
         beraChef.queueNewRewardAllocation(valData.pubkey, uint64(block.number), weights);
-        IBeraChef.RewardAllocation memory ra = beraChef.getQueuedRewardAllocation(valData.pubkey);
+        IRewardAllocation.RewardAllocation memory ra = beraChef.getQueuedRewardAllocation(valData.pubkey);
         assertEq(ra.startBlock, uint64(block.number));
         assertEq(ra.weights.length, 1);
         assertEq(ra.weights[0].receiver, receiver);
@@ -444,8 +445,8 @@ contract BeraChefTest is POLTest {
         bytes memory pubkey2 = abi.encodePacked(bytes32("32"), bytes32("32"), bytes32("32"));
         BeaconDepositMock(beaconDepositContract).setOperator(pubkey2, operator);
 
-        IBeraChef.Weight[] memory weights = new IBeraChef.Weight[](1);
-        weights[0] = IBeraChef.Weight(receiver, 10_000);
+        IRewardAllocation.Weight[] memory weights = new IRewardAllocation.Weight[](1);
+        weights[0] = IRewardAllocation.Weight(receiver, 10_000);
 
         vm.prank(operator);
         beraChef.queueNewRewardAllocation(valData.pubkey, uint64(block.number + 1), weights);
@@ -453,13 +454,13 @@ contract BeraChefTest is POLTest {
         vm.prank(operator);
         beraChef.queueNewRewardAllocation(pubkey2, uint64(block.number + 1), weights);
 
-        IBeraChef.RewardAllocation memory ra = beraChef.getQueuedRewardAllocation(valData.pubkey);
+        IRewardAllocation.RewardAllocation memory ra = beraChef.getQueuedRewardAllocation(valData.pubkey);
         assertEq(ra.startBlock, uint64(block.number + 1));
         assertEq(ra.weights.length, 1);
         assertEq(ra.weights[0].receiver, receiver);
         assertEq(ra.weights[0].percentageNumerator, 10_000);
 
-        IBeraChef.RewardAllocation memory ra2 = beraChef.getQueuedRewardAllocation(pubkey2);
+        IRewardAllocation.RewardAllocation memory ra2 = beraChef.getQueuedRewardAllocation(pubkey2);
         assertEq(ra2.startBlock, uint64(block.number + 1));
         assertEq(ra2.weights.length, 1);
         assertEq(ra2.weights[0].receiver, receiver);
@@ -468,8 +469,8 @@ contract BeraChefTest is POLTest {
 
     /// @dev Should revert if there exists a queued reward allocation
     function test_FailQueuedRewardAllocationExists() public {
-        IBeraChef.Weight[] memory weights = new IBeraChef.Weight[](1);
-        weights[0] = IBeraChef.Weight(receiver, 10_000);
+        IRewardAllocation.Weight[] memory weights = new IRewardAllocation.Weight[](1);
+        weights[0] = IRewardAllocation.Weight(receiver, 10_000);
         vm.startPrank(operator);
         // queue a new reward allocation 10000 blocks in the future
         beraChef.queueNewRewardAllocation(valData.pubkey, uint64(block.number + 10_000), weights);
@@ -484,15 +485,15 @@ contract BeraChefTest is POLTest {
         beraChef.setVaultWhitelistedStatus(receiver2, true, "");
 
         // queue a new reward allocation with multiple weights
-        IBeraChef.Weight[] memory weights = new IBeraChef.Weight[](2);
-        weights[0] = IBeraChef.Weight(receiver, 3000);
-        weights[1] = IBeraChef.Weight(receiver2, 7000);
+        IRewardAllocation.Weight[] memory weights = new IRewardAllocation.Weight[](2);
+        weights[0] = IRewardAllocation.Weight(receiver, 3000);
+        weights[1] = IRewardAllocation.Weight(receiver2, 7000);
         uint64 startBlock = uint64(block.number + 2);
         vm.prank(operator);
         beraChef.queueNewRewardAllocation(valData.pubkey, startBlock, weights);
 
         // ensure that the queued reward allocation is set correctly
-        IBeraChef.RewardAllocation memory ra = beraChef.getQueuedRewardAllocation(valData.pubkey);
+        IRewardAllocation.RewardAllocation memory ra = beraChef.getQueuedRewardAllocation(valData.pubkey);
         assertEq(ra.startBlock, startBlock);
         assertEq(ra.weights.length, 2);
         assertEq(ra.weights[0].receiver, receiver);
@@ -543,7 +544,7 @@ contract BeraChefTest is POLTest {
         // queue and activate a new creward allocation
         test_QueueANewRewardAllocation();
         assertFalse(beraChef.isQueuedRewardAllocationReady(valData.pubkey, block.number));
-        IBeraChef.RewardAllocation memory ra = beraChef.getQueuedRewardAllocation(valData.pubkey);
+        IRewardAllocation.RewardAllocation memory ra = beraChef.getQueuedRewardAllocation(valData.pubkey);
         uint64 startBlock = uint64(block.number + 2);
 
         vm.roll(startBlock + 1);
@@ -576,7 +577,7 @@ contract BeraChefTest is POLTest {
         beraChef.activateReadyQueuedRewardAllocation(valData.pubkey);
 
         // ensure that the queued reward allocation is deleted
-        IBeraChef.RewardAllocation memory ra = beraChef.getQueuedRewardAllocation(valData.pubkey);
+        IRewardAllocation.RewardAllocation memory ra = beraChef.getQueuedRewardAllocation(valData.pubkey);
         assertEq(ra.startBlock, 0);
         assertEq(ra.weights.length, 0);
     }
@@ -586,7 +587,7 @@ contract BeraChefTest is POLTest {
     /// @dev Should return the active reward allocation
     function test_GetActiveRewardAllocation() public {
         // ensure that the active reward allocation is empty
-        IBeraChef.RewardAllocation memory ra = beraChef.getActiveRewardAllocation(valData.pubkey);
+        IRewardAllocation.RewardAllocation memory ra = beraChef.getActiveRewardAllocation(valData.pubkey);
         assertEq(ra.startBlock, 0);
         assertEq(ra.weights.length, 0);
 
@@ -605,13 +606,13 @@ contract BeraChefTest is POLTest {
         address receiver3 = factory.createRewardVault(address(stakeTokenVault3));
 
         // set default reward allocation
-        IBeraChef.Weight[] memory weights = new IBeraChef.Weight[](1);
-        weights[0] = IBeraChef.Weight(receiver3, 10_000);
+        IRewardAllocation.Weight[] memory weights = new IRewardAllocation.Weight[](1);
+        weights[0] = IRewardAllocation.Weight(receiver3, 10_000);
         beraChef.setVaultWhitelistedStatus(receiver3, true, "");
-        beraChef.setDefaultRewardAllocation(IBeraChef.RewardAllocation(1, weights));
+        beraChef.setDefaultRewardAllocation(IRewardAllocation.RewardAllocation(1, weights));
 
         // ensure that the default reward allocation is set correctly
-        IBeraChef.RewardAllocation memory ra = beraChef.getActiveRewardAllocation(valData.pubkey);
+        IRewardAllocation.RewardAllocation memory ra = beraChef.getActiveRewardAllocation(valData.pubkey);
         assertEq(ra.startBlock, 1);
         assertEq(ra.weights.length, 1);
         assertEq(ra.weights[0].receiver, receiver3);
@@ -622,7 +623,7 @@ contract BeraChefTest is POLTest {
         //set default reward allocation
         test_SetDefaultRewardAllocation();
         // ensure that the set active reward allocation is empty if none is set
-        IBeraChef.RewardAllocation memory ra = beraChef.getSetActiveRewardAllocation(valData.pubkey);
+        IRewardAllocation.RewardAllocation memory ra = beraChef.getSetActiveRewardAllocation(valData.pubkey);
         assertEq(ra.startBlock, 0);
         assertEq(ra.weights.length, 0);
 
@@ -649,7 +650,7 @@ contract BeraChefTest is POLTest {
     /// @dev Should return the default reward allocation if the active one become invalid after max weights change
     function test_GetActiveRewardAllocationReturnsDefaultRewardAllocationAfterSetMaxWeights() public {
         test_SetDefaultRewardAllocation();
-        IBeraChef.RewardAllocation memory defaultRa = beraChef.getDefaultRewardAllocation();
+        IRewardAllocation.RewardAllocation memory defaultRa = beraChef.getDefaultRewardAllocation();
 
         address stakeTokenVault3 = address(new MockHoney());
         address receiver3 = factory.createRewardVault(address(stakeTokenVault3));
@@ -657,14 +658,14 @@ contract BeraChefTest is POLTest {
         beraChef.setVaultWhitelistedStatus(receiver3, true, "");
 
         // Activate a reward allocation with custom weights
-        IBeraChef.Weight[] memory customWeights = new IBeraChef.Weight[](3);
-        customWeights[0] = IBeraChef.Weight(receiver, 2500);
-        customWeights[1] = IBeraChef.Weight(receiver2, 2500);
-        customWeights[2] = IBeraChef.Weight(receiver3, 5000);
+        IRewardAllocation.Weight[] memory customWeights = new IRewardAllocation.Weight[](3);
+        customWeights[0] = IRewardAllocation.Weight(receiver, 2500);
+        customWeights[1] = IRewardAllocation.Weight(receiver2, 2500);
+        customWeights[2] = IRewardAllocation.Weight(receiver3, 5000);
         helper_ActivateRewardAllocation(2, customWeights);
 
         // Check the active reward allocation
-        IBeraChef.RewardAllocation memory activeRa = beraChef.getActiveRewardAllocation(valData.pubkey);
+        IRewardAllocation.RewardAllocation memory activeRa = beraChef.getActiveRewardAllocation(valData.pubkey);
         assertEq(activeRa.startBlock, 2);
         assertEq(activeRa.weights.length, 3);
         assertEq(activeRa.weights[2].receiver, receiver3);
@@ -681,7 +682,7 @@ contract BeraChefTest is POLTest {
         assertEq(activeRa.weights[0].percentageNumerator, defaultRa.weights[0].percentageNumerator);
     }
 
-    function helper_ActivateRewardAllocation(uint64 startBlock, IBeraChef.Weight[] memory weights) public {
+    function helper_ActivateRewardAllocation(uint64 startBlock, IRewardAllocation.Weight[] memory weights) public {
         vm.prank(operator);
         beraChef.queueNewRewardAllocation(valData.pubkey, startBlock, weights);
 
@@ -836,15 +837,15 @@ contract BeraChefTest is POLTest {
         testFuzz_SetValRewardAllocator(rewardAllocator);
 
         // Queue reward allocation using reward allocator
-        IBeraChef.Weight[] memory weights = new IBeraChef.Weight[](1);
-        weights[0] = IBeraChef.Weight(receiver, 10_000);
+        IRewardAllocation.Weight[] memory weights = new IRewardAllocation.Weight[](1);
+        weights[0] = IRewardAllocation.Weight(receiver, 10_000);
         uint64 startBlock = uint64(block.number + 2);
 
         vm.prank(rewardAllocator);
         beraChef.queueNewRewardAllocation(valData.pubkey, startBlock, weights);
 
         // Verify the reward allocation was queued
-        IBeraChef.RewardAllocation memory ra = beraChef.getQueuedRewardAllocation(valData.pubkey);
+        IRewardAllocation.RewardAllocation memory ra = beraChef.getQueuedRewardAllocation(valData.pubkey);
         assertEq(ra.startBlock, startBlock);
         assertEq(ra.weights.length, 1);
         assertEq(ra.weights[0].receiver, receiver);
@@ -856,8 +857,8 @@ contract BeraChefTest is POLTest {
         testFuzz_SetValRewardAllocator(rewardAllocator);
 
         // Try to queue reward allocation using operator (should fail)
-        IBeraChef.Weight[] memory weights = new IBeraChef.Weight[](1);
-        weights[0] = IBeraChef.Weight(receiver, 10_000);
+        IRewardAllocation.Weight[] memory weights = new IRewardAllocation.Weight[](1);
+        weights[0] = IRewardAllocation.Weight(receiver, 10_000);
         uint64 startBlock = uint64(block.number + 2);
 
         vm.prank(operator);

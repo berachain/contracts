@@ -36,6 +36,8 @@ struct POLAddresses {
     address lstStakerVaultFactoryImpl;
     address lstStakerVaultImpl;
     address lstStakerVaultWithdrawalRequestImpl;
+    address dedicatedEmissionStreamManager;
+    address dedicatedEmissionStreamManagerImpl;
 }
 
 abstract contract POLAddressBook {
@@ -66,7 +68,7 @@ abstract contract POLAddressBook {
             blockRewardController: 0x1AE7dD7AE06F6C58B4524d9c1f816094B1bcCD8e,
             blockRewardControllerImpl: 0x971aF0c15E15F1F31ff60C6Ed2c2234B88D5d25a,
             distributor: 0xD2f19a79b026Fb636A7c300bF5947df113940761,
-            distributorImpl: 0xaEB85B186CC8e305282ad7777D7A11ad76329426,
+            distributorImpl: 0x7fFC63Db4fddCC40C3FfBAC88b71Fd9330b80C3b,
             rewardVaultFactory: 0x94Ad6Ac84f6C6FbA8b8CCbD71d9f4f101def52a8,
             rewardVaultFactoryImpl: 0x6b75ab5860B9129C58bdb01b8194dd1CBc428cac,
             rewardVaultImpl: 0x68DFD1c244Fc65Ca57967E269BD0112aF0eC2184,
@@ -89,7 +91,9 @@ abstract contract POLAddressBook {
             lstStakerVaultFactory: 0xc41bbD6695AB6bdc6D04701b15f4CE5EbA2e2500,
             lstStakerVaultFactoryImpl: 0x330FB93c4DB234E81Bbeda943D5eD42a2039bE8c,
             lstStakerVaultImpl: 0x805c3BB9f74fF0d14eF401f0Fd986713fA521C68,
-            lstStakerVaultWithdrawalRequestImpl: 0x5Df9799bd804E0f0001Df62d34c0026CFeb5890c
+            lstStakerVaultWithdrawalRequestImpl: 0x5Df9799bd804E0f0001Df62d34c0026CFeb5890c,
+            dedicatedEmissionStreamManager: 0x813dCdBa9197947792985c866cE98D6739cA821A,
+            dedicatedEmissionStreamManagerImpl: 0x59F977fB8BbB820F4E3f09Dcd9dAE851b5d08462
         });
     }
 
@@ -106,7 +110,7 @@ abstract contract POLAddressBook {
             blockRewardController: 0x1AE7dD7AE06F6C58B4524d9c1f816094B1bcCD8e,
             blockRewardControllerImpl: 0x401479c852286F702536613dA8De237401621161,
             distributor: 0xD2f19a79b026Fb636A7c300bF5947df113940761,
-            distributorImpl: 0x0a52Be37b6A5C666CFee37cbA7787B2dd815cCD0,
+            distributorImpl: 0xbD95CAd473Adc21d6b1Ea7EbB674bD8b6Af5e1d1,
             rewardVaultFactory: 0x94Ad6Ac84f6C6FbA8b8CCbD71d9f4f101def52a8,
             rewardVaultFactoryImpl: 0xa6f4899209302f363E863ED8E7aCD76b1d8998E1,
             rewardVaultImpl: 0xC87Bb594Cd9d80Dc9E5ab26582913EE5f6eB2BB6,
@@ -129,7 +133,9 @@ abstract contract POLAddressBook {
             lstStakerVaultFactory: 0xAf10B532cCC25B26a8e28913D5C4056a77e7a178,
             lstStakerVaultFactoryImpl: 0x04ABa70C118990534B2D37e8AC46cEeA1B5967B9,
             lstStakerVaultImpl: 0x49CA7e596d5F1B96d1B8274B2e6eFFe92ffD53ec,
-            lstStakerVaultWithdrawalRequestImpl: 0x78e151F4e599eC1EebDa2563536BDa14498E2f21
+            lstStakerVaultWithdrawalRequestImpl: 0x78e151F4e599eC1EebDa2563536BDa14498E2f21,
+            dedicatedEmissionStreamManager: 0xfe83d31669b52B7a619119Bc71805fD29eeEB9Dd,
+            dedicatedEmissionStreamManagerImpl: 0xC4333904Cf08E6715e69A11E3999900522A1D0E6
         });
     }
 
@@ -144,7 +150,7 @@ abstract contract POLAddressBook {
             blockRewardController: 0x4A2452Fd7e9FCA389d98063c5C3A8FC63838E451,
             blockRewardControllerImpl: 0xf1774D66392999268a40c8c9Df1708f220662aba,
             distributor: 0x9dD639638B46899CED46ef58b3A3c21E9feF9d7c,
-            distributorImpl: 0x2b564641cC5E3dfac81eE337D512f8313a6067DF,
+            distributorImpl: 0x823114F59C2D226e7e76aa0e374739afe937728A,
             rewardVaultFactory: 0xb6C6e3A4aBf3777ffccB01d0a8581daAc07CaAEf,
             rewardVaultFactoryImpl: 0x3199Ea83F2731b74d77F7A989cE3bDF785779304,
             rewardVaultImpl: 0xB9a8323d504994EC9dD864887D29F21e6eDbaDf2,
@@ -167,7 +173,9 @@ abstract contract POLAddressBook {
             lstStakerVaultFactory: 0x124BC8af306345db060aCD04D87B6f5C79C80027,
             lstStakerVaultFactoryImpl: 0x401F34e0dBAd8E53cF0D3e62574BF13841Ad8EcB,
             lstStakerVaultImpl: 0xBADD53A592FC22125D82dC8252D7F7C834fbDAf7,
-            lstStakerVaultWithdrawalRequestImpl: 0xED868a9F16b8F715A9fBfE3b9ff4e096B35C7E74
+            lstStakerVaultWithdrawalRequestImpl: 0xED868a9F16b8F715A9fBfE3b9ff4e096B35C7E74,
+            dedicatedEmissionStreamManager: 0x469a8410f1417Df9114C7bA7F7846FBE184f9f21,
+            dedicatedEmissionStreamManagerImpl: 0x8f28bB60CA6dAF8267276Cc8b4FD389BF5E8b717
         });
     }
 
@@ -182,7 +190,7 @@ abstract contract POLAddressBook {
             blockRewardController: 0xf1aDf7a50773FF65c7cE8662A309F8e277Cd7Ec6,
             blockRewardControllerImpl: 0x147585c9E870f1CE7F3320A30ff2E43410463e58,
             distributor: 0x046e3BeED5090A8f6EF88eeFD1a1877360560F71,
-            distributorImpl: 0xEdE384457a2D271307ef0F6C83077fc86253F4d1,
+            distributorImpl: 0xab708f5D33495718a44CA7835Be048A683E55F41,
             rewardVaultFactory: 0x5D280c8F2227A594De61902fE4154Ea669163742,
             rewardVaultFactoryImpl: 0x589e95A46B566d2d011314b4f209716f266f774D,
             rewardVaultImpl: 0x62C114DD46829ADc7ACf98D9ef5ecaC91b2f53E2,
@@ -205,7 +213,9 @@ abstract contract POLAddressBook {
             lstStakerVaultFactory: 0x31b5Cf9a4F89cEE50a779E95B6b8e6a1D7E4E058,
             lstStakerVaultFactoryImpl: 0x203b42Cdc6216253f6576aa5cdB9BeB74bbFB963,
             lstStakerVaultImpl: 0xC891E5dfE7982c99F1eF5aD36f08FCE03652300c,
-            lstStakerVaultWithdrawalRequestImpl: 0xAe88Db65a31E4D23Ddb75b6c64F24Ae26ef098E7
+            lstStakerVaultWithdrawalRequestImpl: 0xAe88Db65a31E4D23Ddb75b6c64F24Ae26ef098E7,
+            dedicatedEmissionStreamManager: 0x8a3EB29D2E634FA10F70496BDA230b65f73f1dF1,
+            dedicatedEmissionStreamManagerImpl: 0x43e01220C871eE26706F65f2Ba443c0a50ae424A
         });
     }
 }

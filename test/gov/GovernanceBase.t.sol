@@ -9,6 +9,7 @@ import { RewardVault } from "src/pol/rewards/RewardVault.sol";
 import { BerachainGovernance } from "src/gov/BerachainGovernance.sol";
 import { TimeLock } from "src/gov/TimeLock.sol";
 import { IBeraChef } from "src/pol/interfaces/IBeraChef.sol";
+import { IRewardAllocation } from "src/pol/interfaces/IRewardAllocation.sol";
 import "../pol/POL.t.sol";
 
 abstract contract GovernanceBaseTest is POLTest {
@@ -72,15 +73,16 @@ abstract contract GovernanceBaseTest is POLTest {
     }
 
     function configureWeights(RewardVault[] memory vaults, uint96[] memory percentageNumerators) internal {
-        IBeraChef.Weight[] memory weights = new IBeraChef.Weight[](vaults.length);
+        IRewardAllocation.Weight[] memory weights = new IRewardAllocation.Weight[](vaults.length);
         for (uint256 i; i < vaults.length; ++i) {
-            weights[i] = IBeraChef.Weight(address(vaults[i]), percentageNumerators[i]);
+            weights[i] = IRewardAllocation.Weight(address(vaults[i]), percentageNumerators[i]);
         }
         // Set the weights for the reward allocation.
         address[] memory targets = new address[](1);
         targets[0] = address(beraChef);
         bytes[] memory calldatas = new bytes[](1);
-        calldatas[0] = abi.encodeCall(BeraChef.setDefaultRewardAllocation, (IBeraChef.RewardAllocation(1, weights)));
+        calldatas[0] =
+            abi.encodeCall(BeraChef.setDefaultRewardAllocation, (IRewardAllocation.RewardAllocation(1, weights)));
         governanceHelper(targets, calldatas);
 
         vm.prank(operator);

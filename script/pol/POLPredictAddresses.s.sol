@@ -21,6 +21,7 @@ import { LSTStakerVaultFactory } from "src/pol/lst/LSTStakerVaultFactory.sol";
 import { LSTStakerVault } from "src/pol/lst/LSTStakerVault.sol";
 import { LSTStakerVaultWithdrawalRequest } from "src/pol/lst/LSTStakerVaultWithdrawalRequest.sol";
 import { AddressBook } from "../base/AddressBook.sol";
+import { DedicatedEmissionStreamManager } from "src/pol/rewards/DedicatedEmissionStreamManager.sol";
 
 contract POLPredictAddressesScript is BasePredictScript, AddressBook {
     function run() public view {
@@ -59,5 +60,7 @@ contract POLPredictAddressesScript is BasePredictScript, AddressBook {
         _predictAddress("LST Staker Vault Factory Impl", type(LSTStakerVaultFactory).creationCode);
         _predictAddress("LST Staker Vault Impl", type(LSTStakerVault).creationCode);
         _predictAddress("LST Staker Vault Withdrawal Request Impl", type(LSTStakerVaultWithdrawalRequest).creationCode);
+        _predictProxyAddress("DedicatedEmissionStreamManager", type(DedicatedEmissionStreamManager).creationCode);
+        _predictAddress("DedicatedEmissionStreamManager Impl", type(DedicatedEmissionStreamManager).creationCode);
     }
 }

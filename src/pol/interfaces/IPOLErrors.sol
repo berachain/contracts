@@ -232,4 +232,11 @@ interface IPOLErrors is IStakingRewardsErrors {
     error LSTStakerVaultNotFound();
     // Signature: 0x40a3833d
     error NotStakerVault();
+
+    /*                        EMISSION MANAGER                       */
+
+    // Signature: 0xbad4ab07
+    error InvalidEmissionPerc();
+    // Signature: 0x6635c275
+    error InvalidTargetEmission();
 }

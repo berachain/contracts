@@ -7,6 +7,7 @@ import { BeraChef } from "src/pol/rewards/BeraChef.sol";
 import { IBeraChef } from "src/pol/interfaces/IBeraChef.sol";
 import { Storage } from "../../base/Storage.sol";
 import { AddressBook } from "../../base/AddressBook.sol";
+import { IRewardAllocation } from "src/pol/interfaces/IRewardAllocation.sol";
 
 /// @notice Set default reward allocation.
 /// @dev This actions can be run only by an account with ADMIN role.
@@ -60,15 +61,15 @@ contract WhitelistIncentiveTokenScript is BaseScript, Storage, AddressBook {
         );
 
         // Create the weight struct array
-        IBeraChef.Weight[] memory weights = new IBeraChef.Weight[](vaults.length);
+        IRewardAllocation.Weight[] memory weights = new IRewardAllocation.Weight[](vaults.length);
         for (uint8 i = 0; i < vaults.length; i++) {
             _validateCode("RewardVault", vaults[i]);
-            weights[i] = IBeraChef.Weight({ receiver: vaults[i], percentageNumerator: vaultWeights[i] });
+            weights[i] = IRewardAllocation.Weight({ receiver: vaults[i], percentageNumerator: vaultWeights[i] });
         }
 
         // Create the reward allocation struct
-        IBeraChef.RewardAllocation memory rewardAllocations =
-            IBeraChef.RewardAllocation({ startBlock: 0, weights: weights });
+        IRewardAllocation.RewardAllocation memory rewardAllocations =
+            IRewardAllocation.RewardAllocation({ startBlock: 0, weights: weights });
 
         // BeraChef validate vaults and weights
         beraChef.setDefaultRewardAllocation(rewardAllocations);

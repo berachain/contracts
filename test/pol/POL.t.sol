@@ -22,6 +22,8 @@ import { RewardVaultHelper } from "src/pol/rewards/RewardVaultHelper.sol";
 import { RewardVaultHelperDeployer } from "src/pol/RewardVaultHelperDeployer.sol";
 import { RewardAllocatorFactory } from "src/pol/rewards/RewardAllocatorFactory.sol";
 import { RewardAllocatorFactoryDeployer } from "src/pol/RewardAllocatorFactoryDeployer.sol";
+import { DedicatedEmissionStreamManager } from "src/pol/rewards/DedicatedEmissionStreamManager.sol";
+import { DedicatedEmissionStreamManagerDeployer } from "src/pol/DedicatedEmissionStreamManagerDeployer.sol";
 
 abstract contract POLTest is Test, Create2Deployer {
     uint256 internal constant TEST_BGT_PER_BLOCK = 5 ether;
@@ -58,6 +60,7 @@ abstract contract POLTest is Test, Create2Deployer {
     RewardAllocatorFactory internal rewardAllocatorFactory;
     POLDeployer internal polDeployer;
     BGTFeeDeployer internal feeDeployer;
+    DedicatedEmissionStreamManager internal dedicatedEmissionStreamManager;
     address internal bgtIncentiveDistributor;
     address internal rewardVaultHelper;
 
@@ -94,6 +97,8 @@ abstract contract POLTest is Test, Create2Deployer {
         beraChef.setRewardAllocatorFactory(address(rewardAllocatorFactory));
 
         beraChef.setRewardAllocationInactivityBlockSpan(86_400); // 2 days with 2 second block time
+
+        distributor.setDedicatedEmissionStreamManager(address(dedicatedEmissionStreamManager));
 
         // add native token to BGT for backing
         vm.deal(address(bgt), 100_000 ether);
@@ -139,6 +144,14 @@ abstract contract POLTest is Test, Create2Deployer {
         rewardAllocatorFactory = RewardAllocatorFactory(rewardAllocatorFactoryDeployer.rewardAllocatorFactory());
     }
 
+    function deployDedicatedEmissionStreamManager(address owner, address _distributor, address _beraChef) internal {
+        Salt memory salt = Salt({ implementation: 0, proxy: 1 });
+        DedicatedEmissionStreamManagerDeployer dedicatedEmissionStreamManagerDeployer =
+            new DedicatedEmissionStreamManagerDeployer(owner, _distributor, _beraChef, salt);
+        dedicatedEmissionStreamManager =
+            DedicatedEmissionStreamManager(dedicatedEmissionStreamManagerDeployer.dedicatedEmissionStreamManager());
+    }
+
     function deployPOL(address owner) internal {
         deployBGT(owner);
         deployBGTIncentiveDistributor(owner);
@@ -162,6 +175,8 @@ abstract contract POLTest is Test, Create2Deployer {
         blockRewardController = polDeployer.blockRewardController();
         factory = polDeployer.rewardVaultFactory();
         distributor = polDeployer.distributor();
+
+        deployDedicatedEmissionStreamManager(owner, address(distributor), address(beraChef));
 
         deployRewardAllocatorFactory(owner, address(beraChef));
     }

@@ -3,6 +3,7 @@ pragma solidity ^0.8.26;
 
 import { IPOLErrors } from "../interfaces/IPOLErrors.sol";
 import { IBeraChef } from "../interfaces/IBeraChef.sol";
+import { IRewardAllocation } from "./IRewardAllocation.sol";
 
 interface IRewardAllocatorFactory is IPOLErrors {
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
@@ -11,7 +12,7 @@ interface IRewardAllocatorFactory is IPOLErrors {
 
     /// @notice Emitted when the baseline reward allocation has been set.
     /// @param weights The weights of the baseline reward allocation.
-    event BaselineAllocationSet(IBeraChef.Weight[] weights);
+    event BaselineAllocationSet(IRewardAllocation.Weight[] weights);
 
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
     /*                          ADMIN                             */
@@ -20,11 +21,11 @@ interface IRewardAllocatorFactory is IPOLErrors {
     /// @notice Sets the baseline reward allocation.
     /// @dev Only callable by admin.
     /// @param weights The weights of the reward allocation.
-    function setBaselineAllocation(IBeraChef.Weight[] calldata weights) external;
+    function setBaselineAllocation(IRewardAllocation.Weight[] calldata weights) external;
 
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
     /*                          READS                             */
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
 
-    function getBaselineAllocation() external view returns (IBeraChef.RewardAllocation memory);
+    function getBaselineAllocation() external view returns (IRewardAllocation.RewardAllocation memory);
 }

@@ -6,6 +6,7 @@ import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/ac
 
 import { Utils } from "../../libraries/Utils.sol";
 import { IBeraChef } from "../interfaces/IBeraChef.sol";
+import { IRewardAllocation } from "../interfaces/IRewardAllocation.sol";
 import { IRewardAllocatorFactory } from "../interfaces/IRewardAllocatorFactory.sol";
 
 /// @title RewardAllocatorFactory
@@ -26,7 +27,7 @@ contract RewardAllocatorFactory is IRewardAllocatorFactory, AccessControlUpgrade
     IBeraChef public beraChef;
 
     /// @notice The baseline reward allocation.
-    IBeraChef.RewardAllocation internal _baselineAllocation;
+    IRewardAllocation.RewardAllocation internal _baselineAllocation;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -48,7 +49,10 @@ contract RewardAllocatorFactory is IRewardAllocatorFactory, AccessControlUpgrade
     function _authorizeUpgrade(address newImplementation) internal override onlyRole(DEFAULT_ADMIN_ROLE) { }
 
     /// @inheritdoc IRewardAllocatorFactory
-    function setBaselineAllocation(IBeraChef.Weight[] calldata weights) external onlyRole(ALLOCATION_SETTER_ROLE) {
+    function setBaselineAllocation(IRewardAllocation.Weight[] calldata weights)
+        external
+        onlyRole(ALLOCATION_SETTER_ROLE)
+    {
         beraChef.validateWeights(weights);
 
         _baselineAllocation.startBlock = uint64(block.number);
@@ -64,7 +68,7 @@ contract RewardAllocatorFactory is IRewardAllocatorFactory, AccessControlUpgrade
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
 
     /// @inheritdoc IRewardAllocatorFactory
-    function getBaselineAllocation() external view returns (IBeraChef.RewardAllocation memory) {
+    function getBaselineAllocation() external view returns (IRewardAllocation.RewardAllocation memory) {
         return _baselineAllocation;
     }
 }

@@ -9,6 +9,8 @@ import { BeaconRoots } from "src/libraries/BeaconRoots.sol";
 
 import { MockHoney } from "@mock/honey/MockHoney.sol";
 import { Mock4788BeaconRoots } from "@mock/pol/Mock4788BeaconRoots.sol";
+import { IRewardAllocation } from "src/pol/interfaces/IRewardAllocation.sol";
+
 import "./POL.t.sol";
 
 /// @dev This test is for simulating the whole system against a mock BeraRoots contract.
@@ -56,10 +58,10 @@ abstract contract BeaconRootsHelperTest is POLTest {
     function helper_SetDefaultRewardAllocation() public virtual {
         // Set up the default reward allocation with weight 1 on the available vault.
         vm.startPrank(governance);
-        IBeraChef.Weight[] memory weights = new IBeraChef.Weight[](1);
-        weights[0] = IBeraChef.Weight(address(vault), 10_000);
+        IRewardAllocation.Weight[] memory weights = new IRewardAllocation.Weight[](1);
+        weights[0] = IRewardAllocation.Weight(address(vault), 10_000);
         beraChef.setVaultWhitelistedStatus(address(vault), true, "");
-        beraChef.setDefaultRewardAllocation(IBeraChef.RewardAllocation(1, weights));
+        beraChef.setDefaultRewardAllocation(IRewardAllocation.RewardAllocation(1, weights));
         vm.stopPrank();
     }
 

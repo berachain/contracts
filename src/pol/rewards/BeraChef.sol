@@ -448,7 +448,7 @@ contract BeraChef is IBeraChef, OwnableUpgradeable, UUPSUpgradeable {
     }
 
     /// @inheritdoc IBeraChef
-    function validateWeights(IBeraChef.Weight[] calldata weights) external {
+    function validateWeights(Weight[] calldata weights) external {
         bytes memory key = new bytes(0);
         _validateWeights(key, weights);
     }

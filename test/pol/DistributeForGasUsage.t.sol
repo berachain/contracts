@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.26;
 
-import { IBeraChef } from "src/pol/interfaces/IBeraChef.sol";
+import { IRewardAllocation } from "src/pol/interfaces/IRewardAllocation.sol";
 import { IBGT } from "src/pol/interfaces/IBGT.sol";
 import { IBlockRewardController } from "src/pol/interfaces/IBlockRewardController.sol";
 import { IERC20 } from "@openzeppelin/contracts/interfaces/IERC20.sol";
@@ -42,7 +42,7 @@ contract DistributeForGasUsageTest is BeaconRootsHelperTest {
         randomNumber;
         _helper_SetDefaultRewardAllocationWithIncentiveTokens(NUMBER_OF_WEIGHTS);
 
-        IBeraChef.RewardAllocation memory ra = beraChef.getDefaultRewardAllocation();
+        IRewardAllocation.RewardAllocation memory ra = beraChef.getDefaultRewardAllocation();
         assertEq(ra.weights.length, NUMBER_OF_WEIGHTS);
         assertEq(incentiveTokens.length, NUMBER_OF_WEIGHTS * NUMBER_OF_INCENTIVE_TOKENS);
 
@@ -121,7 +121,7 @@ contract DistributeForGasUsageTest is BeaconRootsHelperTest {
     }
 
     function _helper_SetDefaultRewardAllocationWithIncentiveTokens(uint256 numberOfWeights) internal {
-        IBeraChef.Weight[] memory weights = new IBeraChef.Weight[](numberOfWeights);
+        IRewardAllocation.Weight[] memory weights = new IRewardAllocation.Weight[](numberOfWeights);
         uint96 totalWeight = 10_000;
         uint96 weight = totalWeight / uint96(numberOfWeights);
 
@@ -130,14 +130,14 @@ contract DistributeForGasUsageTest is BeaconRootsHelperTest {
             if (weight > totalWeight) {
                 weight = totalWeight;
             }
-            weights[i] = IBeraChef.Weight(vault, weight);
+            weights[i] = IRewardAllocation.Weight(vault, weight);
             vm.prank(governance);
             beraChef.setVaultWhitelistedStatus(vault, true, "");
             _helper_WhitelistIncentiveTokens(vault);
             totalWeight -= weight;
         }
         vm.prank(governance);
-        beraChef.setDefaultRewardAllocation(IBeraChef.RewardAllocation(1, weights));
+        beraChef.setDefaultRewardAllocation(IRewardAllocation.RewardAllocation(1, weights));
     }
 
     function _helper_WhitelistIncentiveTokens(address vault) public {

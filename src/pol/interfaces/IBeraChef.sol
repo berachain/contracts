@@ -2,31 +2,13 @@
 pragma solidity ^0.8.26;
 
 import { IPOLErrors } from "./IPOLErrors.sol";
+import { IRewardAllocation } from "./IRewardAllocation.sol";
 
 /// @notice Interface of the BeraChef module
-interface IBeraChef is IPOLErrors {
+interface IBeraChef is IRewardAllocation, IPOLErrors {
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
     /*                          STRUCTS                           */
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
-
-    /// @notice Represents a RewardAllocation entry
-    struct RewardAllocation {
-        // The block this reward allocation goes into effect.
-        uint64 startBlock;
-        // The weights of the reward allocation.
-        Weight[] weights;
-    }
-
-    /// @notice Represents a Weight entry
-    struct Weight {
-        // The address of the receiver that this weight is for.
-        address receiver;
-        // The fraction of rewards going to this receiver.
-        // the percentage denominator is: ONE_HUNDRED_PERCENT = 10000
-        // the actual fraction is: percentageNumerator / ONE_HUNDRED_PERCENT
-        // e.g. percentageNumerator for 50% is 5000, because 5000 / 10000 = 0.5
-        uint96 percentageNumerator;
-    }
 
     /// @notice The struct of validator queued commission rate changes on incentive tokens.
     /// @param blockNumberLast The last block number commission rate was queued
@@ -221,6 +203,13 @@ interface IBeraChef is IPOLErrors {
      * @return maxWeightPerVault The weight in basis points.
      */
     function maxWeightPerVault() external view returns (uint96);
+
+    /**
+     * @notice Returns the whitelist status of a vault.
+     * @param receiver The address of the vault.
+     * @return isWhitelisted The whitelist status; true if the receiver is whitelisted, false otherwise.
+     */
+    function isWhitelistedVault(address receiver) external view returns (bool);
 
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
     /*                       ADMIN FUNCTIONS                      */

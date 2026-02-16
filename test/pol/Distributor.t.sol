@@ -7,6 +7,7 @@ import { ERC1967Utils } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Utils
 
 import { IBeaconDeposit } from "src/pol/interfaces/IBeaconDeposit.sol";
 import { IBeraChef } from "src/pol/interfaces/IBeraChef.sol";
+import { IRewardAllocation } from "src/pol/interfaces/IRewardAllocation.sol";
 import { IBGT } from "src/pol/interfaces/IBGT.sol";
 import { IBlockRewardController } from "src/pol/interfaces/IBlockRewardController.sol";
 import { IDistributor } from "src/pol/interfaces/IDistributor.sol";
@@ -34,8 +35,9 @@ contract DistributorTest is BeaconRootsHelperTest {
         defaultAdminRole = distributor.DEFAULT_ADMIN_ROLE();
         managerRole = distributor.MANAGER_ROLE();
 
-        vm.prank(governance);
+        vm.startPrank(governance);
         distributor.grantRole(managerRole, manager);
+        vm.stopPrank();
     }
 
     /// @dev Ensure that the contract is owned by the governance.
@@ -223,8 +225,8 @@ contract DistributorTest is BeaconRootsHelperTest {
     /// @dev Activate the queued reward allocation if it is ready and distribute the rewards.
     function test_DistributeAndActivateQueuedRewardAllocation() public {
         helper_SetDefaultRewardAllocation();
-        IBeraChef.Weight[] memory weights = new IBeraChef.Weight[](1);
-        weights[0] = IBeraChef.Weight(address(vault), 10_000);
+        IRewardAllocation.Weight[] memory weights = new IRewardAllocation.Weight[](1);
+        weights[0] = IRewardAllocation.Weight(address(vault), 10_000);
         uint64 startBlock = uint64(block.number + 2);
 
         vm.prank(operator);
@@ -317,9 +319,9 @@ contract DistributorTest is BeaconRootsHelperTest {
         vm.prank(governance);
         beraChef.setVaultWhitelistedStatus(vault2, true, "");
 
-        IBeraChef.Weight[] memory weights = new IBeraChef.Weight[](2);
-        weights[0] = IBeraChef.Weight(address(vault), uint96(weight));
-        weights[1] = IBeraChef.Weight(vault2, uint96(MAX_WEIGHT - weight));
+        IRewardAllocation.Weight[] memory weights = new IRewardAllocation.Weight[](2);
+        weights[0] = IRewardAllocation.Weight(address(vault), uint96(weight));
+        weights[1] = IRewardAllocation.Weight(vault2, uint96(MAX_WEIGHT - weight));
         uint64 startBlock = uint64(block.number + 2);
 
         vm.prank(operator);
@@ -431,9 +433,9 @@ contract DistributorTest is BeaconRootsHelperTest {
         vm.prank(governance);
         beraChef.setVaultWhitelistedStatus(vault2, true, "");
 
-        IBeraChef.Weight[] memory weights = new IBeraChef.Weight[](2);
-        weights[0] = IBeraChef.Weight(address(vault), 5000);
-        weights[1] = IBeraChef.Weight(vault2, 5000);
+        IRewardAllocation.Weight[] memory weights = new IRewardAllocation.Weight[](2);
+        weights[0] = IRewardAllocation.Weight(address(vault), 5000);
+        weights[1] = IRewardAllocation.Weight(vault2, 5000);
 
         vm.prank(operator);
         beraChef.queueNewRewardAllocation(valData.pubkey, uint64(block.number), weights);

@@ -5,6 +5,7 @@ import { console2 } from "forge-std/Script.sol";
 import { BaseScript } from "../../base/Base.s.sol";
 import { IERC20 } from "forge-std/interfaces/IERC20.sol";
 import { IBeraChef } from "src/pol/interfaces/IBeraChef.sol";
+import { IRewardAllocation } from "src/pol/interfaces/IRewardAllocation.sol";
 import { BerachainGovernance } from "src/gov/BerachainGovernance.sol";
 import { AddressBook } from "../../base/AddressBook.sol";
 
@@ -69,13 +70,14 @@ contract SetDefaultRewardAllocationScript is BaseScript, AddressBook {
         address[] memory targets = new address[](1);
         targets[0] = _polAddresses.beraChef;
 
-        IBeraChef.Weight[] memory weights = new IBeraChef.Weight[](6);
+        IRewardAllocation.Weight[] memory weights = new IRewardAllocation.Weight[](6);
         for (uint8 i = 0; i < REWARD_VAULT_WEIGHTS.length; i++) {
-            weights[i] = IBeraChef.Weight({ receiver: REWARD_VAULTS[i], percentageNumerator: REWARD_VAULT_WEIGHTS[i] });
+            weights[i] =
+                IRewardAllocation.Weight({ receiver: REWARD_VAULTS[i], percentageNumerator: REWARD_VAULT_WEIGHTS[i] });
         }
 
-        IBeraChef.RewardAllocation memory rewardAllocations =
-            IBeraChef.RewardAllocation({ startBlock: 0, weights: weights });
+        IRewardAllocation.RewardAllocation memory rewardAllocations =
+            IRewardAllocation.RewardAllocation({ startBlock: 0, weights: weights });
 
         bytes[] memory calldatas = new bytes[](1);
         calldatas[0] = abi.encodeCall(IBeraChef.setDefaultRewardAllocation, (rewardAllocations));
