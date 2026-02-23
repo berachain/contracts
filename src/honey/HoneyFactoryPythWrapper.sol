@@ -82,6 +82,8 @@ contract HoneyFactoryPythWrapper is IHoneyFactoryPythWrapper, IHoneyErrors {
         _getForFactory(honey, honeyAmount);
 
         amounts = IHoneyFactory(factory).redeem(asset, honeyAmount, receiver, expectBasketMode);
+        // Transfer back any leftover honey that might arise from basket mode redeem logic.
+        _refundAnyLeftover(honey);
     }
 
     /// @inheritdoc IHoneyFactoryPythWrapper

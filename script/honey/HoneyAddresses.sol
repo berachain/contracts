@@ -35,13 +35,13 @@ abstract contract HoneyAddressBook {
     function _getMainnetHoneyAddresses() private pure returns (HoneyAddresses memory) {
         return HoneyAddresses({
             honey: 0xFCBD14DC51f0A4d49d5E53C2E0950e0bC26d0Dce,
-            honeyImpl: 0x3caE8dC9A2E2D2106CE1a0ffDBdF21AbcC870bF8,
+            honeyImpl: 0x96b1a552A97dA5503343d0F9FF2766c616E62905,
             honeyFactory: 0xA4aFef880F5cE1f63c9fb48F661E27F8B4216401,
             honeyFactoryReader: 0x285e147060CDc5ba902786d3A471224ee6cE0F91,
-            honeyFactoryImpl: 0xF51C5a7B48410c4c4f99d353622d365481BDE7e7,
+            honeyFactoryImpl: 0x6331F0a4E0220a14Be27BD31aF091F0a1AC036A1,
             honeyFactoryReaderImpl: 0x91C54526A9f8D0391F64392f24C7E8ff94A5f4fB,
             collateralVaultImpl: 0xAa4f2Bc7a06c89BEAB5125D82e25D4166b4a4681,
-            honeyFactoryPythWrapper: 0x4b7cb1c197f8EE4d309866B16C2c12E3B4E7E606
+            honeyFactoryPythWrapper: 0xF5686e448BE103beA465105bEb9d284a34ae7e95
         });
     }
 
@@ -51,13 +51,13 @@ abstract contract HoneyAddressBook {
     function _getTestnetHoneyAddresses() private pure returns (HoneyAddresses memory) {
         return HoneyAddresses({
             honey: 0xFCBD14DC51f0A4d49d5E53C2E0950e0bC26d0Dce,
-            honeyImpl: 0x114Af1Ad4c6FeBCB9222B7D6AF6141E7a34775Fe,
+            honeyImpl: 0xD1886E0659Ed88812aeA75862Cc9891097c25542,
             honeyFactory: 0xA4aFef880F5cE1f63c9fb48F661E27F8B4216401,
             honeyFactoryReader: 0x285e147060CDc5ba902786d3A471224ee6cE0F91,
-            honeyFactoryImpl: 0x3Ba6452ED6C57f4E1A6334E0C3b810c481AdaC64,
+            honeyFactoryImpl: 0xD38a1fD3E943a61066903889b8e0889EcAc6Dedd,
             honeyFactoryReaderImpl: 0x22ee76216B1b7E4f34CF1417da3E4773F7cbA8E6,
             collateralVaultImpl: 0xE3689043e7F860FbC0c814839cd7dF5022223172,
-            honeyFactoryPythWrapper: 0x4b7cb1c197f8EE4d309866B16C2c12E3B4E7E606
+            honeyFactoryPythWrapper: 0xE5Ad9BA751714ec8cdd554b5a9f12BFcA13980cB
         });
     }
 

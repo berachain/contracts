@@ -34,7 +34,7 @@ contract ValidateHoneyUpgrade is Script {
         console2.log("HoneyFactoryReader can be upgraded successfully.");
 
         // check Honey safe upgrade
-        options.referenceContract = "Honey_V0.sol:Honey_V0";
+        options.referenceContract = "Honey_V1.sol:Honey_V1";
         Upgrades.validateUpgrade("Honey.sol", options);
         console2.log("Honey can be upgraded successfully.");
 

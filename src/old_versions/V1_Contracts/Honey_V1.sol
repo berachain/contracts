@@ -6,15 +6,12 @@ import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/ac
 import { PausableUpgradeable } from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
-import { Utils } from "../libraries/Utils.sol";
-import { IHoneyErrors } from "./IHoneyErrors.sol";
-import { EIP2612 } from "../base/EIP2612.sol";
-import { EIP3009 } from "../base/EIP3009.sol";
+import { Utils } from "src/libraries/Utils.sol";
+import { IHoneyErrors } from "src/honey/IHoneyErrors.sol";
 
 /// @notice This is the ERC20 token representation of Berachain's native stablecoin, Honey.
 /// @author Berachain Team
-/// @dev Uses diamond inheritance for EIP3009 and EIP2612 (both extend ERC20).
-contract Honey is EIP3009, EIP2612, PausableUpgradeable, AccessControlUpgradeable, UUPSUpgradeable, IHoneyErrors {
+contract Honey_V1 is ERC20, PausableUpgradeable, AccessControlUpgradeable, UUPSUpgradeable, IHoneyErrors {
     using Utils for bytes4;
 
     string private constant NAME = "Honey";
@@ -82,17 +79,6 @@ contract Honey is EIP3009, EIP2612, PausableUpgradeable, AccessControlUpgradeabl
         return SYMBOL;
     }
 
-    /// @notice Version string for the EIP712 domain separator
-    /// @return Version string
-    function version() public pure returns (string memory) {
-        return "1";
-    }
-
-    /// @dev Override to use the version function in case it changes to keep the EIP712 domain separator consistent.
-    function _versionHash() internal pure override returns (bytes32) {
-        return keccak256(abi.encodePacked(version()));
-    }
-
     function _beforeTokenTransfer(address from, address to, uint256 amount) internal view override {
         amount;
         _requireNotPaused();
@@ -121,69 +107,5 @@ contract Honey is EIP3009, EIP2612, PausableUpgradeable, AccessControlUpgradeabl
         if (!pause && isPaused) {
             _unpause();
         }
-    }
-
-    /// @inheritdoc EIP2612
-    /// @dev Override to add whenNotPaused check.
-    function permit(
-        address owner,
-        address spender,
-        uint256 value,
-        uint256 deadline,
-        uint8 v,
-        bytes32 r,
-        bytes32 s
-    )
-        public
-        override(EIP2612, ERC20)
-        whenNotPaused
-    {
-        super.permit(owner, spender, value, deadline, v, r, s);
-    }
-
-    /// @inheritdoc EIP2612
-    /// @dev Override to add whenNotPaused check.
-    function permit(
-        address owner,
-        address spender,
-        uint256 value,
-        uint256 deadline,
-        bytes memory signature
-    )
-        public
-        override
-        whenNotPaused
-    {
-        super.permit(owner, spender, value, deadline, signature);
-    }
-
-    /// @inheritdoc EIP3009
-    /// @dev Override to add whenNotPaused check.
-    function cancelAuthorization(
-        address authorizer,
-        bytes32 nonce,
-        uint8 v,
-        bytes32 r,
-        bytes32 s
-    )
-        public
-        override
-        whenNotPaused
-    {
-        super.cancelAuthorization(authorizer, nonce, v, r, s);
-    }
-
-    /// @inheritdoc EIP3009
-    /// @dev Override to add whenNotPaused check.
-    function cancelAuthorization(
-        address authorizer,
-        bytes32 nonce,
-        bytes memory signature
-    )
-        public
-        override
-        whenNotPaused
-    {
-        super.cancelAuthorization(authorizer, nonce, signature);
     }
 }

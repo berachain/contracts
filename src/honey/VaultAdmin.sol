@@ -217,12 +217,29 @@ abstract contract VaultAdmin is AccessControlUpgradeable, PausableUpgradeable, U
     /// @notice Set the fee receiver address.
     /// @dev Only the default admin role can call this function.
     /// @dev Reverts if the fee receiver address is zero address.
+    /// @dev Migrate any outstanding collected fee shares to the new receiver.
     /// @param _feeReceiver The address of the fee receiver.
     function setFeeReceiver(address _feeReceiver) external {
         _checkRole(DEFAULT_ADMIN_ROLE);
         if (_feeReceiver == address(0)) ZeroAddress.selector.revertWith();
+        address oldFeeReceiver = feeReceiver;
         feeReceiver = _feeReceiver;
         emit FeeReceiverSet(_feeReceiver);
+
+        // Migrate any outstanding fee shares to the new receiver to avoid stranding dust.
+        // NOTE: Limited number of registered assets is assumed.
+        for (uint256 i = 0; i < registeredAssets.length;) {
+            address asset = registeredAssets[i];
+            uint256 collectedFee = collectedFees[oldFeeReceiver][asset];
+
+            if (collectedFee > 0) {
+                collectedFees[oldFeeReceiver][asset] = 0;
+                collectedFees[_feeReceiver][asset] += collectedFee;
+            }
+            unchecked {
+                ++i;
+            }
+        }
     }
 
     /// @notice Set the POL Fee Collector address.
@@ -256,12 +273,17 @@ abstract contract VaultAdmin is AccessControlUpgradeable, PausableUpgradeable, U
 
     /// @notice Withdraw all the collected fees for a `receiver`.
     /// @dev It loops over all the registered assets and withdraws the collected fees.
+    /// @dev Skips the assets whose vault is paused. If all the vaults are paused, transaction will do nothing.
+    /// Caller is responsible for doing its own due diligence about the collaterals being paused.
     /// @param receiver The address of the receiver.
     function withdrawAllFees(address receiver) external {
         uint256 numAssets = numRegisteredAssets();
         for (uint256 i; i < numAssets;) {
             address asset = registeredAssets[i];
-            _withdrawCollectedFee(asset, receiver);
+            // If the vault is paused, skip the asset.
+            if (!vaults[asset].paused()) {
+                _withdrawCollectedFee(asset, receiver);
+            }
             unchecked {
                 ++i;
             }

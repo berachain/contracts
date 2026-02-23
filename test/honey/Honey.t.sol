@@ -12,7 +12,7 @@ import { LibClone } from "solady/src/utils/LibClone.sol";
 import { PausableUpgradeable } from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 
 import { IHoneyErrors } from "src/honey/IHoneyErrors.sol";
-import { Honey } from "src/honey/Honey.sol";
+import { Honey, EIP3009 } from "src/honey/Honey.sol";
 import { HoneyDeployer } from "src/honey/HoneyDeployer.sol";
 import { HoneyFactory } from "src/honey/HoneyFactory.sol";
 import { MockHoney, FaultyMockHoney } from "@mock/honey/MockHoney.sol";
@@ -32,10 +32,34 @@ contract HoneyTest is StdCheats, SoladyTest {
         uint256 nonce;
     }
 
+    struct _TestEIP3009 {
+        address from;
+        address to;
+        uint256 value;
+        uint256 validAfter;
+        uint256 validBefore;
+        uint256 privateKey;
+        bytes32 nonce;
+        uint8 v;
+        bytes32 r;
+        bytes32 s;
+    }
+
     bytes32 public constant DEFAULT_ADMIN_ROLE = 0x00;
 
     bytes32 constant PERMIT_TYPEHASH =
         keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)");
+
+    bytes32 public constant TRANSFER_WITH_AUTHORIZATION_TYPEHASH = keccak256(
+        "TransferWithAuthorization(address from,address to,uint256 value,uint256 validAfter,uint256 validBefore,bytes32 nonce)"
+    );
+
+    bytes32 public constant RECEIVE_WITH_AUTHORIZATION_TYPEHASH = keccak256(
+        "ReceiveWithAuthorization(address from,address to,uint256 value,uint256 validAfter,uint256 validBefore,bytes32 nonce)"
+    );
+
+    bytes32 public constant CANCEL_AUTHORIZATION_TYPEHASH =
+        keccak256("CancelAuthorization(address authorizer,bytes32 nonce)");
 
     address internal governance = makeAddr("governance");
     address internal feeReceiver = makeAddr("feeReceiver");
@@ -65,6 +89,13 @@ contract HoneyTest is StdCheats, SoladyTest {
         honey = deployer.honey();
         factory = deployer.honeyFactory();
         assertEq(honey.hasRole(factory.DEFAULT_ADMIN_ROLE(), governance), true);
+
+        // verify the version is "1"
+        assertEq(honey.version(), "1");
+        // initialize the contract with the v2 update
+        honey.initializeV1Update();
+        // verify the EIP712 domain separator version is "1"
+        assertEq(honey.version(), "1");
     }
 
     function test_Initialize_FailsIfZeroAddresses() public {
@@ -451,6 +482,254 @@ contract HoneyTest is StdCheats, SoladyTest {
         assertEq(100e18, honey.balanceOf(blackhatSink));
     }
 
+    function test_TransferWithAuthorization() public {
+        _TestEIP3009 memory t = _testEIP3009();
+        // mint 1 honey to the from address
+        vm.prank(address(factory));
+        honey.mint(t.from, t.value);
+        _signTransferWithAuthorization(t);
+        vm.expectEmit();
+        emit EIP3009.AuthorizationUsed(t.from, t.nonce);
+        honey.transferWithAuthorization(t.from, t.to, t.value, t.validAfter, t.validBefore, t.nonce, t.v, t.r, t.s);
+        // verify the balance of the from address is 0
+        assertEq(honey.balanceOf(t.from), 0);
+        // verify the balance of the to address is the value
+        assertEq(honey.balanceOf(t.to), t.value);
+        // check authorization is used
+        assertEq(honey.authorizationState(t.from, t.nonce), true);
+    }
+
+    function test_TransferWithAuthorization_WithSignature() public {
+        _TestEIP3009 memory t = _testEIP3009();
+        // mint 1 honey to the from address
+        vm.prank(address(factory));
+        honey.mint(t.from, t.value);
+        _signTransferWithAuthorization(t);
+        vm.expectEmit();
+        emit EIP3009.AuthorizationUsed(t.from, t.nonce);
+        honey.transferWithAuthorization(
+            t.from, t.to, t.value, t.validAfter, t.validBefore, t.nonce, abi.encodePacked(t.r, t.s, t.v)
+        );
+        // verify the balance of the from address is 0
+        assertEq(honey.balanceOf(t.from), 0);
+        // verify the balance of the to address is the value
+        assertEq(honey.balanceOf(t.to), t.value);
+        // check authorization is used
+        assertEq(honey.authorizationState(t.from, t.nonce), true);
+    }
+
+    function test_TransferWithAuthorization_FailsIfInvalidSignature() public {
+        _TestEIP3009 memory t = _testEIP3009();
+        // mint 1 honey to the from address
+        vm.prank(address(factory));
+        honey.mint(t.from, t.value);
+        _signTransferWithAuthorization(t);
+        t.v = 0;
+        vm.expectRevert("EIP3009: invalid signature");
+        honey.transferWithAuthorization(t.from, t.to, t.value, t.validAfter, t.validBefore, t.nonce, t.v, t.r, t.s);
+    }
+
+    function test_TransferWithAuthorization_FailsIfAuthorizationIsUsed() public {
+        _TestEIP3009 memory t = _testEIP3009();
+        // mint 1 honey to the from address
+        vm.prank(address(factory));
+        honey.mint(t.from, t.value);
+        _signTransferWithAuthorization(t);
+        honey.transferWithAuthorization(t.from, t.to, t.value, t.validAfter, t.validBefore, t.nonce, t.v, t.r, t.s);
+        vm.expectRevert("EIP3009: auth invalid");
+        honey.transferWithAuthorization(t.from, t.to, t.value, t.validAfter, t.validBefore, t.nonce, t.v, t.r, t.s);
+    }
+
+    function test_TransferWithAuthorization_FailsIfAuthorizationIsExpired() public {
+        _TestEIP3009 memory t = _testEIP3009();
+        // mint 1 honey to the from address
+        vm.prank(address(factory));
+        honey.mint(t.from, t.value);
+        _signTransferWithAuthorization(t);
+        // auth will be valid before the current timestamp, if validBefore is current timestamp, it will fail.
+        t.validBefore = block.timestamp;
+        vm.expectRevert("EIP3009: auth expired");
+        honey.transferWithAuthorization(t.from, t.to, t.value, t.validAfter, t.validBefore, t.nonce, t.v, t.r, t.s);
+    }
+
+    function test_TransferWithAuthorization_FailsIfAuthorizationIsEarly() public {
+        _TestEIP3009 memory t = _testEIP3009();
+        // mint 1 honey to the from address
+        vm.prank(address(factory));
+        honey.mint(t.from, t.value);
+        _signTransferWithAuthorization(t);
+        // auth will be valid after the current timestamp, if validAfter is current timestamp, it will fail.
+        t.validAfter = block.timestamp;
+        vm.expectRevert("EIP3009: auth early");
+        honey.transferWithAuthorization(t.from, t.to, t.value, t.validAfter, t.validBefore, t.nonce, t.v, t.r, t.s);
+    }
+
+    function test_TransferWithAuthorization_FailsIfCancelAuthorizationIsUsed() public {
+        _TestEIP3009 memory t = _testEIP3009();
+        // mint 1 honey to the from address
+        vm.prank(address(factory));
+        honey.mint(t.from, t.value);
+        _signCancelAuthorization(t);
+        honey.cancelAuthorization(t.from, t.nonce, t.v, t.r, t.s);
+        // given the authorization is canceled, it should fail to transfer with authorization.
+        _signTransferWithAuthorization(t);
+        vm.expectRevert("EIP3009: auth invalid");
+        honey.transferWithAuthorization(t.from, t.to, t.value, t.validAfter, t.validBefore, t.nonce, t.v, t.r, t.s);
+    }
+
+    function test_ReceiveWithAuthorization() public {
+        _TestEIP3009 memory t = _testEIP3009();
+        // mint 1 honey to the from address
+        vm.prank(address(factory));
+        honey.mint(t.from, t.value);
+        _signReceiveWithAuthorization(t);
+        // only payee can receive with authorization.
+        vm.prank(t.to);
+        vm.expectEmit();
+        emit EIP3009.AuthorizationUsed(t.from, t.nonce);
+        honey.receiveWithAuthorization(t.from, t.to, t.value, t.validAfter, t.validBefore, t.nonce, t.v, t.r, t.s);
+        // verify the balance of the from address is 0
+        assertEq(honey.balanceOf(t.from), 0);
+        // verify the balance of the to address is the value
+        assertEq(honey.balanceOf(t.to), t.value);
+        // check authorization is used
+        assertEq(honey.authorizationState(t.from, t.nonce), true);
+    }
+
+    function test_ReceiveWithAuthorization_WithSignature() public {
+        _TestEIP3009 memory t = _testEIP3009();
+        // mint 1 honey to the from address
+        vm.prank(address(factory));
+        honey.mint(t.from, t.value);
+        _signReceiveWithAuthorization(t);
+        vm.prank(t.to);
+        vm.expectEmit();
+        emit EIP3009.AuthorizationUsed(t.from, t.nonce);
+        honey.receiveWithAuthorization(
+            t.from, t.to, t.value, t.validAfter, t.validBefore, t.nonce, abi.encodePacked(t.r, t.s, t.v)
+        );
+        // verify the balance of the from address is 0
+        assertEq(honey.balanceOf(t.from), 0);
+        // verify the balance of the to address is the value
+        assertEq(honey.balanceOf(t.to), t.value);
+        // check authorization is used
+        assertEq(honey.authorizationState(t.from, t.nonce), true);
+    }
+
+    function test_ReceiveWithAuthorization_FailsIfCallerNotPayee() public {
+        _TestEIP3009 memory t = _testEIP3009();
+        // mint 1 honey to the from address
+        vm.prank(address(factory));
+        honey.mint(t.from, t.value);
+        _signReceiveWithAuthorization(t);
+        vm.expectRevert("EIP3009: to != msg.sender");
+        honey.receiveWithAuthorization(t.from, t.to, t.value, t.validAfter, t.validBefore, t.nonce, t.v, t.r, t.s);
+    }
+
+    function test_ReceiveWithAuthorization_FailsIfAuthorizationIsUsed() public {
+        _TestEIP3009 memory t = _testEIP3009();
+        // mint 1 honey to the from address
+        vm.prank(address(factory));
+        honey.mint(t.from, t.value);
+        _signReceiveWithAuthorization(t);
+        vm.startPrank(t.to);
+        honey.receiveWithAuthorization(t.from, t.to, t.value, t.validAfter, t.validBefore, t.nonce, t.v, t.r, t.s);
+        vm.expectRevert("EIP3009: auth invalid");
+        honey.receiveWithAuthorization(t.from, t.to, t.value, t.validAfter, t.validBefore, t.nonce, t.v, t.r, t.s);
+        vm.stopPrank();
+    }
+
+    function test_ReceiveWithAuthorization_FailsIfAuthorizationIsExpired() public {
+        _TestEIP3009 memory t = _testEIP3009();
+        // mint 1 honey to the from address
+        vm.prank(address(factory));
+        honey.mint(t.from, t.value);
+        _signReceiveWithAuthorization(t);
+        t.validBefore = block.timestamp;
+        vm.prank(t.to);
+        vm.expectRevert("EIP3009: auth expired");
+        honey.receiveWithAuthorization(t.from, t.to, t.value, t.validAfter, t.validBefore, t.nonce, t.v, t.r, t.s);
+    }
+
+    function test_ReceiveWithAuthorization_FailsIfAuthorizationIsEarly() public {
+        _TestEIP3009 memory t = _testEIP3009();
+        // mint 1 honey to the from address
+        vm.prank(address(factory));
+        honey.mint(t.from, t.value);
+        _signReceiveWithAuthorization(t);
+        t.validAfter = block.timestamp;
+        vm.prank(t.to);
+        vm.expectRevert("EIP3009: auth early");
+        honey.receiveWithAuthorization(t.from, t.to, t.value, t.validAfter, t.validBefore, t.nonce, t.v, t.r, t.s);
+    }
+
+    function test_ReceiveWithAuthorization_FailsIfCancelAuthorizationIsUsed() public {
+        _TestEIP3009 memory t = _testEIP3009();
+        // mint 1 honey to the from address
+        vm.prank(address(factory));
+        honey.mint(t.from, t.value);
+        _signCancelAuthorization(t);
+        honey.cancelAuthorization(t.from, t.nonce, t.v, t.r, t.s);
+        // given the authorization is canceled, it should fail to receive with authorization.
+        _signReceiveWithAuthorization(t);
+        vm.prank(t.to);
+        vm.expectRevert("EIP3009: auth invalid");
+        honey.receiveWithAuthorization(t.from, t.to, t.value, t.validAfter, t.validBefore, t.nonce, t.v, t.r, t.s);
+    }
+
+    function test_CancelAuthorization() public {
+        _TestEIP3009 memory t = _testEIP3009();
+        _signCancelAuthorization(t);
+        vm.expectEmit();
+        emit EIP3009.AuthorizationCanceled(t.from, t.nonce);
+        honey.cancelAuthorization(t.from, t.nonce, t.v, t.r, t.s);
+        // check authorization is canceled
+        assertEq(honey.authorizationState(t.from, t.nonce), true);
+    }
+
+    function test_CancelAuthorization_WithSignature() public {
+        _TestEIP3009 memory t = _testEIP3009();
+        _signCancelAuthorization(t);
+        vm.expectEmit();
+        emit EIP3009.AuthorizationCanceled(t.from, t.nonce);
+        honey.cancelAuthorization(t.from, t.nonce, abi.encodePacked(t.r, t.s, t.v));
+        // check authorization is canceled
+        assertEq(honey.authorizationState(t.from, t.nonce), true);
+    }
+
+    function test_CancelAuthorization_FailsIfPaused() public {
+        _TestEIP3009 memory t = _testEIP3009();
+        _signCancelAuthorization(t);
+        vm.prank(governance);
+        honey.setPaused(true);
+        vm.expectRevert(abi.encodeWithSelector(PausableUpgradeable.EnforcedPause.selector));
+        honey.cancelAuthorization(t.from, t.nonce, t.v, t.r, t.s);
+
+        // Signature input cancel authorization should also fail
+        vm.expectRevert(abi.encodeWithSelector(PausableUpgradeable.EnforcedPause.selector));
+        honey.cancelAuthorization(t.from, t.nonce, abi.encodePacked(t.r, t.s, t.v));
+    }
+
+    function test_DomainSeparator_IsCorrect() public {
+        // fetch domain separator from the contract
+        bytes32 domainSeparator = honey.DOMAIN_SEPARATOR();
+        // compute the domain separator manually using the underlying values
+        bytes32 nameHash = keccak256(abi.encodePacked(honey.name()));
+        bytes32 versionHash = keccak256(abi.encodePacked(honey.version()));
+        bytes32 chainId = bytes32(block.chainid);
+        bytes32 verifyingContract = bytes32(uint256(uint160(address(honey))));
+        bytes32 computedDomainSeparator = keccak256(
+            abi.encode(
+                keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"),
+                nameHash,
+                versionHash,
+                chainId,
+                verifyingContract
+            )
+        );
+        assertEq(computedDomainSeparator, domainSeparator);
+    }
+
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
     /*                   INTERNAL HELPER FUNCTIONS                */
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
@@ -462,6 +741,17 @@ contract HoneyTest is StdCheats, SoladyTest {
         t.deadline = _random();
     }
 
+    function _testEIP3009() internal returns (_TestEIP3009 memory t) {
+        (t.from, t.privateKey) = _randomSigner();
+        t.to = _randomNonZeroAddress();
+        t.value = _random();
+        // valid after is in the past
+        t.validAfter = block.timestamp - 1;
+        // valid before is in the future
+        t.validBefore = block.timestamp + 1;
+        t.nonce = bytes32(_random());
+    }
+
     function _checkAllowanceAndNonce(_TestTemps memory t) internal {
         assertEq(honey.allowance(t.owner, t.to), t.amount);
         assertEq(honey.nonces(t.owner), t.nonce + 1);
@@ -469,6 +759,35 @@ contract HoneyTest is StdCheats, SoladyTest {
 
     function _signPermit(_TestTemps memory t) internal view {
         bytes32 innerHash = keccak256(abi.encode(PERMIT_TYPEHASH, t.owner, t.to, t.amount, t.nonce, t.deadline));
+        bytes32 domainSeparator = honey.DOMAIN_SEPARATOR();
+        bytes32 outerHash = keccak256(abi.encodePacked("\x19\x01", domainSeparator, innerHash));
+        (t.v, t.r, t.s) = vm.sign(t.privateKey, outerHash);
+    }
+
+    function _signTransferWithAuthorization(_TestEIP3009 memory t) internal view {
+        bytes32 innerHash = keccak256(
+            abi.encode(
+                TRANSFER_WITH_AUTHORIZATION_TYPEHASH, t.from, t.to, t.value, t.validAfter, t.validBefore, t.nonce
+            )
+        );
+        bytes32 domainSeparator = honey.DOMAIN_SEPARATOR();
+        bytes32 outerHash = keccak256(abi.encodePacked("\x19\x01", domainSeparator, innerHash));
+        (t.v, t.r, t.s) = vm.sign(t.privateKey, outerHash);
+    }
+
+    function _signReceiveWithAuthorization(_TestEIP3009 memory t) internal view {
+        bytes32 innerHash = keccak256(
+            abi.encode(
+                RECEIVE_WITH_AUTHORIZATION_TYPEHASH, t.from, t.to, t.value, t.validAfter, t.validBefore, t.nonce
+            )
+        );
+        bytes32 domainSeparator = honey.DOMAIN_SEPARATOR();
+        bytes32 outerHash = keccak256(abi.encodePacked("\x19\x01", domainSeparator, innerHash));
+        (t.v, t.r, t.s) = vm.sign(t.privateKey, outerHash);
+    }
+
+    function _signCancelAuthorization(_TestEIP3009 memory t) internal view {
+        bytes32 innerHash = keccak256(abi.encode(CANCEL_AUTHORIZATION_TYPEHASH, t.from, t.nonce));
         bytes32 domainSeparator = honey.DOMAIN_SEPARATOR();
         bytes32 outerHash = keccak256(abi.encodePacked("\x19\x01", domainSeparator, innerHash));
         (t.v, t.r, t.s) = vm.sign(t.privateKey, outerHash);

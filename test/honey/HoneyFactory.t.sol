@@ -1888,6 +1888,45 @@ contract HoneyFactoryTest is HoneyBaseTest {
         factory.setFeeReceiver(address(0));
     }
 
+    function test_setFeeReceiver_MigratesCollectedFees() external {
+        uint256 daiToMint = 100e18;
+        uint256 usdtToMint = 100e6;
+        uint256 dummyToMint = 100e20;
+        vm.prank(governance);
+        // set pol fee collector fee rate to 50%
+        factory.setPOLFeeCollectorFeeRate(50e16);
+
+        // Mint tokens - fees are collected for the current feeReceiver
+        _factoryMint(dai, daiToMint, address(this), false);
+        _factoryMint(usdt, usdtToMint, address(this), false);
+        _factoryMint(dummy, dummyToMint, address(this), false);
+
+        // Capture collected fees before migration
+        uint256 daiFeesBefore = factory.collectedFees(feeReceiver, address(dai));
+        uint256 usdtFeesBefore = factory.collectedFees(feeReceiver, address(usdt));
+        uint256 dummyFeesBefore = factory.collectedFees(feeReceiver, address(dummy));
+
+        // Verify fees were collected for old receiver
+        assertGt(daiFeesBefore, 0);
+        assertGt(usdtFeesBefore, 0);
+        assertGt(dummyFeesBefore, 0);
+
+        // Set new fee receiver - this should migrate the fees
+        address newFeeReceiver = makeAddr("newFeeReceiver");
+        vm.prank(governance);
+        factory.setFeeReceiver(newFeeReceiver);
+
+        // Verify old fee receiver has 0 fees after migration
+        assertEq(factory.collectedFees(feeReceiver, address(dai)), 0);
+        assertEq(factory.collectedFees(feeReceiver, address(usdt)), 0);
+        assertEq(factory.collectedFees(feeReceiver, address(dummy)), 0);
+
+        // Verify new fee receiver has all the migrated fees
+        assertEq(factory.collectedFees(newFeeReceiver, address(dai)), daiFeesBefore);
+        assertEq(factory.collectedFees(newFeeReceiver, address(usdt)), usdtFeesBefore);
+        assertEq(factory.collectedFees(newFeeReceiver, address(dummy)), dummyFeesBefore);
+    }
+
     function test_setFeeReceiver() external {
         address newReceiver = makeAddr("newReceiver");
         testFuzz_setFeeReceiver(newReceiver);
@@ -2043,6 +2082,21 @@ contract HoneyFactoryTest is HoneyBaseTest {
         assertEq(dai.balanceOf(feeReceiver), feeReceiverFee);
         assertEq(daiVault.balanceOf(feeReceiver), 0);
         assertEq(factory.collectedFees(feeReceiver, address(dai)), 0);
+    }
+
+    function test_withdrawAllFee_SkipsPausedVaults() external {
+        uint256 daiToMint = 100e18;
+        uint256 mintedHoneys = _initialMint(daiToMint);
+        uint256 daiTotalFee = daiToMint - mintedHoneys;
+        uint256 feeReceiverFee = daiTotalFee * (1e18 - factory.polFeeCollectorFeeRate()) / 1e18;
+        assertEq(dai.balanceOf(feeReceiver), 0);
+        vm.prank(pauser);
+        factory.pauseVault(address(dai));
+        factory.withdrawAllFees(feeReceiver);
+        // Since the vault is paused, the fee receiver should not have any fees.
+        assertEq(dai.balanceOf(feeReceiver), 0);
+        assertEq(daiVault.balanceOf(feeReceiver), feeReceiverFee);
+        assertEq(factory.collectedFees(feeReceiver, address(dai)), feeReceiverFee);
     }
 
     function test_pauseVault_failsWithoutPauser() external {

@@ -765,6 +765,7 @@ contract HoneyFactory is IHoneyFactory, VaultAdmin {
     /// @notice Handles the fee to distribute for a given asset to the PoL fee collector and the fee receiver.
     function _handleFees(address asset, uint256 polFeeCollectorFeeShares, uint256 feeReceiverFeeShares) internal {
         // The PoL fee collector's fee, if any, are transferred right away:
+        // NOTE: There might be some dust loss if asset value of polFeeCollectorFeeShares is 0.
         if (polFeeCollectorFeeShares > 0) {
             _redeemShares(asset, polFeeCollectorFeeShares, polFeeCollector);
         }

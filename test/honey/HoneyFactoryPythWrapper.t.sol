@@ -578,6 +578,53 @@ contract HoneyFactoryPythWrapperTest is HoneyBaseTest {
         }
     }
 
+    function testFuzz_redeem_refundsLeftoverHoneyInBasketMode(uint256 honeyToRedeem) external {
+        // Setup: Mint with 3 assets to create a 33/33/33 weight distribution
+        uint256 daiToMint = 100e18;
+        uint256 usdtToMint = 100e6;
+        uint256 dummyToMint = 100e20;
+
+        _factoryMint(dai, daiToMint, address(this), false);
+        _factoryMint(usdt, usdtToMint, address(this), false);
+        _factoryMint(dummy, dummyToMint, address(this), false);
+
+        uint256 totalHoney = honey.balanceOf(address(this));
+        // Use amounts that are likely to cause rounding issues (not divisible by 3)
+        honeyToRedeem = _bound(honeyToRedeem, 1e18, totalHoney - 1e11);
+
+        _forceBasketMode();
+
+        uint256 userHoneyBefore = honey.balanceOf(address(this));
+        uint256 wrapperHoneyBefore = honey.balanceOf(address(factoryWrapper));
+        // wrapper should start with zero honey
+        assertEq(wrapperHoneyBefore, 0);
+
+        honey.approve(address(factoryWrapper), honeyToRedeem);
+        factoryWrapper.redeem(empty, address(dai), honeyToRedeem, address(this), true);
+
+        uint256 userHoneyAfter = honey.balanceOf(address(this));
+        uint256 wrapperHoneyAfter = honey.balanceOf(address(factoryWrapper));
+
+        // The wrapper should have refunded any leftover honey - no honey should remain in wrapper
+        assertEq(wrapperHoneyAfter, 0);
+
+        // Calculate expected honey consumed (sum of what was actually burned across all assets)
+        uint256[] memory weights = factory.getWeights();
+        uint256 totalBurned = 0;
+        for (uint256 i = 0; i < weights.length; i++) {
+            totalBurned += honeyToRedeem * weights[i] / 1e18;
+        }
+
+        // User should have their original balance minus what was actually burned
+        // (any rounding leftovers are refunded)
+        uint256 expectedUserHoney = userHoneyBefore - totalBurned;
+        // user should receive leftover honey from rounding
+        assertEq(userHoneyAfter, expectedUserHoney);
+
+        // Verify that rounding can cause some leftover in this case
+        assertLe(totalBurned, honeyToRedeem);
+    }
+
     function test_redeem_failsWhenVaultIsPaused() external {
         _factoryMint(dai, 100e18, address(this), false);
         vm.prank(pauser);
