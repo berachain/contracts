@@ -271,9 +271,8 @@ contract DedicatedEmissionStreamManagerTest is DistributorTest {
         IRewardAllocation.Weight[] memory rewardAllocation = dedicatedEmissionStreamManager.getRewardAllocation();
         assertGt(rewardAllocation.length, 0);
 
-        distributor.distributeFor(
-            DISTRIBUTE_FOR_TIMESTAMP, valData.index, valData.pubkey, valData.proposerIndexProof, valData.pubkeyProof
-        );
+        vm.prank(SYSTEM_ADDRESS);
+        distributor.distributeFor(valData.pubkey);
 
         assertEq(bgt.allowance(address(distributor), address(vault)), TEST_BGT_PER_BLOCK);
         assertEq(bgt.allowance(address(distributor), graVault1), 0);
@@ -291,10 +290,10 @@ contract DedicatedEmissionStreamManagerTest is DistributorTest {
         IRewardAllocation.Weight[] memory rewardAllocation = dedicatedEmissionStreamManager.getRewardAllocation();
         assertGt(dedicatedEmissionStreamManager.emissionPerc(), 0);
         assertEq(rewardAllocation.length, 0);
+        vm.stopPrank();
 
-        distributor.distributeFor(
-            DISTRIBUTE_FOR_TIMESTAMP, valData.index, valData.pubkey, valData.proposerIndexProof, valData.pubkeyProof
-        );
+        vm.prank(SYSTEM_ADDRESS);
+        distributor.distributeFor(valData.pubkey);
 
         assertEq(bgt.allowance(address(distributor), address(vault)), TEST_BGT_PER_BLOCK);
         assertEq(bgt.allowance(address(distributor), graVault1), 0);
@@ -321,16 +320,15 @@ contract DedicatedEmissionStreamManagerTest is DistributorTest {
             uint256 expectedEmission = bgtToRewardAllocation * rewardAllocation[i].percentageNumerator / 10_000;
             emit IDedicatedEmissionStreamManager.NotifyEmission(rewardAllocation[i].receiver, expectedEmission);
             emit IDistributor.Distributed(
-                valData.pubkey, DISTRIBUTE_FOR_TIMESTAMP, rewardAllocation[i].receiver, expectedEmission
+                valData.pubkey, uint64(block.timestamp), rewardAllocation[i].receiver, expectedEmission
             );
         }
         // vault receives 4.5 ether
         emit IDistributor.Distributed(
-            valData.pubkey, DISTRIBUTE_FOR_TIMESTAMP, address(vault), bgtToDefaultRewardAllocation
+            valData.pubkey, uint64(block.timestamp), address(vault), bgtToDefaultRewardAllocation
         );
-        distributor.distributeFor(
-            DISTRIBUTE_FOR_TIMESTAMP, valData.index, valData.pubkey, valData.proposerIndexProof, valData.pubkeyProof
-        );
+        vm.prank(SYSTEM_ADDRESS);
+        distributor.distributeFor(valData.pubkey);
 
         assertEq(bgt.allowance(address(distributor), address(vault)), bgtToDefaultRewardAllocation);
         for (uint256 i; i < rewardAllocation.length; ++i) {
@@ -361,28 +359,25 @@ contract DedicatedEmissionStreamManagerTest is DistributorTest {
                     uint256 expectedEmission = bgtToRewardAllocation * rewardAllocation[j].percentageNumerator / 10_000;
                     emit IDedicatedEmissionStreamManager.NotifyEmission(rewardAllocation[j].receiver, expectedEmission);
                     emit IDistributor.Distributed(
-                        valData.pubkey, DISTRIBUTE_FOR_TIMESTAMP, rewardAllocation[j].receiver, expectedEmission
+                        valData.pubkey, uint64(block.timestamp), rewardAllocation[j].receiver, expectedEmission
                     );
                 }
                 // vault receives 4.5 ether
                 emit IDistributor.Distributed(
-                    valData.pubkey, DISTRIBUTE_FOR_TIMESTAMP, address(vault), bgtToDefaultRewardAllocation
+                    valData.pubkey, uint64(block.timestamp), address(vault), bgtToDefaultRewardAllocation
                 );
             } else {
                 vm.expectEmit(true, true, true, true);
-                // vault receives 4.5 ether
+                // vault receives 5 ether
                 emit IDistributor.Distributed(
-                    valData.pubkey, DISTRIBUTE_FOR_TIMESTAMP + i, address(vault), TEST_BGT_PER_BLOCK
+                    valData.pubkey, uint64(block.timestamp), address(vault), TEST_BGT_PER_BLOCK
                 );
             }
 
-            distributor.distributeFor(
-                DISTRIBUTE_FOR_TIMESTAMP + i,
-                valData.index,
-                valData.pubkey,
-                valData.proposerIndexProof,
-                valData.pubkeyProof
-            );
+            vm.prank(SYSTEM_ADDRESS);
+            distributor.distributeFor(valData.pubkey);
+            // Advance timestamp so next call gets a different block.timestamp
+            vm.warp(block.timestamp + 1);
         }
 
         assertEq(
@@ -422,13 +417,10 @@ contract DedicatedEmissionStreamManagerTest is DistributorTest {
         // -- graVault2 -> 0
         // -- vault -> 5 ether
         for (uint8 i; i < 3; ++i) {
-            distributor.distributeFor(
-                DISTRIBUTE_FOR_TIMESTAMP + i,
-                valData.index,
-                valData.pubkey,
-                valData.proposerIndexProof,
-                valData.pubkeyProof
-            );
+            vm.prank(SYSTEM_ADDRESS);
+            distributor.distributeFor(valData.pubkey);
+            // Advance timestamp so next call gets a different block.timestamp
+            vm.warp(block.timestamp + 1);
         }
 
         assertEq(
@@ -458,13 +450,8 @@ contract DedicatedEmissionStreamManagerTest is DistributorTest {
         // -- graVault1 -> 0.25 ether
         // -- graVault2 -> 0.25 ether
         // -- vault -> 4.5 ether
-        distributor.distributeFor(
-            DISTRIBUTE_FOR_TIMESTAMP + 3,
-            valData.index,
-            valData.pubkey,
-            valData.proposerIndexProof,
-            valData.pubkeyProof
-        );
+        vm.prank(SYSTEM_ADDRESS);
+        distributor.distributeFor(valData.pubkey);
 
         assertEq(bgt.allowance(address(distributor), address(vault)), vaultPreviousAllowance + 4.5 ether);
         assertEq(bgt.allowance(address(distributor), graVault1), graVault1PreviousDebt + 0.25 ether);
@@ -483,9 +470,8 @@ contract DedicatedEmissionStreamManagerTest is DistributorTest {
         vm.expectCall(
             address(vault), abi.encodeWithSelector(IRewardVault.notifyRewardAmount.selector, valData.pubkey, 0), 0
         );
-        distributor.distributeFor(
-            DISTRIBUTE_FOR_TIMESTAMP, valData.index, valData.pubkey, valData.proposerIndexProof, valData.pubkeyProof
-        );
+        vm.prank(SYSTEM_ADDRESS);
+        distributor.distributeFor(valData.pubkey);
 
         assertEq(bgt.allowance(address(distributor), address(vault)), 0);
         assertEq(bgt.allowance(address(distributor), graVault1), TEST_BGT_PER_BLOCK / 2);

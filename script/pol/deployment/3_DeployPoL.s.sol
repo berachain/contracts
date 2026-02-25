@@ -74,21 +74,11 @@ contract DeployPoLScript is BaseScript, ConfigPOL, RBAC, AddressBook {
         distributor = polDeployer.distributor();
         _checkDeploymentAddress("Distributor", address(distributor), _polAddresses.distributor);
 
-        // Give roles to the deployer
-        RBAC.AccountDescription memory deployer = RBAC.AccountDescription({ name: "deployer", addr: msg.sender });
-
-        // NOTE: the manager role on the distributor is not assigned to anyone, hence there is no need to revoke it.
-        RBAC.RoleDescription memory distributorManagerRole = RBAC.RoleDescription({
-            contractName: "Distributor",
-            contractAddr: _polAddresses.distributor,
-            name: "MANAGER_ROLE",
-            role: distributor.MANAGER_ROLE()
-        });
-
-        _grantRole(distributorManagerRole, deployer);
-
         rewardVaultFactory = polDeployer.rewardVaultFactory();
         _checkDeploymentAddress("RewardVaultFactory", address(rewardVaultFactory), _polAddresses.rewardVaultFactory);
+
+        // Give roles to the deployer
+        RBAC.AccountDescription memory deployer = RBAC.AccountDescription({ name: "deployer", addr: msg.sender });
 
         RBAC.RoleDescription memory rewardVaultFactoryManagerRole = RBAC.RoleDescription({
             contractName: "RewardVaultFactory",
