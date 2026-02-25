@@ -33,19 +33,11 @@ contract Distributor is
     using Utils for bytes4;
     using Utils for address;
 
-    /// @notice The MANAGER role.
-    bytes32 public constant MANAGER_ROLE = keccak256("MANAGER_ROLE");
-
     /// @dev Represents 100%. Chosen to be less granular.
     uint96 internal constant ONE_HUNDRED_PERCENT = 1e4;
 
     /// @dev Address controlled by the execution layer client and used to call `distributeFor` function.
     address private constant SYSTEM_ADDRESS = 0xffffFFFfFFffffffffffffffFfFFFfffFFFfFFfE;
-
-    /// @dev Pectra11 hard fork timestamp.
-    /// @dev Bepolia: 1_754_496_000, 2025-08-06T16:00:00.000Z
-    /// @dev Mainnet: 1_756_915_200, 2025-09-03T16:00:00.000Z
-    uint64 private constant PECTRA11_HARD_FORK_TIMESTAMP = 1_756_915_200;
 
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
     /*                          STORAGE                           */
@@ -97,16 +89,14 @@ contract Distributor is
 
     function _authorizeUpgrade(address newImplementation) internal override onlyRole(DEFAULT_ADMIN_ROLE) { }
 
-    /// @dev This is necessary to call when the beacon chain hard forks (and specifically the underlying structure of
-    /// beacon block header is modified).
-    function setZeroValidatorPubkeyGIndex(uint64 _zeroValidatorPubkeyGIndex) public override onlyRole(MANAGER_ROLE) {
-        super.setZeroValidatorPubkeyGIndex(_zeroValidatorPubkeyGIndex);
+    /// @dev Locked — no longer used after Pectra11 hard fork.
+    function setZeroValidatorPubkeyGIndex(uint64) public pure override {
+        revert();
     }
 
-    /// @dev This is necessary to call when the beacon chain hard forks (and specifically the underlying structure of
-    /// beacon block header is modified).
-    function setProposerIndexGIndex(uint64 _proposerIndexGIndex) public override onlyRole(MANAGER_ROLE) {
-        super.setProposerIndexGIndex(_proposerIndexGIndex);
+    /// @dev Locked — no longer used after Pectra11 hard fork.
+    function setProposerIndexGIndex(uint64) public pure override {
+        revert();
     }
 
     /// @inheritdoc IDistributor
@@ -121,34 +111,6 @@ contract Distributor is
             address(dedicatedEmissionStreamManager), _dedicatedEmissionStreamManager
         );
         dedicatedEmissionStreamManager = IDedicatedEmissionStreamManager(_dedicatedEmissionStreamManager);
-    }
-
-    /// @inheritdoc IDistributor
-    function distributeFor(
-        uint64 nextTimestamp,
-        uint64 proposerIndex,
-        bytes calldata pubkey,
-        bytes32[] calldata proposerIndexProof,
-        bytes32[] calldata pubkeyProof
-    )
-        external
-        nonReentrant
-    {
-        // only allow permissionless distribution using proofs till hard fork timestamp
-        if (nextTimestamp >= PECTRA11_HARD_FORK_TIMESTAMP) {
-            OnlySystemCallAllowed.selector.revertWith();
-        }
-        // Process the timestamp in the history buffer, reverting if already processed.
-        bytes32 beaconBlockRoot = _processTimestampInBuffer(nextTimestamp);
-
-        // Verify the given proposer index is the true proposer index of the beacon block.
-        _verifyProposerIndexInBeaconBlock(beaconBlockRoot, proposerIndexProof, proposerIndex);
-
-        // Verify the given pubkey is of a validator in the beacon block, at the given validator index.
-        _verifyValidatorPubkeyInBeaconBlock(beaconBlockRoot, pubkeyProof, pubkey, proposerIndex);
-
-        // Distribute the rewards to the proposer validator.
-        _distributeFor(pubkey, nextTimestamp);
     }
 
     /// @inheritdoc IDistributor

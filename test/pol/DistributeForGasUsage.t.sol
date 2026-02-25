@@ -14,9 +14,10 @@ import { BeaconRootsHelperTest } from "./BeaconRootsHelper.t.sol";
 import { MockERC20 } from "@mock/token/MockERC20.sol";
 
 contract DistributeForGasUsageTest is BeaconRootsHelperTest {
-    address internal manager = makeAddr("manager");
     bytes32 internal defaultAdminRole;
-    bytes32 internal managerRole;
+
+    /// @dev The system address used by the execution layer client.
+    address internal constant SYSTEM_ADDRESS = 0xffffFFFfFFffffffffffffffFfFFFfffFFFfFFfE;
 
     uint256 internal constant NUMBER_OF_WEIGHTS = 10;
     uint256 internal constant NUMBER_OF_INCENTIVE_TOKENS = 2;
@@ -31,13 +32,9 @@ contract DistributeForGasUsageTest is BeaconRootsHelperTest {
         super.setUp();
 
         defaultAdminRole = distributor.DEFAULT_ADMIN_ROLE();
-        managerRole = distributor.MANAGER_ROLE();
-
-        vm.prank(governance);
-        distributor.grantRole(managerRole, manager);
     }
 
-    /// @dev Distribute using the default reward allocation if none is set.
+    /// @dev Distribute using the default reward allocation via system call.
     function test_Distribute(uint256 randomNumber) public {
         randomNumber;
         _helper_SetDefaultRewardAllocationWithIncentiveTokens(NUMBER_OF_WEIGHTS);
@@ -50,61 +47,8 @@ contract DistributeForGasUsageTest is BeaconRootsHelperTest {
         bytes memory data = abi.encodeCall(IBGT.mint, (address(distributor), TEST_BGT_PER_BLOCK));
         vm.expectCall(address(bgt), data, 1);
 
-        distributor.distributeFor(
-            DISTRIBUTE_FOR_TIMESTAMP, valData.index, valData.pubkey, valData.proposerIndexProof, valData.pubkeyProof
-        );
-    }
-
-    /// @dev Test the `multicall` function for distributeFor.
-    function test_DistributeMulticall() public {
-        _helper_SetDefaultRewardAllocationWithIncentiveTokens(NUMBER_OF_WEIGHTS);
-        // expect 3 calls to process the rewards
-        bytes memory data =
-            abi.encodeCall(IBlockRewardController.processRewards, (valData.pubkey, DISTRIBUTE_FOR_TIMESTAMP, true));
-        vm.expectCall(address(blockRewardController), data, 1);
-        data = abi.encodeCall(
-            IBlockRewardController.processRewards, (valData.pubkey, DISTRIBUTE_FOR_TIMESTAMP + 1, true)
-        );
-        vm.expectCall(address(blockRewardController), data, 1);
-        data = abi.encodeCall(
-            IBlockRewardController.processRewards, (valData.pubkey, DISTRIBUTE_FOR_TIMESTAMP + 2, true)
-        );
-        vm.expectCall(address(blockRewardController), data, 1);
-        // expect 3 calls to mint the BGT to the distributor
-        data = abi.encodeCall(IBGT.mint, (address(distributor), TEST_BGT_PER_BLOCK));
-        vm.expectCall(address(bgt), data, 3);
-
-        // call distributeFor 3 times in a single multicall
-        bytes[] memory callData = new bytes[](3);
-
-        // Function selector for distributeFor(uint64,uint64,bytes,bytes32[],bytes32[])
-        bytes4 selector = bytes4(keccak256("distributeFor(uint64,uint64,bytes,bytes32[],bytes32[])"));
-
-        callData[0] = abi.encodeWithSelector(
-            selector,
-            DISTRIBUTE_FOR_TIMESTAMP,
-            valData.index,
-            valData.pubkey,
-            valData.proposerIndexProof,
-            valData.pubkeyProof
-        );
-        callData[1] = abi.encodeWithSelector(
-            selector,
-            DISTRIBUTE_FOR_TIMESTAMP + 1,
-            valData.index,
-            valData.pubkey,
-            valData.proposerIndexProof,
-            valData.pubkeyProof
-        );
-        callData[2] = abi.encodeWithSelector(
-            selector,
-            DISTRIBUTE_FOR_TIMESTAMP + 2,
-            valData.index,
-            valData.pubkey,
-            valData.proposerIndexProof,
-            valData.pubkeyProof
-        );
-        distributor.multicall(callData);
+        vm.prank(SYSTEM_ADDRESS);
+        distributor.distributeFor(valData.pubkey);
     }
 
     function _helper_CreateStakingToken() internal returns (address) {
