@@ -22,7 +22,7 @@ interface IFeeCollector is IPOLErrors {
 
     /// @notice Emitted when the `PayoutToken` is donated.
     /// @param caller Caller of the `donate` function.
-    /// @param amount The amount of payout token that is transfered.
+    /// @param amount The amount of payout token that is transferred.
     event PayoutDonated(address indexed caller, uint256 amount);
 
     /// @notice Emitted when the fees are claimed.

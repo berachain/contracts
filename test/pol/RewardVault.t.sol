@@ -304,7 +304,7 @@ contract RewardVaultTest is DistributorTest, StakingTest {
         assertApproxEqAbs(vault.earned(user), expectedEarned, 2e2);
     }
 
-    /// @dev Changing rewards duration during reward cycle afftects users staking in different times.
+    /// @dev Changing rewards duration during reward cycle affects users staking in different times.
     function test_SetRewardsDurationDuringCycleMultipleUsers() public {
         address user2 = makeAddr("user2");
         uint256 blockTimestamp = vm.getBlockTimestamp();
