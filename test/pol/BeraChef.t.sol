@@ -694,6 +694,22 @@ contract BeraChefTest is POLTest {
         beraChef.activateReadyQueuedRewardAllocation(valData.pubkey);
     }
 
+    function helper_SetBaselineAllocation() public returns (IRewardAllocation.RewardAllocation memory) {
+        IRewardAllocation.Weight[] memory baselineWeights = new IRewardAllocation.Weight[](2);
+        baselineWeights[0] = IRewardAllocation.Weight(receiver, 4000);
+        baselineWeights[1] = IRewardAllocation.Weight(receiver2, 6000);
+
+        address allocationBot = makeAddr("allocationBot");
+        bytes32 allocationSetterRole = rewardAllocatorFactory.ALLOCATION_SETTER_ROLE();
+        vm.prank(governance);
+        rewardAllocatorFactory.grantRole(allocationSetterRole, allocationBot);
+
+        vm.prank(allocationBot);
+        rewardAllocatorFactory.setBaselineAllocation(baselineWeights);
+
+        return rewardAllocatorFactory.getBaselineAllocation();
+    }
+
     function test_QueueValCommission() public {
         testFuzz_QueueValCommission(2e3);
     }
@@ -883,6 +899,120 @@ contract BeraChefTest is POLTest {
     function test_SetRewardAllocatorFactory_FailIfNotOwner() public {
         vm.expectRevert(abi.encodeWithSelector(OwnableUpgradeable.OwnableUnauthorizedAccount.selector, address(this)));
         beraChef.setRewardAllocatorFactory(address(rewardAllocatorFactory));
+    }
+
+    function test_SetValInactivityExemption() public {
+        assertFalse(beraChef.isValExemptedFromInactivity(valData.pubkey));
+
+        vm.prank(governance);
+        vm.expectEmit(true, true, true, true);
+        emit IBeraChef.ValInactivityExemptionSet(valData.pubkey, true);
+        beraChef.setValInactivityExemption(valData.pubkey, true);
+        assertTrue(beraChef.isValExemptedFromInactivity(valData.pubkey));
+
+        vm.prank(governance);
+        vm.expectEmit(true, true, true, true);
+        emit IBeraChef.ValInactivityExemptionSet(valData.pubkey, false);
+        beraChef.setValInactivityExemption(valData.pubkey, false);
+        assertFalse(beraChef.isValExemptedFromInactivity(valData.pubkey));
+    }
+
+    function test_SetValInactivityExemption_FailIfNotOwner() public {
+        vm.expectRevert(abi.encodeWithSelector(OwnableUpgradeable.OwnableUnauthorizedAccount.selector, address(this)));
+        beraChef.setValInactivityExemption(valData.pubkey, true);
+    }
+
+    function test_GetActiveRewardAllocation_ValInactivityExemption_IsPerValidator_AndToggleWorks() public {
+        bytes memory pubkey2 = abi.encodePacked(bytes32("32"), bytes32("32"), bytes32("32"));
+        BeaconDepositMock(beaconDepositContract).setOperator(pubkey2, operator);
+
+        IRewardAllocation.RewardAllocation memory baselineRa = helper_SetBaselineAllocation();
+
+        IRewardAllocation.Weight[] memory customWeights = new IRewardAllocation.Weight[](1);
+        customWeights[0] = IRewardAllocation.Weight(receiver, 10_000);
+        uint64 startBlock = 2;
+        helper_ActivateRewardAllocation(startBlock, customWeights);
+
+        uint64 startBlock2 = uint64(block.number + 1);
+        vm.prank(operator);
+        beraChef.queueNewRewardAllocation(pubkey2, startBlock2, customWeights);
+        vm.roll(startBlock2);
+        vm.prank(address(distributor));
+        beraChef.activateReadyQueuedRewardAllocation(pubkey2);
+
+        vm.prank(governance);
+        beraChef.setValInactivityExemption(valData.pubkey, true);
+        assertTrue(beraChef.isValExemptedFromInactivity(valData.pubkey));
+        assertFalse(beraChef.isValExemptedFromInactivity(pubkey2));
+
+        uint64 inactivityBlockSpan = beraChef.rewardAllocationInactivityBlockSpan();
+        vm.roll(uint256(startBlock2 + inactivityBlockSpan + 1));
+
+        IRewardAllocation.RewardAllocation memory ra1 = beraChef.getActiveRewardAllocation(valData.pubkey);
+        assertEq(ra1.startBlock, startBlock);
+        assertEq(ra1.weights.length, 1);
+        assertEq(ra1.weights[0].receiver, receiver);
+        assertEq(ra1.weights[0].percentageNumerator, 10_000);
+
+        IRewardAllocation.RewardAllocation memory ra2 = beraChef.getActiveRewardAllocation(pubkey2);
+        assertEq(ra2.startBlock, baselineRa.startBlock);
+        assertEq(ra2.weights.length, 2);
+        assertEq(ra2.weights[0].receiver, receiver);
+        assertEq(ra2.weights[0].percentageNumerator, 4000);
+        assertEq(ra2.weights[1].receiver, receiver2);
+        assertEq(ra2.weights[1].percentageNumerator, 6000);
+
+        vm.prank(governance);
+        beraChef.setValInactivityExemption(valData.pubkey, false);
+
+        ra1 = beraChef.getActiveRewardAllocation(valData.pubkey);
+        assertEq(ra1.startBlock, baselineRa.startBlock);
+        assertEq(ra1.weights.length, 2);
+        assertEq(ra1.weights[0].receiver, receiver);
+        assertEq(ra1.weights[0].percentageNumerator, 4000);
+        assertEq(ra1.weights[1].receiver, receiver2);
+        assertEq(ra1.weights[1].percentageNumerator, 6000);
+    }
+
+    function test_GetActiveRewardAllocation_FallsBackToBaselineWhenInactive() public {
+        IRewardAllocation.RewardAllocation memory baselineRa = helper_SetBaselineAllocation();
+
+        IRewardAllocation.Weight[] memory customWeights = new IRewardAllocation.Weight[](1);
+        customWeights[0] = IRewardAllocation.Weight(receiver, 10_000);
+        uint64 startBlock = 2;
+        helper_ActivateRewardAllocation(startBlock, customWeights);
+
+        uint64 inactivityBlockSpan = beraChef.rewardAllocationInactivityBlockSpan();
+        vm.roll(uint256(startBlock + inactivityBlockSpan + 1));
+
+        IRewardAllocation.RewardAllocation memory ra = beraChef.getActiveRewardAllocation(valData.pubkey);
+        assertEq(ra.startBlock, baselineRa.startBlock);
+        assertEq(ra.weights.length, 2);
+        assertEq(ra.weights[0].receiver, receiver);
+        assertEq(ra.weights[0].percentageNumerator, 4000);
+        assertEq(ra.weights[1].receiver, receiver2);
+        assertEq(ra.weights[1].percentageNumerator, 6000);
+    }
+
+    function test_GetActiveRewardAllocation_ExemptedValidatorIgnoresBaselineFallback() public {
+        helper_SetBaselineAllocation();
+
+        IRewardAllocation.Weight[] memory customWeights = new IRewardAllocation.Weight[](1);
+        customWeights[0] = IRewardAllocation.Weight(receiver, 10_000);
+        uint64 startBlock = 2;
+        helper_ActivateRewardAllocation(startBlock, customWeights);
+
+        vm.prank(governance);
+        beraChef.setValInactivityExemption(valData.pubkey, true);
+
+        uint64 inactivityBlockSpan = beraChef.rewardAllocationInactivityBlockSpan();
+        vm.roll(uint256(startBlock + inactivityBlockSpan + 1));
+
+        IRewardAllocation.RewardAllocation memory ra = beraChef.getActiveRewardAllocation(valData.pubkey);
+        assertEq(ra.startBlock, startBlock);
+        assertEq(ra.weights.length, 1);
+        assertEq(ra.weights[0].receiver, receiver);
+        assertEq(ra.weights[0].percentageNumerator, 10_000);
     }
 
     function testFuzz_SetRewardAllocationInactivityBlockSpan(uint64 blockSpan) public {

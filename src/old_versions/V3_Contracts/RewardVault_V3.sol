@@ -9,7 +9,7 @@ import { FixedPointMathLib } from "solady/src/utils/FixedPointMathLib.sol";
 
 import { Utils } from "src/libraries/Utils.sol";
 import { IBeaconDeposit } from "src/pol/interfaces/IBeaconDeposit.sol";
-import { IRewardVault_V3 } from "./IRewardVault_V3.sol";
+import { IRewardVault_V3 } from "./interfaces/IRewardVault_V3.sol";
 import { FactoryOwnable } from "src/base/FactoryOwnable.sol";
 import { StakingRewards } from "src/base/StakingRewards.sol";
 import { IBeraChef } from "src/pol/interfaces/IBeraChef.sol";

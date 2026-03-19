@@ -64,7 +64,7 @@ abstract contract POLAddressBook {
             wbera: 0x6969696969696969696969696969696969696969, // From genesis files
             bgt: 0x656b95E550C07a9ffe548bd4085c72418Ceb1dba,
             beraChef: 0xdf960E8F3F19C481dDE769edEDD439ea1a63426a,
-            beraChefImpl: 0x45F31D709518ddBD93d537bE99facc0b0869363A,
+            beraChefImpl: 0x7BE46e21Af81E432228E7ae15DfAA409E4ea211e,
             blockRewardController: 0x1AE7dD7AE06F6C58B4524d9c1f816094B1bcCD8e,
             blockRewardControllerImpl: 0x971aF0c15E15F1F31ff60C6Ed2c2234B88D5d25a,
             distributor: 0xD2f19a79b026Fb636A7c300bF5947df113940761,
@@ -106,7 +106,7 @@ abstract contract POLAddressBook {
             wbera: 0x6969696969696969696969696969696969696969, // From genesis files
             bgt: 0x656b95E550C07a9ffe548bd4085c72418Ceb1dba,
             beraChef: 0xdf960E8F3F19C481dDE769edEDD439ea1a63426a,
-            beraChefImpl: 0x3f86340DC9F3C69D421f1CF6a7E271a436D6c6D4,
+            beraChefImpl: 0xb0857802D9B91ffD797562627f4801BA080c512b,
             blockRewardController: 0x1AE7dD7AE06F6C58B4524d9c1f816094B1bcCD8e,
             blockRewardControllerImpl: 0x401479c852286F702536613dA8De237401621161,
             distributor: 0xD2f19a79b026Fb636A7c300bF5947df113940761,
@@ -146,7 +146,7 @@ abstract contract POLAddressBook {
             wbera: 0x6969696969696969696969696969696969696969, // From genesis files
             bgt: 0xEE0BD9569e41fA26A79305Fc31a663986Deb79FB,
             beraChef: 0x11D327E93F251e6cCE267e392CdA9eEF8Ff9099B,
-            beraChefImpl: 0xB1610b3f7C539e79933EC7cde7FE0dc79f556a2D,
+            beraChefImpl: 0xaBE258a826B1fbD00eA0ea3D766a891133B3d93c,
             blockRewardController: 0x4A2452Fd7e9FCA389d98063c5C3A8FC63838E451,
             blockRewardControllerImpl: 0xf1774D66392999268a40c8c9Df1708f220662aba,
             distributor: 0x9dD639638B46899CED46ef58b3A3c21E9feF9d7c,
@@ -186,7 +186,7 @@ abstract contract POLAddressBook {
             wbera: 0x6969696969696969696969696969696969696969, // From genesis files
             bgt: 0xe804A615556BB2c4B530057DdBc77E5385957a25,
             beraChef: 0x4898c5fb3af0Be5E709e35E75800a5E313BF6e8a,
-            beraChefImpl: 0x043a056462860e874A3eC25349613F5d165cb176,
+            beraChefImpl: 0xa8399eA9bb56B02838294003cddF8e6933fC3B57,
             blockRewardController: 0xf1aDf7a50773FF65c7cE8662A309F8e277Cd7Ec6,
             blockRewardControllerImpl: 0x147585c9E870f1CE7F3320A30ff2E43410463e58,
             distributor: 0x046e3BeED5090A8f6EF88eeFD1a1877360560F71,

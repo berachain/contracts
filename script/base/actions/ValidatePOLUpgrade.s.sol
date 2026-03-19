@@ -29,6 +29,12 @@ contract ValidatePOLUpgrade is Script {
         options.referenceContract = "RewardVaultFactory_V0.sol:RewardVaultFactory_V0";
         Upgrades.validateUpgrade("RewardVaultFactory.sol", options);
         console2.log("RewardVaultFactory can be upgraded successfully.");
+
+        // Check BeraChef safe upgrade
+        options.referenceContract = "BeraChef_V3.sol:BeraChef_V3";
+        Upgrades.validateUpgrade("BeraChef.sol", options);
+        console2.log("BeraChef can be upgraded successfully.");
+
         vm.stopBroadcast();
     }
 }

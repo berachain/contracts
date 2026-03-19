@@ -108,4 +108,7 @@ contract NoopBeraChef is IBeraChef {
 
     /// @inheritdoc IBeraChef
     function setValRewardAllocator(bytes calldata, address) external pure { }
+
+    /// @inheritdoc IBeraChef
+    function setValInactivityExemption(bytes calldata, bool) external pure { }
 }

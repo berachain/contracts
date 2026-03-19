@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.26;
 
-import { IPOLErrors } from "./IPOLErrors.sol";
-import { IRewardAllocation } from "./IRewardAllocation.sol";
+import { IPOLErrors } from "src/pol/interfaces/IPOLErrors.sol";
+import { IRewardAllocation } from "src/pol/interfaces/IRewardAllocation.sol";
 
 /// @notice Interface of the BeraChef module
-interface IBeraChef is IRewardAllocation, IPOLErrors {
+interface IBeraChef_V3 is IRewardAllocation, IPOLErrors {
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
     /*                          STRUCTS                           */
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
@@ -117,13 +117,6 @@ interface IBeraChef is IRewardAllocation, IPOLErrors {
      * @param rewardAllocationInactivityBlockSpan The block span to consider a reward allocation inactive.
      */
     event RewardAllocationInactivityBlockSpanSet(uint64 rewardAllocationInactivityBlockSpan);
-
-    /**
-     * @notice Emitted when the inactivity exemption for a validator has been set.
-     * @param valPubkey The validator's pubkey.
-     * @param isExempted The inactivity exemption status; true if the validator is exempted, false otherwise.
-     */
-    event ValInactivityExemptionSet(bytes indexed valPubkey, bool isExempted);
 
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
     /*                          GETTERS                           */
@@ -268,14 +261,6 @@ interface IBeraChef is IRewardAllocation, IPOLErrors {
      * @param _rewardAllocationInactivityBlockSpan The block span to consider a reward allocation inactive.
      */
     function setRewardAllocationInactivityBlockSpan(uint64 _rewardAllocationInactivityBlockSpan) external;
-
-    /**
-     * @notice Sets the inactivity exemption for a validator.
-     * @dev Only callable by the governance module account.
-     * @param valPubkey The validator's pubkey.
-     * @param isExempted The inactivity exemption status; true if the validator is exempted, false otherwise.
-     */
-    function setValInactivityExemption(bytes calldata valPubkey, bool isExempted) external;
 
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
     /*                          SETTERS                           */

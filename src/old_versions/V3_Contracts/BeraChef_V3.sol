@@ -5,19 +5,19 @@ import { OwnableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/O
 import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
 import { Utils } from "../../libraries/Utils.sol";
-import { IBeaconDeposit } from "../interfaces/IBeaconDeposit.sol";
-import { IBeraChef } from "../interfaces/IBeraChef.sol";
-import { RewardVault } from "./RewardVault.sol";
-import { IRewardVaultFactory } from "../interfaces/IRewardVaultFactory.sol";
-import { IRewardAllocatorFactory } from "../interfaces/IRewardAllocatorFactory.sol";
+import { IBeaconDeposit } from "src/pol/interfaces/IBeaconDeposit.sol";
+import { IBeraChef_V3 } from "./interfaces/IBeraChef_V3.sol";
+import { RewardVault } from "src/pol/rewards/RewardVault.sol";
+import { IRewardVaultFactory } from "src/pol/interfaces/IRewardVaultFactory.sol";
+import { IRewardAllocatorFactory } from "src/pol/interfaces/IRewardAllocatorFactory.sol";
 
-/// @title BeraChef
+/// @title BeraChef_V3
 /// @author Berachain Team
 /// @notice The BeraChef contract is responsible for managing the reward allocations and the whitelisted vaults.
 /// Reward allocation is a list of weights that determine the percentage of rewards that goes to each reward vault.
 /// Each validator could have a custom reward allocation, if not, the default reward allocation is used.
 /// @dev It should be owned by the governance module.
-contract BeraChef is IBeraChef, OwnableUpgradeable, UUPSUpgradeable {
+contract BeraChef_V3 is IBeraChef_V3, OwnableUpgradeable, UUPSUpgradeable {
     using Utils for bytes4;
 
     /// @dev Represents 100%. Chosen to be less granular.
@@ -90,9 +90,6 @@ contract BeraChef is IBeraChef, OwnableUpgradeable, UUPSUpgradeable {
     /// @notice Block span to consider a reward allocation inactive.
     uint64 public rewardAllocationInactivityBlockSpan;
 
-    /// @notice Mapping of validator pubkey to whether they are exempted from inactivity check.
-    mapping(bytes valPubkey => bool isExemptedFromInactivity) public isValExemptedFromInactivity;
-
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
         _disableInitializers();
@@ -147,7 +144,7 @@ contract BeraChef is IBeraChef, OwnableUpgradeable, UUPSUpgradeable {
     /*                       ADMIN FUNCTIONS                      */
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
 
-    /// @inheritdoc IBeraChef
+    /// @inheritdoc IBeraChef_V3
     function setMaxNumWeightsPerRewardAllocation(uint8 _maxNumWeightsPerRewardAllocation) external onlyOwner {
         if (_maxNumWeightsPerRewardAllocation == 0) {
             MaxNumWeightsPerRewardAllocationIsZero.selector.revertWith();
@@ -162,7 +159,7 @@ contract BeraChef is IBeraChef, OwnableUpgradeable, UUPSUpgradeable {
         emit MaxNumWeightsPerRewardAllocationSet(_maxNumWeightsPerRewardAllocation);
     }
 
-    /// @inheritdoc IBeraChef
+    /// @inheritdoc IBeraChef_V3
     function setMaxWeightPerVault(uint96 _maxWeightPerVault) external onlyOwner {
         if (_maxWeightPerVault == 0 || _maxWeightPerVault > ONE_HUNDRED_PERCENT) {
             InvalidMaxWeightPerVault.selector.revertWith();
@@ -181,7 +178,7 @@ contract BeraChef is IBeraChef, OwnableUpgradeable, UUPSUpgradeable {
         emit MaxWeightPerVaultSet(_maxWeightPerVault);
     }
 
-    /// @inheritdoc IBeraChef
+    /// @inheritdoc IBeraChef_V3
     function setRewardAllocationBlockDelay(uint64 _rewardAllocationBlockDelay) external onlyOwner {
         if (_rewardAllocationBlockDelay > MAX_REWARD_ALLOCATION_BLOCK_DELAY) {
             RewardAllocationBlockDelayTooLarge.selector.revertWith();
@@ -190,7 +187,7 @@ contract BeraChef is IBeraChef, OwnableUpgradeable, UUPSUpgradeable {
         emit RewardAllocationBlockDelaySet(_rewardAllocationBlockDelay);
     }
 
-    /// @inheritdoc IBeraChef
+    /// @inheritdoc IBeraChef_V3
     function setVaultWhitelistedStatus(
         address receiver,
         bool isWhitelisted,
@@ -216,7 +213,7 @@ contract BeraChef is IBeraChef, OwnableUpgradeable, UUPSUpgradeable {
         emit VaultWhitelistedStatusUpdated(receiver, isWhitelisted, metadata);
     }
 
-    /// @inheritdoc IBeraChef
+    /// @inheritdoc IBeraChef_V3
     function updateWhitelistedVaultMetadata(address vault, string memory metadata) external onlyOwner {
         if (!isWhitelistedVault[vault]) {
             NotWhitelistedVault.selector.revertWith();
@@ -224,7 +221,7 @@ contract BeraChef is IBeraChef, OwnableUpgradeable, UUPSUpgradeable {
         emit WhitelistedVaultMetadataUpdated(vault, metadata);
     }
 
-    /// @inheritdoc IBeraChef
+    /// @inheritdoc IBeraChef_V3
     function setDefaultRewardAllocation(RewardAllocation calldata ra) external onlyOwner {
         // validate if the weights are valid.
         // use empty bytes as valPubkey for slot identifier while checking for duplicates.
@@ -235,7 +232,7 @@ contract BeraChef is IBeraChef, OwnableUpgradeable, UUPSUpgradeable {
         defaultRewardAllocation = ra;
     }
 
-    /// @inheritdoc IBeraChef
+    /// @inheritdoc IBeraChef_V3
     function setCommissionChangeDelay(uint64 _commissionChangeDelay) external onlyOwner {
         if (_commissionChangeDelay == 0 || _commissionChangeDelay > MAX_COMMISSION_CHANGE_DELAY) {
             InvalidCommissionChangeDelay.selector.revertWith();
@@ -244,7 +241,7 @@ contract BeraChef is IBeraChef, OwnableUpgradeable, UUPSUpgradeable {
         emit CommissionChangeDelaySet(_commissionChangeDelay);
     }
 
-    /// @inheritdoc IBeraChef
+    /// @inheritdoc IBeraChef_V3
     function setRewardAllocatorFactory(address _rewardAllocatorFactory) external onlyOwner {
         if (_rewardAllocatorFactory == address(0)) {
             ZeroAddress.selector.revertWith();
@@ -253,7 +250,7 @@ contract BeraChef is IBeraChef, OwnableUpgradeable, UUPSUpgradeable {
         rewardAllocatorFactory = IRewardAllocatorFactory(_rewardAllocatorFactory);
     }
 
-    /// @inheritdoc IBeraChef
+    /// @inheritdoc IBeraChef_V3
     function setRewardAllocationInactivityBlockSpan(uint64 _rewardAllocationInactivityBlockSpan) external onlyOwner {
         if (_rewardAllocationInactivityBlockSpan < MIN_REWARD_ALLOCATION_INACTIVITY_BLOCK_SPAN) {
             InvalidRewardAllocationInactivityBlockSpan.selector.revertWith();
@@ -262,17 +259,11 @@ contract BeraChef is IBeraChef, OwnableUpgradeable, UUPSUpgradeable {
         emit RewardAllocationInactivityBlockSpanSet(_rewardAllocationInactivityBlockSpan);
     }
 
-    /// @inheritdoc IBeraChef
-    function setValInactivityExemption(bytes calldata valPubkey, bool isExempted) external onlyOwner {
-        isValExemptedFromInactivity[valPubkey] = isExempted;
-        emit ValInactivityExemptionSet(valPubkey, isExempted);
-    }
-
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
     /*                          SETTERS                           */
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
 
-    /// @inheritdoc IBeraChef
+    /// @inheritdoc IBeraChef_V3
     function queueNewRewardAllocation(
         bytes calldata valPubkey,
         uint64 startBlock,
@@ -319,7 +310,7 @@ contract BeraChef is IBeraChef, OwnableUpgradeable, UUPSUpgradeable {
         emit QueueRewardAllocation(valPubkey, startBlock, weights);
     }
 
-    /// @inheritdoc IBeraChef
+    /// @inheritdoc IBeraChef_V3
     function queueValCommission(bytes calldata valPubkey, uint96 commissionRate) external onlyOperator(valPubkey) {
         if (commissionRate > MAX_COMMISSION_RATE) {
             InvalidCommissionValue.selector.revertWith();
@@ -332,7 +323,7 @@ contract BeraChef is IBeraChef, OwnableUpgradeable, UUPSUpgradeable {
         emit QueuedValCommission(valPubkey, commissionRate);
     }
 
-    /// @inheritdoc IBeraChef
+    /// @inheritdoc IBeraChef_V3
     function activateQueuedValCommission(bytes calldata valPubkey) external {
         QueuedCommissionRateChange storage qcr = valQueuedCommission[valPubkey];
         (uint32 blockNumberLast, uint96 commissionRate) = (qcr.blockNumberLast, qcr.commissionRate);
@@ -347,7 +338,7 @@ contract BeraChef is IBeraChef, OwnableUpgradeable, UUPSUpgradeable {
         delete valQueuedCommission[valPubkey];
     }
 
-    /// @inheritdoc IBeraChef
+    /// @inheritdoc IBeraChef_V3
     function activateReadyQueuedRewardAllocation(bytes calldata valPubkey) external onlyDistributor {
         if (!isQueuedRewardAllocationReady(valPubkey, block.number)) return;
         RewardAllocation storage qra = queuedRewardAllocations[valPubkey];
@@ -359,7 +350,7 @@ contract BeraChef is IBeraChef, OwnableUpgradeable, UUPSUpgradeable {
         delete queuedRewardAllocations[valPubkey];
     }
 
-    /// @inheritdoc IBeraChef
+    /// @inheritdoc IBeraChef_V3
     function setValRewardAllocator(
         bytes calldata valPubkey,
         address rewardAllocator
@@ -378,13 +369,13 @@ contract BeraChef is IBeraChef, OwnableUpgradeable, UUPSUpgradeable {
     /*                          GETTERS                           */
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
 
-    /// @inheritdoc IBeraChef
+    /// @inheritdoc IBeraChef_V3
     /// @dev Returns the active reward allocation if validator has a reward allocation and the weights are still valid,
     /// otherwise the default reward allocation.
     function getActiveRewardAllocation(bytes calldata valPubkey) external view returns (RewardAllocation memory) {
         RewardAllocation memory ara = activeRewardAllocations[valPubkey];
 
-        if (ara.startBlock == 0 || _checkInactivity(valPubkey, ara.startBlock)) {
+        if (ara.startBlock == 0 || _checkInactivity(ara.startBlock)) {
             // fallback to baseline if the custom allocation is not set or inactive
             ara = rewardAllocatorFactory.getBaselineAllocation();
         }
@@ -401,39 +392,39 @@ contract BeraChef is IBeraChef, OwnableUpgradeable, UUPSUpgradeable {
         return defaultRewardAllocation;
     }
 
-    /// @inheritdoc IBeraChef
+    /// @inheritdoc IBeraChef_V3
     function getQueuedRewardAllocation(bytes calldata valPubkey) external view returns (RewardAllocation memory) {
         return queuedRewardAllocations[valPubkey];
     }
 
-    /// @inheritdoc IBeraChef
+    /// @inheritdoc IBeraChef_V3
     function getSetActiveRewardAllocation(bytes calldata valPubkey) external view returns (RewardAllocation memory) {
         return activeRewardAllocations[valPubkey];
     }
 
-    /// @inheritdoc IBeraChef
+    /// @inheritdoc IBeraChef_V3
     function getDefaultRewardAllocation() external view returns (RewardAllocation memory) {
         return defaultRewardAllocation;
     }
 
-    /// @inheritdoc IBeraChef
+    /// @inheritdoc IBeraChef_V3
     function isQueuedRewardAllocationReady(bytes calldata valPubkey, uint256 blockNumber) public view returns (bool) {
         uint64 startBlock = queuedRewardAllocations[valPubkey].startBlock;
         return startBlock != 0 && startBlock <= blockNumber;
     }
 
-    /// @inheritdoc IBeraChef
+    /// @inheritdoc IBeraChef_V3
     function isReady() external view returns (bool) {
         // return that the default reward allocation is set.
         return defaultRewardAllocation.weights.length > 0;
     }
 
-    /// @inheritdoc IBeraChef
+    /// @inheritdoc IBeraChef_V3
     function getValCommissionOnIncentiveTokens(bytes calldata valPubkey) external view returns (uint96) {
         return _getOperatorCommission(valPubkey);
     }
 
-    /// @inheritdoc IBeraChef
+    /// @inheritdoc IBeraChef_V3
     function getValQueuedCommissionOnIncentiveTokens(bytes calldata valPubkey)
         external
         view
@@ -442,7 +433,7 @@ contract BeraChef is IBeraChef, OwnableUpgradeable, UUPSUpgradeable {
         return valQueuedCommission[valPubkey];
     }
 
-    /// @inheritdoc IBeraChef
+    /// @inheritdoc IBeraChef_V3
     function getValidatorIncentiveTokenShare(
         bytes calldata valPubkey,
         uint256 incentiveTokenAmount
@@ -456,7 +447,7 @@ contract BeraChef is IBeraChef, OwnableUpgradeable, UUPSUpgradeable {
         return operatorShare;
     }
 
-    /// @inheritdoc IBeraChef
+    /// @inheritdoc IBeraChef_V3
     function validateWeights(Weight[] calldata weights) external {
         bytes memory key = new bytes(0);
         _validateWeights(key, weights);
@@ -565,12 +556,9 @@ contract BeraChef is IBeraChef, OwnableUpgradeable, UUPSUpgradeable {
 
     /**
      * @dev If the reward has not changed in the given rewardAllocationInactivityBlockSpan period, mark it as inactive.
-     * @dev If the validator is exempted from inactivity check, return false.
-     * @param valPubkey The public key of the validator.
      * @param startBlock The block number when the reward allocation was activated.
      */
-    function _checkInactivity(bytes calldata valPubkey, uint64 startBlock) internal view returns (bool) {
-        if (isValExemptedFromInactivity[valPubkey]) return false;
+    function _checkInactivity(uint64 startBlock) internal view returns (bool) {
         return block.number > startBlock + rewardAllocationInactivityBlockSpan;
     }
 
