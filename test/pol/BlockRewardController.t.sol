@@ -258,6 +258,102 @@ contract BlockRewardControllerTest is POLTest {
         assertApproxEqAbs(reward, expected, maxDelta);
     }
 
+    /// @dev Should process rewards with operator receiver set
+    function test_ProcessRewardsWithReceiver() public {
+        test_SetDistributor();
+        test_SetBaseRate();
+        
+        address receiver = makeAddr("receiver");
+        // Set receiver for operator
+        vm.prank(operator);
+        blockRewardController.setOperatorReceiver(valData.pubkey, receiver);
+        
+        // Verify receiver is set correctly
+        assertEq(blockRewardController.operatorReceivers(operator), receiver);
+
+        // Process rewards - should mint base rewards to receiver instead of operator
+        vm.prank(address(distributor));
+        vm.expectEmit(true, true, true, true);
+        emit IBlockRewardController.BlockRewardProcessed(valData.pubkey, DISTRIBUTE_FOR_TIMESTAMP, 1 ether, 0);
+
+        // expect call to mint BGT to the receiver instead of operator
+        vm.expectCall(address(bgt), abi.encodeCall(IBGT.mint, (receiver, 1.0 ether)));
+        blockRewardController.processRewards(valData.pubkey, DISTRIBUTE_FOR_TIMESTAMP, true);
+    }
+
+    /// @dev Should process rewards with operator receiver cleared
+    function test_ProcessRewardsWithReceiverCleared() public {
+        test_SetDistributor();
+        test_SetBaseRate();
+        
+        address receiver = makeAddr("receiver");
+        // First set a receiver
+        vm.prank(operator);
+        blockRewardController.setOperatorReceiver(valData.pubkey, receiver);
+        
+        // Then clear it by setting to address(0)
+        vm.prank(operator);
+        blockRewardController.setOperatorReceiver(valData.pubkey, address(0));
+        
+        // Verify receiver is cleared
+        assertEq(blockRewardController.operatorReceivers(operator), address(0));
+
+        // Process rewards - should mint base rewards to operator since receiver is cleared
+        vm.prank(address(distributor));
+        vm.expectEmit(true, true, true, true);
+        emit IBlockRewardController.BlockRewardProcessed(valData.pubkey, DISTRIBUTE_FOR_TIMESTAMP, 1 ether, 0);
+
+        // expect call to mint BGT to the operator since receiver is cleared
+        vm.expectCall(address(bgt), abi.encodeCall(IBGT.mint, (operator, 1.0 ether)));
+        blockRewardController.processRewards(valData.pubkey, DISTRIBUTE_FOR_TIMESTAMP, true);
+    }
+
+    /// @dev Should process rewards with no receiver set (default case)
+    function test_ProcessRewardsWithNoReceiver() public {
+        test_SetDistributor();
+        test_SetBaseRate();
+        
+        // Verify no receiver is set
+        assertEq(blockRewardController.operatorReceivers(operator), address(0));
+
+        // Process rewards - should mint base rewards to operator since no receiver set
+        vm.prank(address(distributor));
+        vm.expectEmit(true, true, true, true);
+        emit IBlockRewardController.BlockRewardProcessed(valData.pubkey, DISTRIBUTE_FOR_TIMESTAMP, 1 ether, 0);
+
+        // expect call to mint BGT to the operator since no receiver set
+        vm.expectCall(address(bgt), abi.encodeCall(IBGT.mint, (operator, 1.0 ether)));
+        blockRewardController.processRewards(valData.pubkey, DISTRIBUTE_FOR_TIMESTAMP, true);
+    }
+
+    /// @dev Should process rewards correctly when multiple operators have different receiver settings
+    function test_ProcessRewardsMultipleOperators() public {
+        test_SetDistributor();
+        test_SetBaseRate();
+        
+        // Setup second operator with mock BeaconDeposit
+        address operator2 = makeAddr("operator2");
+        bytes memory pubkey2 = bytes("validator2");
+        BeaconDepositMock(beaconDepositContract).setOperator(pubkey2, operator2);
+        
+        // Setup receivers in BlockRewardController
+        address receiver1 = makeAddr("receiver1");
+        vm.prank(operator);
+        blockRewardController.setOperatorReceiver(valData.pubkey, receiver1);
+        
+        // Don't set receiver for operator2
+        
+        // Process rewards for first operator - should go to receiver1
+        vm.prank(address(distributor));
+        vm.expectCall(address(bgt), abi.encodeCall(IBGT.mint, (receiver1, 1.0 ether)));
+        blockRewardController.processRewards(valData.pubkey, DISTRIBUTE_FOR_TIMESTAMP, true);
+        
+        // Process rewards for second operator - should go to operator2 directly
+        vm.prank(address(distributor));
+        vm.expectCall(address(bgt), abi.encodeCall(IBGT.mint, (operator2, 1.0 ether)));
+        blockRewardController.processRewards(pubkey2, DISTRIBUTE_FOR_TIMESTAMP, true);
+    }
+
     /// @dev Should bound compute rewards correctly to its theoretical limits
     function testFuzz_ComputeRewards(
         uint256 boostPower,
@@ -356,5 +452,28 @@ contract BlockRewardControllerTest is POLTest {
     function _helper_Boost(address user, uint256 amount, bytes memory pubkey) internal {
         amount = _bound(amount, 1, type(uint128).max / 2);
         _helper_ActivateBoost(user, user, pubkey, amount);
+    }
+
+    /// @dev Should fail if not the operator tries to set receiver
+    function test_SetOperatorReceiver_FailIfNotOperator() public {
+        // Try to set receiver from a non-operator address
+        address nonOperator = makeAddr("nonOperator");
+        vm.prank(nonOperator);
+        vm.expectRevert(IPOLErrors.NotOperator.selector);
+        blockRewardController.setOperatorReceiver(valData.pubkey, address(1));
+    }
+
+    /// @dev Should successfully set operator receiver when called by the operator
+    function test_SetOperatorReceiver_Success() public {
+        address receiver = makeAddr("receiver");
+        
+        // Set receiver as the operator
+        vm.prank(operator);
+        vm.expectEmit(true, true, true, true);
+        emit IBlockRewardController.OperatorReceiverUpdated(operator, address(0), receiver);
+        blockRewardController.setOperatorReceiver(valData.pubkey, receiver);
+        
+        // Verify receiver is set correctly
+        assertEq(blockRewardController.operatorReceivers(operator), receiver);
     }
 }
