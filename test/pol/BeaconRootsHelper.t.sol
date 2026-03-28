@@ -13,10 +13,10 @@ import { IRewardAllocation } from "src/pol/interfaces/IRewardAllocation.sol";
 
 import "./POL.t.sol";
 
-/// @dev This test is for simulating the whole system against a mock BeraRoots contract.
+/// @dev This test sets up the mock BeaconRoots contract and other infrastructure for POL distribution tests.
+/// @dev The permissionless distributeFor(timestamp, proofs...) path was removed post-Pectra11.
+/// Only the system-call distributeFor(pubkey) path remains.
 abstract contract BeaconRootsHelperTest is POLTest {
-    event AdvancedBlock(uint256 blockNum);
-
     MockHoney internal honey;
     RewardVault internal vault;
     Mock4788BeaconRoots internal mockBeaconRoots;
@@ -63,76 +63,5 @@ abstract contract BeaconRootsHelperTest is POLTest {
         beraChef.setVaultWhitelistedStatus(address(vault), true, "");
         beraChef.setDefaultRewardAllocation(IRewardAllocation.RewardAllocation(1, weights));
         vm.stopPrank();
-    }
-
-    function test_IsTimestampActionable_OutOfBuffer() public virtual {
-        // Should not be actionable as the timestamp is invalid.
-        mockBeaconRoots.setIsTimestampValid(false);
-        assertFalse(distributor.isTimestampActionable(DISTRIBUTE_FOR_TIMESTAMP));
-    }
-
-    function test_IsTimestampActionable_Processing() public virtual {
-        // Should be actionable as the timestamp is valid in buffer and not processed yet.
-        mockBeaconRoots.setIsTimestampValid(true);
-        assertTrue(distributor.isTimestampActionable(DISTRIBUTE_FOR_TIMESTAMP));
-
-        // Process the timestamp.
-        vm.expectEmit(true, false, false, true, address(distributor));
-        emit BeaconRootsHelper.TimestampProcessed(DISTRIBUTE_FOR_TIMESTAMP);
-        distributor.distributeFor(
-            DISTRIBUTE_FOR_TIMESTAMP, valData.index, valData.pubkey, valData.proposerIndexProof, valData.pubkeyProof
-        );
-
-        // Should not be actionable as the timestamp is processed.
-        assertFalse(distributor.isTimestampActionable(DISTRIBUTE_FOR_TIMESTAMP));
-    }
-
-    /// @dev Should fail if attempted to process a timestamp out of buffer.
-    function test_ProcessTimestamp_OutOfBuffer() public virtual {
-        mockBeaconRoots.setIsTimestampValid(false);
-        vm.expectRevert(BeaconRoots.RootNotFound.selector);
-        distributor.distributeFor(
-            DISTRIBUTE_FOR_TIMESTAMP, valData.index, valData.pubkey, valData.proposerIndexProof, valData.pubkeyProof
-        );
-    }
-
-    function test_ProcessTimestamp_Processing() public virtual {
-        // Process the valid in buffer, unprocessed timestamp.
-        mockBeaconRoots.setIsTimestampValid(true);
-        vm.expectEmit(true, false, false, true, address(distributor));
-        emit BeaconRootsHelper.TimestampProcessed(DISTRIBUTE_FOR_TIMESTAMP);
-        distributor.distributeFor(
-            DISTRIBUTE_FOR_TIMESTAMP, valData.index, valData.pubkey, valData.proposerIndexProof, valData.pubkeyProof
-        );
-
-        // Should fail if attempted to process the timestamp again.
-        vm.expectRevert(IPOLErrors.TimestampAlreadyProcessed.selector);
-        distributor.distributeFor(
-            DISTRIBUTE_FOR_TIMESTAMP, valData.index, valData.pubkey, valData.proposerIndexProof, valData.pubkeyProof
-        );
-
-        // Simulate moving forward, we try now to process a timestamp that should have replaced the same
-        // `timestamp_idx` in the `_processedTimestampsBuffer` array.
-        assertTrue(distributor.isTimestampActionable(DISTRIBUTE_FOR_TIMESTAMP + HISTORY_BUFFER_LENGTH));
-        vm.expectEmit(true, false, false, true, address(distributor));
-        emit BeaconRootsHelper.TimestampProcessed(DISTRIBUTE_FOR_TIMESTAMP + HISTORY_BUFFER_LENGTH);
-        distributor.distributeFor(
-            DISTRIBUTE_FOR_TIMESTAMP + HISTORY_BUFFER_LENGTH,
-            valData.index,
-            valData.pubkey,
-            valData.proposerIndexProof,
-            valData.pubkeyProof
-        );
-
-        // Should fail if attempted to process the timestamp again.
-        assertFalse(distributor.isTimestampActionable(DISTRIBUTE_FOR_TIMESTAMP + HISTORY_BUFFER_LENGTH));
-        vm.expectRevert(IPOLErrors.TimestampAlreadyProcessed.selector);
-        distributor.distributeFor(
-            DISTRIBUTE_FOR_TIMESTAMP + HISTORY_BUFFER_LENGTH,
-            valData.index,
-            valData.pubkey,
-            valData.proposerIndexProof,
-            valData.pubkeyProof
-        );
     }
 }

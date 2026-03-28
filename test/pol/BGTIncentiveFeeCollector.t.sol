@@ -44,6 +44,7 @@ contract BGTIncentiveFeeCollectorTest is DistributorTest {
     Salt public WBERA_STAKER_VAULT_SALT = Salt({ implementation: 0, proxy: 1 });
     Salt public BGT_INCENTIVE_FEE_COLLECTOR_SALT = Salt({ implementation: 0, proxy: 1 });
 
+    bytes32 internal managerRole;
     bytes32 internal pauserRole;
     address internal pauser = makeAddr("pauser");
 
@@ -77,6 +78,7 @@ contract BGTIncentiveFeeCollectorTest is DistributorTest {
         deal(address(wbera), address(this), 1 ether);
 
         pauserRole = incentiveFeeCollector.PAUSER_ROLE();
+        managerRole = incentiveFeeCollector.MANAGER_ROLE();
         vm.prank(governance);
         incentiveFeeCollector.grantRole(managerRole, manager);
         vm.prank(manager);

@@ -12,14 +12,12 @@ contract TransferPOLOwnershipScript is RBAC, BaseScript, Storage, AddressBook {
     // Placeholder. Change before running the script.
     address internal constant NEW_OWNER = address(0); // TIMELOCK_ADDRESS;
     address internal constant VAULT_FACTORY_MANAGER = address(0);
-    address internal constant DISTRIBUTOR_MANAGER = address(0);
     address internal constant FEE_COLLECTOR_MANAGER = address(0);
 
     function run() public virtual broadcast {
         // Check if the new owner and managers are set
         require(NEW_OWNER != address(0), "NEW_OWNER must be set");
         require(VAULT_FACTORY_MANAGER != address(0), "VAULT_FACTORY_MANAGER must be set");
-        require(DISTRIBUTOR_MANAGER != address(0), "DISTRIBUTOR_MANAGER must be set");
         require(FEE_COLLECTOR_MANAGER != address(0), "FEE_COLLECTOR_MANAGER must be set");
 
         // create contracts instance from deployed addresses
@@ -46,9 +44,6 @@ contract TransferPOLOwnershipScript is RBAC, BaseScript, Storage, AddressBook {
 
         RBAC.AccountDescription memory vaultFactoryManager =
             RBAC.AccountDescription({ name: "vaultFactoryManager", addr: VAULT_FACTORY_MANAGER });
-
-        RBAC.AccountDescription memory distributorManager =
-            RBAC.AccountDescription({ name: "distributorManager", addr: DISTRIBUTOR_MANAGER });
 
         RBAC.AccountDescription memory deployer = RBAC.AccountDescription({ name: "deployer", addr: msg.sender });
 
@@ -101,15 +96,6 @@ contract TransferPOLOwnershipScript is RBAC, BaseScript, Storage, AddressBook {
             role: distributor.DEFAULT_ADMIN_ROLE()
         });
 
-        // NOTE: the manager role on the distributor is not assigned to anyone, hence there is no need to revoke it.
-        RBAC.RoleDescription memory distributorManagerRole = RBAC.RoleDescription({
-            contractName: "Distributor",
-            contractAddr: _polAddresses.distributor,
-            name: "MANAGER_ROLE",
-            role: distributor.MANAGER_ROLE()
-        });
-
-        _transferRole(distributorManagerRole, deployer, distributorManager);
         _transferRole(distributorAdminRole, deployer, governance);
     }
 

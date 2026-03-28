@@ -23,7 +23,9 @@ contract POLGasSimulationSimple is GovernanceBaseTest {
     bytes internal signature; // Signature corresponding to the proof
     uint256 internal signerPrivateKey = 0xabc123; // Private key for simulated signer, for test purposes only
     address internal signer; // Address of the signer
-    uint64 internal lastProcessedTimestamp = DISTRIBUTE_FOR_TIMESTAMP; // Last processed timestamp
+
+    /// @dev The system address used by the execution layer client.
+    address internal constant SYSTEM_ADDRESS = 0xffffFFFfFFffffffffffffffFfFFFfffFFFfFFfE;
 
     /// @dev Sets up the environment for each test case. This includes deploying and initializing
     /// governance-related contracts and configuring the initial state required for subsequent tests.
@@ -147,10 +149,8 @@ contract POLGasSimulationSimple is GovernanceBaseTest {
         require(ECDSA.recover(_proof, _signature) == signer, "POLGasSimulationSimple: Invalid signature");
 
         deal(address(bgt), address(bgt).balance + 100 ether); // simulate native token distribution
-        distributor.distributeFor(
-            lastProcessedTimestamp, valData.index, valData.pubkey, valData.proposerIndexProof, valData.pubkeyProof
-        );
-        lastProcessedTimestamp++;
+        vm.prank(SYSTEM_ADDRESS);
+        distributor.distributeFor(valData.pubkey);
 
         return (validatorAddress, extractedBlockNumber);
     }

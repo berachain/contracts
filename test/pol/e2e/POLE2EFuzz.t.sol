@@ -40,10 +40,8 @@ contract POLE2EFuzz is POLGasSimulationSimple {
 
         deal(address(bgt), address(bgt).balance + TEST_BGT_PER_BLOCK); // simulate native token distribution
 
-        distributor.distributeFor(
-            lastProcessedTimestamp, valData.index, valData.pubkey, valData.proposerIndexProof, valData.pubkeyProof
-        );
-        lastProcessedTimestamp++;
+        vm.prank(0xffffFFFfFFffffffffffffffFfFFFfffFFFfFFfE);
+        distributor.distributeFor(valData.pubkey);
 
         // Verification
         verifyWeights(numVaults, weights);

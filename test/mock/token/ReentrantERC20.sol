@@ -8,29 +8,12 @@ import { IDistributor } from "src/pol/interfaces/IDistributor.sol";
 /// that try to reentrancy attack the distributor contract
 contract ReentrantERC20 is MockERC20 {
     address internal distributor;
-    uint64 internal timestamp;
-    uint64 internal proposerIndex;
     bytes internal pubkey;
-    bytes32[] internal proposerIndexProof;
-    bytes32[] internal pubkeyProof;
     bool internal makeExternalCall;
 
-    function setDistributeData(
-        address distributor_,
-        uint64 timestamp_,
-        uint64 proposerIndex_,
-        bytes calldata pubkey_,
-        bytes32[] calldata proposerIndexProof_,
-        bytes32[] calldata pubkeyProof_
-    )
-        external
-    {
+    function setDistributeData(address distributor_, bytes calldata pubkey_) external {
         distributor = distributor_;
-        timestamp = timestamp_;
-        proposerIndex = proposerIndex_;
         pubkey = pubkey_;
-        proposerIndexProof = proposerIndexProof_;
-        pubkeyProof = pubkeyProof_;
     }
 
     function setMakeExternalCall(bool flag) external {
@@ -39,7 +22,7 @@ contract ReentrantERC20 is MockERC20 {
 
     function transfer(address recipient, uint256 amount) public override returns (bool) {
         if (makeExternalCall) {
-            IDistributor(distributor).distributeFor(timestamp, proposerIndex, pubkey, proposerIndexProof, pubkeyProof);
+            IDistributor(distributor).distributeFor(pubkey);
         }
         return super.transfer(recipient, amount);
     }
