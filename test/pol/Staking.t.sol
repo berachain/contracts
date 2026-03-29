@@ -128,7 +128,9 @@ abstract contract StakingTest is Test {
 
     function test_GetReward_BeforeDuration(uint256 stakeAmount, uint256 timeElapsed) public virtual {
         timeElapsed = bound(timeElapsed, 1, VAULT.rewardsDuration() - 1);
-        // TODO: total supply is limited by `PRECISION`
+        // Stake amount bounded to avoid rewardPerToken rounding to zero:
+        // rewardPerToken = (rewardRate * elapsed * PRECISION) / totalSupply.
+        // When totalSupply >> reward * PRECISION, the quotient truncates to 0.
         stakeAmount = bound(stakeAmount, 1, 1e14 ether);
         performNotify(100 ether);
         performStake(user, stakeAmount);
@@ -146,7 +148,9 @@ abstract contract StakingTest is Test {
 
     function test_GetReward_Notified_Twice(uint256 stakeAmount, uint256 timeElapsed) public virtual {
         timeElapsed = bound(timeElapsed, VAULT.rewardsDuration(), 156 weeks);
-        // TODO: total supply is limited by `PRECISION`
+        // Stake amount bounded to avoid rewardPerToken rounding to zero:
+        // rewardPerToken = (rewardRate * elapsed * PRECISION) / totalSupply.
+        // When totalSupply >> reward * PRECISION, the quotient truncates to 0.
         stakeAmount = bound(stakeAmount, 1, 1e14 ether);
         performNotify(100 ether);
         performStake(user, stakeAmount);
@@ -162,7 +166,9 @@ abstract contract StakingTest is Test {
 
     function test_GetReward_AfterDuration(uint256 stakeAmount, uint256 timeElapsed) public virtual {
         timeElapsed = bound(timeElapsed, VAULT.rewardsDuration(), 156 weeks);
-        // TODO: total supply is limited by `PRECISION`
+        // Stake amount bounded to avoid rewardPerToken rounding to zero:
+        // rewardPerToken = (rewardRate * elapsed * PRECISION) / totalSupply.
+        // When totalSupply >> reward * PRECISION, the quotient truncates to 0.
         stakeAmount = bound(stakeAmount, 1, 1e14 ether);
         performNotify(100 ether);
         performStake(user, stakeAmount);
