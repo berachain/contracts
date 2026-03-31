@@ -232,7 +232,7 @@ contract BlockRewardController is IBlockRewardController, OwnableUpgradeable, UU
 
         emit BlockRewardProcessed(pubkey, nextTimestamp, base, reward);
 
-        // Use the beaconDepositContract to fetch the operator, Its gauranteed to return a valid address.
+        // Use the beaconDepositContract to fetch the operator, Its guaranteed to return a valid address.
         // Beacon Deposit contract will enforce validators to set an operator.
         address operator = beaconDepositContract.getOperator(pubkey);
         if (base > 0) bgt.mint(operator, base);

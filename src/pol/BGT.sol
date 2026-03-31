@@ -293,7 +293,7 @@ contract BGT is IBGT, ERC20VotesUpgradeable, OwnableUpgradeable, Multicallable {
         // `withdraw` will fail with zero amount.
         if (amount == 0 || !_checkEnoughTimePassed(blockNumberLast, dropBoostDelay)) return false;
         unchecked {
-            // queue drop boost gaurentees that the user has enough boosted balance to drop
+            // queue drop boost guarantees that the user has enough boosted balance to drop
             boosted[user][pubkey] -= amount;
             // `totalBoosts` >= `userBoosts[user].boost` >= `boosted[user][validator]`
             totalBoosts -= amount;
