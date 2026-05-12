@@ -64,14 +64,14 @@ abstract contract HoneyAddressBook {
     /// @notice Devnet addresses
     function _getDevnetHoneyAddresses() private pure returns (HoneyAddresses memory) {
         return HoneyAddresses({
-            honey: 0x60Cd2DB29edf02c6514821498Ceabc61A845BbC2,
-            honeyImpl: 0xbd5e55e69c3Fd0c89d153DF60C8B1afb2D72E500,
-            honeyFactory: 0x6DFf70A6327b343801997f7fE20d192849863c5e,
+            honey: 0x4475bdcd6F2Ded26Ea5074beb862271f2141f696,
+            honeyImpl: 0x4D4Ff71C50D47a5A45682F42E1E96bdED8fE7516,
+            honeyFactory: 0x2AA7F988284fD04cE83b27d017B89731c67d8F67,
             honeyFactoryReader: 0xf1CF3467C9508dfa6D1197F5359419856B3A3300,
-            honeyFactoryImpl: 0xec5e1a0B097BD27B1C244Ab5557a52160200dB3A,
+            honeyFactoryImpl: 0xd6E9728eefa526F9B6Cf3c9ba5CbC060F937cDb0,
             honeyFactoryReaderImpl: 0x52d5848Ab7A304369cd2879DAfd9Ed3349E8ebB1,
             collateralVaultImpl: 0x5DeDB0F5587F83798245a53189c1A52437A52475,
-            honeyFactoryPythWrapper: 0x7C4d33b026F44E5E6589BaAf7FF38bd93633d58f
+            honeyFactoryPythWrapper: 0xA55F4a5D0415bFAaaE8207F77Ab2dc406e7594A2
         });
     }
 

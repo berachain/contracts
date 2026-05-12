@@ -24,6 +24,7 @@ import { LSTStakerVaultFactory } from "src/pol/lst/LSTStakerVaultFactory.sol";
 import { LSTStakerVault } from "src/pol/lst/LSTStakerVault.sol";
 import { LSTStakerVaultWithdrawalRequest } from "src/pol/lst/LSTStakerVaultWithdrawalRequest.sol";
 import { DedicatedEmissionStreamManager } from "src/pol/rewards/DedicatedEmissionStreamManager.sol";
+import { RewardVaultHelper } from "src/pol/rewards/RewardVaultHelper.sol";
 
 abstract contract Storage {
     BGT internal bgt;
@@ -49,4 +50,5 @@ abstract contract Storage {
     LSTStakerVault internal lstStakerVault;
     LSTStakerVaultWithdrawalRequest internal lstStakerVaultWithdrawalRequest;
     DedicatedEmissionStreamManager internal dedicatedEmissionStreamManager;
+    RewardVaultHelper internal rewardVaultHelper;
 }
