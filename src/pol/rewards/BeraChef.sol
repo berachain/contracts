@@ -200,7 +200,7 @@ contract BeraChef is IBeraChef, OwnableUpgradeable, UUPSUpgradeable {
         onlyOwner
     {
         // Check if the proposed receiver (vault) is registered in the factory
-        address stakeToken = address(RewardVault(receiver).stakeToken());
+        address stakeToken = address(RewardVault(payable(receiver)).stakeToken());
         address factoryVault = IRewardVaultFactory(factory).getVault(stakeToken);
         if (receiver != factoryVault) {
             NotFactoryVault.selector.revertWith();

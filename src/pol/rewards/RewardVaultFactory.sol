@@ -49,15 +49,17 @@ contract RewardVaultFactory is IRewardVaultFactory, AccessControlUpgradeable, UU
     /// @notice Array of all vaults that have been created.
     address[] public allVaults;
 
+    /// @dev Deprecated.
     /// @notice The address of the BGTIncentiveDistributor contract to receive
     /// the BGT booster share of the incentive tokens.
-    address public bgtIncentiveDistributor;
+    address internal _bgtIncentiveDistributor;
 
+    /// @dev Deprecated.
     /// @notice Fee rate on incentives in basis points (e.g., 100 = 1%).
-    uint256 public bgtIncentiveFeeRate;
+    uint256 internal _bgtIncentiveFeeRate;
 
-    /// @notice The address of the BGTIncentiveFeeCollector contract to receive fees.
-    address public bgtIncentiveFeeCollector;
+    /// @notice The address of the incentive tokens collector contract.
+    address public incentiveTokensCollector;
 
     /// @notice The address of the RewardVaultHelper contract to help claim rewards.
     address public rewardVaultHelper;
@@ -100,24 +102,10 @@ contract RewardVaultFactory is IRewardVaultFactory, AccessControlUpgradeable, UU
     function _authorizeUpgrade(address newImplementation) internal override onlyRole(DEFAULT_ADMIN_ROLE) { }
 
     /// @inheritdoc IRewardVaultFactory
-    function setBGTIncentiveDistributor(address _bgtIncentiveDistributor) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        if (_bgtIncentiveDistributor == address(0)) ZeroAddress.selector.revertWith();
-        emit BGTIncentiveDistributorSet(_bgtIncentiveDistributor, bgtIncentiveDistributor);
-        bgtIncentiveDistributor = _bgtIncentiveDistributor;
-    }
-
-    /// @inheritdoc IRewardVaultFactory
-    function setBGTIncentiveFeeRate(uint256 _bgtIncentiveFeeRate) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        if (_bgtIncentiveFeeRate > MAX_INC_FEE_RATE) InvalidIncentiveFeeRate.selector.revertWith();
-        emit IncentiveFeeRateUpdated(_bgtIncentiveFeeRate, bgtIncentiveFeeRate);
-        bgtIncentiveFeeRate = _bgtIncentiveFeeRate;
-    }
-
-    /// @inheritdoc IRewardVaultFactory
-    function setBGTIncentiveFeeCollector(address _bgtIncentiveFeeCollector) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        if (_bgtIncentiveFeeCollector == address(0)) ZeroAddress.selector.revertWith();
-        emit IncentiveFeeCollectorUpdated(_bgtIncentiveFeeCollector, bgtIncentiveFeeCollector);
-        bgtIncentiveFeeCollector = _bgtIncentiveFeeCollector;
+    function setIncentiveTokensCollector(address _incentiveTokensCollector) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        if (_incentiveTokensCollector == address(0)) ZeroAddress.selector.revertWith();
+        emit IncentiveTokensCollectorUpdated(_incentiveTokensCollector, incentiveTokensCollector);
+        incentiveTokensCollector = _incentiveTokensCollector;
     }
 
     /// @inheritdoc IRewardVaultFactory
@@ -153,7 +141,7 @@ contract RewardVaultFactory is IRewardVaultFactory, AccessControlUpgradeable, UU
         emit VaultCreated(stakingToken, vault);
 
         // Initialize the vault.
-        RewardVault(vault).initialize(beaconDepositContract, bgt, distributor, stakingToken);
+        RewardVault(payable(vault)).initialize(beaconDepositContract, bgt, distributor, stakingToken);
 
         return vault;
     }
@@ -175,10 +163,5 @@ contract RewardVaultFactory is IRewardVaultFactory, AccessControlUpgradeable, UU
     /// @inheritdoc IRewardVaultFactory
     function allVaultsLength() external view returns (uint256) {
         return allVaults.length;
-    }
-
-    /// @inheritdoc IRewardVaultFactory
-    function getIncentiveFeeAmount(uint256 incentiveAmount) external view returns (uint256) {
-        return (incentiveAmount * bgtIncentiveFeeRate) / ONE_HUNDRED_PERCENT;
     }
 }

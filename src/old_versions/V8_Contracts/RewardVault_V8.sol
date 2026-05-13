@@ -10,12 +10,12 @@ import { FixedPointMathLib } from "solady/src/utils/FixedPointMathLib.sol";
 import { Utils } from "../../libraries/Utils.sol";
 import { IBeaconDeposit } from "src/pol/interfaces/IBeaconDeposit.sol";
 import { IRewardVault } from "./interfaces/IRewardVault_V8.sol";
-import { FactoryOwnable } from "src/base/FactoryOwnable.sol";
-import { StakingRewards } from "src/base/StakingRewards.sol";
+import { FactoryOwnable_V0 as FactoryOwnable } from "../V0_Contracts/base/FactoryOwnable_V0.sol";
+import { StakingRewards_V0 } from "src/old_versions/V0_Contracts/base/StakingRewards_V0.sol";
 import { IBeraChef } from "src/pol/interfaces/IBeraChef.sol";
 import { IDistributor } from "src/pol/interfaces/IDistributor.sol";
 import { IBGTIncentiveDistributor } from "src/pol/interfaces/IBGTIncentiveDistributor.sol";
-import { IRewardVaultFactory } from "src/pol/interfaces/IRewardVaultFactory.sol";
+import { IRewardVaultFactory_V3 as IRewardVaultFactory } from "../V3_Contracts/interfaces/IRewardVaultFactory_V3.sol";
 
 /// @title Rewards Vault
 /// @author Berachain Team
@@ -24,7 +24,13 @@ import { IRewardVaultFactory } from "src/pol/interfaces/IRewardVaultFactory.sol"
 /// https://github.com/Synthetixio/synthetix/blob/develop/contracts/StakingRewards.sol
 /// We are using this model instead of 4626 because we want to incentivize staying in the vault for x period of time
 /// to be considered a 'miner' and not a 'trader'.
-contract RewardVault is PausableUpgradeable, ReentrancyGuardUpgradeable, FactoryOwnable, StakingRewards, IRewardVault {
+contract RewardVault is
+    PausableUpgradeable,
+    ReentrancyGuardUpgradeable,
+    FactoryOwnable,
+    StakingRewards_V0,
+    IRewardVault
+{
     using Utils for bytes4;
     using SafeERC20 for IERC20;
     using Utils for address;

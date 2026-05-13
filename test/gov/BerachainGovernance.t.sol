@@ -69,7 +69,7 @@ contract BerachainGovernanceTest is GovernanceBaseTest {
 
         _calldatas = new bytes[](2);
         _calldatas[0] = abi.encodeCall(BGT.whitelistSender, (address(this), true));
-        _calldatas[1] = abi.encodeCall(IBlockRewardController.setRewardRate, (1000));
+        _calldatas[1] = abi.encodeCall(IBlockRewardController.setDistributor, (makeAddr("newDistributor")));
 
         // Mint and delegate more than the proposal threshold amount of BGT to self in order to create and vote
         // proposal
@@ -269,7 +269,6 @@ contract BerachainGovernanceTest is GovernanceBaseTest {
 
         assertTrue(gov.state(proposalId) == IGovernor.ProposalState.Executed);
         assertEq(bgt.isWhitelistedSender(address(this)), true);
-        assertEq(blockRewardController.rewardRate(), 1000);
     }
 
     // Guardian tests

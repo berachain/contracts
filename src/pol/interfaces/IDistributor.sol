@@ -14,6 +14,7 @@ interface IDistributor is IPOLErrors {
     event DedicatedEmissionStreamManagerSet(
         address indexed oldDedicatedEmissionStreamManager, address indexed newDedicatedEmissionStreamManager
     );
+    event EmissionTokenSet(address indexed emissionToken);
 
     /**
      * @notice Distribute the rewards to the reward allocation receivers.
@@ -45,9 +46,15 @@ interface IDistributor is IPOLErrors {
     /// @notice Returns the address of the BeraChef contract.
     function beraChef() external view returns (IBeraChef);
 
+    /// @notice Returns the address of the emission token contract.
+    function emissionToken() external view returns (address);
+
     /// @notice Returns the address of the dedicated emission stream manager contract.
     function dedicatedEmissionStreamManager() external view returns (IDedicatedEmissionStreamManager);
 
     /// @notice Sets the address of the dedicated emission stream manager contract.
     function setDedicatedEmissionStreamManager(address _dedicatedEmissionStreamManager) external;
+
+    /// @notice Sets the address of the emission token contract.
+    function setEmissionToken() external;
 }

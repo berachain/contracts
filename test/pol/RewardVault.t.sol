@@ -21,7 +21,6 @@ import { PausableERC20 } from "@mock/token/PausableERC20.sol";
 import { MockERC20 } from "@mock/token/MockERC20.sol";
 import { ApprovalPauseERC20 } from "@mock/token/ApprovalPauseERC20.sol";
 import { MaxGasConsumeERC20 } from "@mock/token/MaxGasConsumeERC20.sol";
-import { IBGTIncentiveDistributor } from "src/pol/interfaces/IBGTIncentiveDistributor.sol";
 import { IRewardVaultHelper } from "src/pol/interfaces/IRewardVaultHelper.sol";
 import { IRewardAllocation } from "src/pol/interfaces/IRewardAllocation.sol";
 
@@ -35,7 +34,7 @@ contract RewardVaultTest is DistributorTest, StakingTest {
     address internal usdtIncentiveManager = makeAddr("usdtIncentiveManager");
     address internal honeyIncentiveManager = makeAddr("honeyIncentiveManager");
     address internal honeyVaultManager = makeAddr("honeyVaultManager");
-    address internal bgtIncentiveFeeCollector = makeAddr("bgtIncentiveFeeCollector");
+    address internal incetiveTokensCollector = makeAddr("incetiveTokensCollector");
     MockDAI internal dai = new MockDAI();
     MockUSDT internal usdt = new MockUSDT();
     PausableERC20 internal pausableERC20 = new PausableERC20();
@@ -66,8 +65,7 @@ contract RewardVaultTest is DistributorTest, StakingTest {
         // set the reward vault manager for honey vault.
         vault.setRewardVaultManager(honeyVaultManager);
         vm.stopPrank();
-        // set the incentive fee as 33% and incentiveFeeCollector in the factory.
-        _setIncentiveFeeRateAndCollector(3300, bgtIncentiveFeeCollector);
+        _setIncentiveTokensCollector(incetiveTokensCollector);
         _setRewardVaultHelper(rewardVaultHelper);
     }
 
@@ -110,7 +108,9 @@ contract RewardVaultTest is DistributorTest, StakingTest {
 
     /// @dev helper function to perform reward notification
     function performNotify(uint256 _amount) internal override {
-        deal(address(bgt), address(distributor), bgt.balanceOf(address(distributor)) + _amount);
+        vm.deal(address(bgt), address(bgt).balance + _amount);
+        vm.prank(address(blockRewardController));
+        bgt.mint(address(distributor), _amount);
         uint256 allowance = bgt.allowance(address(distributor), address(vault));
         vm.prank(address(distributor));
         IERC20(bgt).approve(address(vault), allowance + _amount);
@@ -502,6 +502,11 @@ contract RewardVaultTest is DistributorTest, StakingTest {
         vault.delegateStake(user, 1 ether);
     }
 
+    function test_DelegateStakeFailsWithZeroAddress() public {
+        vm.expectRevert(IPOLErrors.ZeroAddress.selector);
+        vault.delegateStake(address(0), 1 ether);
+    }
+
     function performDelegateStake(address _delegate, address _user, uint256 _amount) internal {
         // Mint honey tokens to the delegate
         honey.mint(_delegate, _amount);
@@ -535,6 +540,7 @@ contract RewardVaultTest is DistributorTest, StakingTest {
 
     function testFuzz_DelegateStake(address _delegate, address _user, uint256 _stakeAmount) public {
         vm.assume(_stakeAmount > 0);
+        vm.assume(_user != address(0));
         vm.assume(_delegate != _user);
         performDelegateStake(_delegate, _user, _stakeAmount);
         assertEq(vault.totalSupply(), _stakeAmount);
@@ -570,7 +576,7 @@ contract RewardVaultTest is DistributorTest, StakingTest {
 
         uint256 rewardAmount = _getReward(user, user, user);
         assertEq(rewardAmount, accumulatedBGTRewards);
-        assertEq(bgt.balanceOf(user), accumulatedBGTRewards);
+        assertEq(emissionToken.balanceOf(user), accumulatedBGTRewards);
     }
 
     function test_GetRewardWithStakeOnBehalf() public {
@@ -581,7 +587,7 @@ contract RewardVaultTest is DistributorTest, StakingTest {
 
         uint256 rewardAmount = _getReward(user, user, user);
         assertEq(rewardAmount, accumulatedBGTRewards);
-        assertEq(bgt.balanceOf(user), accumulatedBGTRewards);
+        assertEq(emissionToken.balanceOf(user), accumulatedBGTRewards);
     }
 
     function test_GetRewardWithRewardVaultHelper() public {
@@ -597,13 +603,13 @@ contract RewardVaultTest is DistributorTest, StakingTest {
 
         vm.prank(user);
         IRewardVaultHelper(rewardVaultHelper).claimAllRewards(vaults, alice);
-        assertEq(bgt.balanceOf(alice), accumulatedBGTRewards);
-        assertEq(bgt.balanceOf(user), 0);
+        assertEq(emissionToken.balanceOf(alice), accumulatedBGTRewards);
+        assertEq(emissionToken.balanceOf(user), 0);
     }
 
     function test_GetRewardWithRewardVaultHelper_MultipleVaults() public {
         // Create a second vault
-        RewardVault vault2 = RewardVault(factory.createRewardVault(address(dai)));
+        RewardVault vault2 = RewardVault(payable(factory.createRewardVault(address(dai))));
 
         // Set up reward allocation with equal weights between vaults
         vm.startPrank(governance);
@@ -646,7 +652,7 @@ contract RewardVaultTest is DistributorTest, StakingTest {
         IRewardVaultHelper(rewardVaultHelper).claimAllRewards(vaults, user);
 
         // Verify rewards were received
-        assertEq(bgt.balanceOf(user), totalExpectedRewards);
+        assertEq(emissionToken.balanceOf(user), totalExpectedRewards);
     }
 
     function testFuzz_GetRewardToRecipient(address _recipient) public {
@@ -656,12 +662,12 @@ contract RewardVaultTest is DistributorTest, StakingTest {
         test_Distribute();
         performStake(user, 100 ether);
         vm.warp(block.timestamp + 1 weeks);
-        uint256 initialBal = bgt.balanceOf(_recipient);
+        uint256 initialBal = emissionToken.balanceOf(_recipient);
         uint256 accumulatedBGTRewards = vault.earned(user);
 
         uint256 rewardAmount = _getReward(user, user, _recipient);
         assertEq(rewardAmount, accumulatedBGTRewards);
-        assertEq(bgt.balanceOf(_recipient), initialBal + accumulatedBGTRewards);
+        assertEq(emissionToken.balanceOf(_recipient), initialBal + accumulatedBGTRewards);
     }
 
     function test_GetRewardNotOperator() public {
@@ -728,6 +734,7 @@ contract RewardVaultTest is DistributorTest, StakingTest {
         public
     {
         vm.assume(_stakeAmount > 0);
+        vm.assume(_user != address(0));
         vm.assume(_delegate != _user);
         _withdrawAmount = bound(_withdrawAmount, 1, _stakeAmount);
         performDelegateStake(_delegate, _user, _stakeAmount);
@@ -772,7 +779,7 @@ contract RewardVaultTest is DistributorTest, StakingTest {
         // Check the reward amount was correctly paid out
         assertTrue(rewardAmount > 0, "Should collect more than 0 rewards");
         assertTrue(
-            bgt.balanceOf(operator) > 0,
+            emissionToken.balanceOf(operator) > 0,
             "Operator is the one calling this method then the reward will be credited to that address"
         );
 
@@ -797,18 +804,18 @@ contract RewardVaultTest is DistributorTest, StakingTest {
 
         // Record balances before exit
         uint256 initialTokenBalance = honey.balanceOf(user);
-        uint256 initialRewardBalance = bgt.balanceOf(otherUser);
+        uint256 initialRewardBalance = emissionToken.balanceOf(otherUser);
         uint256 userRewards = vault.earned(user);
 
         // User calls exit, will only clear out self staked amount and rewards.
         vm.prank(user);
-        // transfer BGT rewards to `otherUser` address
+        // transfer rewards to `otherUser` address
         vault.exit(otherUser);
 
         // Verify user's token balance increased by the `selfStake` amount.
         assertEq(honey.balanceOf(user), initialTokenBalance + selfStake);
         // Verify otherUser's reward balance increased.
-        assertEq(bgt.balanceOf(otherUser), initialRewardBalance + userRewards);
+        assertEq(emissionToken.balanceOf(otherUser), initialRewardBalance + userRewards);
         // Verify user's balance in the vault is `delegateStake`.
         assertEq(vault.balanceOf(user), delegateStake);
     }
@@ -1168,17 +1175,14 @@ contract RewardVaultTest is DistributorTest, StakingTest {
         (,, uint256 amountRemainingHoney,) = vault.incentives(address(honey));
         assertEq(amountRemainingUSDC, 100 * 1e18 - tokenToIncentivize);
         assertEq(amountRemainingHoney, 100 * 1e18 - tokenToIncentivize);
-        uint256 incentiveFee = tokenToIncentivize * 33 / 100;
-        uint256 validatorShare = (tokenToIncentivize - incentiveFee) * 5 / 100;
-        uint256 bgtBoosterShare = tokenToIncentivize - incentiveFee - validatorShare;
-        // given default validator commission on incentive token is 5%, 95% of incentive tokens are transferred to
-        // bgtIncentiveDistributor post incentive fees which is 33% of the incentive tokens.
-        assertEq(dai.balanceOf(bgtIncentiveFeeCollector), incentiveFee);
-        assertEq(honey.balanceOf(bgtIncentiveFeeCollector), incentiveFee);
-        assertEq(dai.balanceOf(bgtIncentiveDistributor), bgtBoosterShare);
-        assertEq(honey.balanceOf(bgtIncentiveDistributor), bgtBoosterShare);
+        uint256 validatorShare = tokenToIncentivize * 5 / 100;
+        uint256 feeCollectorShare = tokenToIncentivize - validatorShare;
+        // given default validator commission on incentive token is 5%, the validator's operator gets 5%
+        // and the remaining 95% is transferred to the incetiveTokensCollector.
+        assertEq(dai.balanceOf(incetiveTokensCollector), feeCollectorShare);
+        assertEq(honey.balanceOf(incetiveTokensCollector), feeCollectorShare);
 
-        // 5% of remaining incentive tokens are transferred to the operator.
+        // 5% of incentive tokens are transferred to the operator.
         assertEq(dai.balanceOf(address(operator)), validatorShare);
         assertEq(honey.balanceOf(address(operator)), validatorShare);
     }
@@ -1196,17 +1200,16 @@ contract RewardVaultTest is DistributorTest, StakingTest {
         performNotify(bgtEmitted);
         uint256 tokenToIncentivize = (bgtEmitted * 200);
         tokenToIncentivize = tokenToIncentivize > 100 * 1e18 ? 100 * 1e18 : tokenToIncentivize;
-        uint256 incentiveFee = tokenToIncentivize * 33 / 100;
-        uint256 validatorShare = ((tokenToIncentivize - incentiveFee) * commission) / 1e4;
-        uint256 bgtBoosterShare = tokenToIncentivize - incentiveFee - validatorShare;
+        uint256 validatorShare = (tokenToIncentivize * commission) / 1e4;
+        uint256 feeCollectorShare = tokenToIncentivize - validatorShare;
         (,, uint256 amountRemainingUSDC,) = vault.incentives(address(dai));
         (,, uint256 amountRemainingHoney,) = vault.incentives(address(honey));
         assertEq(amountRemainingUSDC, 100 * 1e18 - tokenToIncentivize);
         assertEq(amountRemainingHoney, 100 * 1e18 - tokenToIncentivize);
 
-        // BGTIncentiveDistributor should get the bgtBoosterShare of the incentive tokens
-        assertEq(dai.balanceOf(bgtIncentiveDistributor), bgtBoosterShare);
-        assertEq(honey.balanceOf(bgtIncentiveDistributor), bgtBoosterShare);
+        // incetiveTokensCollector should get the remaining incentive tokens
+        assertEq(dai.balanceOf(incetiveTokensCollector), feeCollectorShare);
+        assertEq(honey.balanceOf(incetiveTokensCollector), feeCollectorShare);
 
         // Operator should get the validatorShare of the incentive tokens
         assertEq(dai.balanceOf(address(operator)), validatorShare);
@@ -1222,22 +1225,13 @@ contract RewardVaultTest is DistributorTest, StakingTest {
         // validator emit 1 BGT to the vault and will get all the incentives
         vm.startPrank(address(distributor));
         IERC20(bgt).safeIncreaseAllowance(address(vault), 1 ether);
-        // given incentive fee rate is 33%, 67% of total incentives will be distributed amount validator and
-        // bgtIncentiveDistributor.
-        uint256 incentivePostFee = 100 * 1e18 * 67 / 100;
-        uint256 validatorShare = incentivePostFee * 20 / 100;
-        uint256 bgtIncentiveDistributorShare = incentivePostFee - validatorShare;
+        uint256 validatorShare = 100 * 1e18 * 20 / 100;
+        uint256 feeCollectorShare = 100 * 1e18 - validatorShare;
         vm.expectEmit();
-        emit IRewardVault.BGTBoosterIncentivesProcessed(
-            valData.pubkey, address(dai), 1e18, bgtIncentiveDistributorShare
-        );
-        emit IRewardVault.BGTBoosterIncentivesProcessed(
-            valData.pubkey, address(honey), 1e18, bgtIncentiveDistributorShare
-        );
         emit IRewardVault.IncentivesProcessed(valData.pubkey, address(dai), 1e18, validatorShare);
         emit IRewardVault.IncentivesProcessed(valData.pubkey, address(honey), 1e18, validatorShare);
-        emit IRewardVault.IncentiveFeeCollected(address(dai), 33 * 100 * 1e18 / 100);
-        emit IRewardVault.IncentiveFeeCollected(address(honey), 33 * 100 * 1e18 / 100);
+        emit IRewardVault.IncentivesCollected(valData.pubkey, address(dai), 1e18, feeCollectorShare);
+        emit IRewardVault.IncentivesCollected(valData.pubkey, address(honey), 1e18, feeCollectorShare);
         vault.notifyRewardAmount(valData.pubkey, 1e18);
 
         // check the incentive data
@@ -1246,29 +1240,13 @@ contract RewardVaultTest is DistributorTest, StakingTest {
         assertEq(amountRemainingUSDC, 0);
         assertEq(amountRemainingHoney, 0);
 
-        // check the incentive fee collector's balance
-        assertEq(dai.balanceOf(bgtIncentiveFeeCollector), 33 * 100 * 1e18 / 100);
-        assertEq(honey.balanceOf(bgtIncentiveFeeCollector), 33 * 100 * 1e18 / 100);
+        // check the fee collector's balance
+        assertEq(dai.balanceOf(incetiveTokensCollector), feeCollectorShare);
+        assertEq(honey.balanceOf(incetiveTokensCollector), feeCollectorShare);
 
         // check the operator's balance
         assertEq(dai.balanceOf(address(operator)), validatorShare);
         assertEq(honey.balanceOf(address(operator)), validatorShare);
-
-        // check the bgtIncentiveDistributor's balance
-        assertEq(dai.balanceOf(bgtIncentiveDistributor), bgtIncentiveDistributorShare);
-        assertEq(honey.balanceOf(bgtIncentiveDistributor), bgtIncentiveDistributorShare);
-
-        // make sure the book keeping is correct inside bgtIncentiveDistributor
-        assertEq(
-            IBGTIncentiveDistributor(bgtIncentiveDistributor)
-                .incentiveTokensPerValidator(valData.pubkey, address(dai)),
-            bgtIncentiveDistributorShare
-        );
-        assertEq(
-            IBGTIncentiveDistributor(bgtIncentiveDistributor)
-                .incentiveTokensPerValidator(valData.pubkey, address(honey)),
-            bgtIncentiveDistributorShare
-        );
     }
 
     function test_ProcessIncentives_WithMultipleNotify() public {
@@ -1276,31 +1254,16 @@ contract RewardVaultTest is DistributorTest, StakingTest {
         addIncentives(200 * 1e18, 100 * 1e18);
         performNotify(1e18);
         performNotify(1e18);
-        // After 2nd notify, total incentive tokens distributed is 200 and out of which 33% is incentive fee and rest
-        // moves to bgtIncentiveDistributor and validator based on validator commission.
-        uint256 incentiveFee1 = 100 * 1e18 * 33 / 100;
-        uint256 incentiveFee2 = 100 * 1e18 * 33 / 100;
-        uint256 incentiveFee = incentiveFee1 + incentiveFee2; // for keeping exact calculation and not have not
-        // rounding mismatch during assert.
-        uint256 validatorShare1 = (100 * 1e18 - incentiveFee1) * 5 / 100;
-        uint256 validatorShare2 = (100 * 1e18 - incentiveFee2) * 5 / 100;
+        // After 2nd notify, total incentive tokens distributed is 200 and out of which the validator's operator
+        // gets the commission share and the rest goes to incetiveTokensCollector.
+        uint256 validatorShare1 = 100 * 1e18 * 5 / 100;
+        uint256 validatorShare2 = 100 * 1e18 * 5 / 100;
         uint256 validatorShare = validatorShare1 + validatorShare2;
-        uint256 bgtIncentiveDistributorShare = 200 * 1e18 - incentiveFee - validatorShare;
-        assertEq(dai.balanceOf(bgtIncentiveFeeCollector), incentiveFee);
-        assertEq(honey.balanceOf(bgtIncentiveFeeCollector), incentiveFee);
-        assertEq(dai.balanceOf(bgtIncentiveDistributor), bgtIncentiveDistributorShare);
-        assertEq(honey.balanceOf(bgtIncentiveDistributor), bgtIncentiveDistributorShare);
-        // make sure the book keeping is correct inside bgtIncentiveDistributor
-        assertEq(
-            IBGTIncentiveDistributor(bgtIncentiveDistributor)
-                .incentiveTokensPerValidator(valData.pubkey, address(dai)),
-            bgtIncentiveDistributorShare
-        );
-        assertEq(
-            IBGTIncentiveDistributor(bgtIncentiveDistributor)
-                .incentiveTokensPerValidator(valData.pubkey, address(honey)),
-            bgtIncentiveDistributorShare
-        );
+        uint256 feeCollectorShare = 200 * 1e18 - validatorShare;
+        assertEq(dai.balanceOf(incetiveTokensCollector), feeCollectorShare);
+        assertEq(honey.balanceOf(incetiveTokensCollector), feeCollectorShare);
+        assertEq(dai.balanceOf(address(operator)), validatorShare);
+        assertEq(honey.balanceOf(address(operator)), validatorShare);
     }
 
     function test_ProcessIncentives() public {
@@ -1308,32 +1271,23 @@ contract RewardVaultTest is DistributorTest, StakingTest {
         // validator emit 1 BGT to the vault and will get all the incentives
         vm.startPrank(address(distributor));
         IERC20(bgt).safeIncreaseAllowance(address(vault), 1 ether);
-        // given a 33% fee on incentive tokens, 33% moves to bgtIncentiveFeeCollector and 67% moves to
-        // bgtIncentiveDistributor and validator based on validator commission.
-        uint256 incentiveFee = 100 * 1e18 * 33 / 100;
-        uint256 validatorShare = (100 * 1e18 - incentiveFee) * 5 / 100;
-        uint256 bgtIncentiveDistributorShare = 100 * 1e18 - incentiveFee - validatorShare;
+        // validator's operator gets 5% commission, remaining 95% goes to incetiveTokensCollector.
+        uint256 validatorShare = 100 * 1e18 * 5 / 100;
+        uint256 feeCollectorShare = 100 * 1e18 - validatorShare;
         vm.expectEmit();
-        emit IRewardVault.BGTBoosterIncentivesProcessed(
-            valData.pubkey, address(dai), 1e18, bgtIncentiveDistributorShare
-        );
-        emit IRewardVault.BGTBoosterIncentivesProcessed(
-            valData.pubkey, address(honey), 1e18, bgtIncentiveDistributorShare
-        );
         emit IRewardVault.IncentivesProcessed(valData.pubkey, address(dai), 1e18, validatorShare);
         emit IRewardVault.IncentivesProcessed(valData.pubkey, address(honey), 1e18, validatorShare);
+        emit IRewardVault.IncentivesCollected(valData.pubkey, address(dai), 1e18, feeCollectorShare);
+        emit IRewardVault.IncentivesCollected(valData.pubkey, address(honey), 1e18, feeCollectorShare);
         vault.notifyRewardAmount(valData.pubkey, 1e18);
         (,, uint256 amountRemainingUSDC,) = vault.incentives(address(dai));
         (,, uint256 amountRemainingHoney,) = vault.incentives(address(honey));
         // total incentive tokens = min(200(incentiveRate) * 1, 100(amountRemaining)) = 100 tokens of dai and honey
         assertEq(amountRemainingUSDC, 0);
         assertEq(amountRemainingHoney, 0);
-        assertEq(dai.balanceOf(bgtIncentiveFeeCollector), incentiveFee);
-        assertEq(honey.balanceOf(bgtIncentiveFeeCollector), incentiveFee);
-        // bgtIncentiveDistributor should get 95% of remaining incentive tokens post incentive fees.
-        assertEq(dai.balanceOf(bgtIncentiveDistributor), bgtIncentiveDistributorShare);
-        assertEq(honey.balanceOf(bgtIncentiveDistributor), bgtIncentiveDistributorShare);
-        // 5% of remaining incentive tokens are transferred to the operator.
+        assertEq(dai.balanceOf(incetiveTokensCollector), feeCollectorShare);
+        assertEq(honey.balanceOf(incetiveTokensCollector), feeCollectorShare);
+        // 5% of incentive tokens are transferred to the operator.
         assertEq(dai.balanceOf(address(operator)), validatorShare);
         assertEq(honey.balanceOf(address(operator)), validatorShare);
         vm.stopPrank();
@@ -1346,37 +1300,28 @@ contract RewardVaultTest is DistributorTest, StakingTest {
         assertEq(amountRemaining, 100 * 1e18);
     }
 
-    function test_ProcessIncentives_WithZeroIncentiveRate() public {
+    function test_ProcessIncentives_WithZeroIncentiveFeeRate() public {
         addIncentives(100 * 1e18, 200 * 1e18);
-        IRewardVaultFactory factory = IRewardVaultFactory(vault.factory());
-        vm.prank(governance);
-        factory.setBGTIncentiveFeeRate(0);
 
         vm.startPrank(address(distributor));
         IERC20(bgt).safeIncreaseAllowance(address(vault), 1 ether);
-        // given a 0% fee on incentive tokens, 0% moves to bgtIncentiveFeeCollector and 100% moves to
-        // bgtIncentiveDistributor and validator based on validator commission.
+        // fee rate on factory doesn't affect _processIncentives anymore;
+        // validator's operator gets 5% commission, remaining 95% goes to incetiveTokensCollector.
         uint256 validatorShare = (100 * 1e18) * 5 / 100;
-        uint256 bgtIncentiveDistributorShare = 100 * 1e18 - validatorShare;
+        uint256 feeCollectorShare = 100 * 1e18 - validatorShare;
         vm.expectEmit();
-        emit IRewardVault.BGTBoosterIncentivesProcessed(
-            valData.pubkey, address(dai), 1e18, bgtIncentiveDistributorShare
-        );
-        emit IRewardVault.BGTBoosterIncentivesProcessed(
-            valData.pubkey, address(honey), 1e18, bgtIncentiveDistributorShare
-        );
         emit IRewardVault.IncentivesProcessed(valData.pubkey, address(dai), 1e18, validatorShare);
         emit IRewardVault.IncentivesProcessed(valData.pubkey, address(honey), 1e18, validatorShare);
+        emit IRewardVault.IncentivesCollected(valData.pubkey, address(dai), 1e18, feeCollectorShare);
+        emit IRewardVault.IncentivesCollected(valData.pubkey, address(honey), 1e18, feeCollectorShare);
         vault.notifyRewardAmount(valData.pubkey, 1e18);
 
         (,, uint256 amountRemainingUSDC,) = vault.incentives(address(dai));
         (,, uint256 amountRemainingHoney,) = vault.incentives(address(honey));
         assertEq(amountRemainingUSDC, 0);
         assertEq(amountRemainingHoney, 0);
-        assertEq(dai.balanceOf(bgtIncentiveFeeCollector), 0);
-        assertEq(honey.balanceOf(bgtIncentiveFeeCollector), 0);
-        assertEq(dai.balanceOf(bgtIncentiveDistributor), bgtIncentiveDistributorShare);
-        assertEq(honey.balanceOf(bgtIncentiveDistributor), bgtIncentiveDistributorShare);
+        assertEq(dai.balanceOf(incetiveTokensCollector), feeCollectorShare);
+        assertEq(honey.balanceOf(incetiveTokensCollector), feeCollectorShare);
         assertEq(dai.balanceOf(address(operator)), validatorShare);
         assertEq(honey.balanceOf(address(operator)), validatorShare);
     }
@@ -1391,55 +1336,42 @@ contract RewardVaultTest is DistributorTest, StakingTest {
 
         vm.startPrank(address(distributor));
         IERC20(bgt).safeIncreaseAllowance(address(vault), 1e18);
-        uint256 incentiveFee = 100 * 1e18 * 33 / 100;
-        uint256 validatorShare = (100 * 1e18 - incentiveFee) * 20 / 100;
-        uint256 bgtIncentiveDistributorShare = 100 * 1e18 - incentiveFee - validatorShare;
+        uint256 validatorShare = 100 * 1e18 * 20 / 100;
+        uint256 feeCollectorShare = 100 * 1e18 - validatorShare;
 
         vm.expectEmit(true, true, true, true);
-        emit IRewardVault.BGTBoosterIncentivesProcessFailed(
-            valData.pubkey, address(pausableERC20), 1e18, bgtIncentiveDistributorShare
-        );
         emit IRewardVault.IncentivesProcessFailed(valData.pubkey, address(pausableERC20), 1e18, validatorShare);
-        emit IRewardVault.IncentiveFeeCollectionFailed(address(pausableERC20), incentiveFee);
+        emit IRewardVault.IncentivesCollectionFailed(valData.pubkey, address(pausableERC20), 1e18, feeCollectorShare);
         vault.notifyRewardAmount(valData.pubkey, 1e18);
 
         (,, uint256 amountRemainingPausableERC20,) = vault.incentives(address(pausableERC20));
 
         assertEq(amountRemainingPausableERC20, 100 * 1e18); // Amount remaining should not change
-        assertEq(pausableERC20.balanceOf(bgtIncentiveDistributor), 0);
         assertEq(pausableERC20.balanceOf(address(operator)), 0);
-        assertEq(pausableERC20.balanceOf(bgtIncentiveFeeCollector), 0);
-        // if transfer fails, allowance should be 0.
-        assertEq(pausableERC20.allowance(address(vault), address(bgtIncentiveDistributor)), 0);
+        assertEq(pausableERC20.balanceOf(incetiveTokensCollector), 0);
     }
 
     function test_ProcessIncentives_WithApprovalPauseERC20() public {
         addMaliciusIncentive(approvalPauseERC20, 100 * 1e18, 100 * 1e18);
         // Set the commission on the validator to 20%
         setValCommission(2e3);
-        // Pause the contract in order to make it revert on approval
+        // Pause the contract in order to make it revert on approval.
+        // Since the new flow uses trySafeTransfer (no approve step), all transfers succeed.
         approvalPauseERC20.pause();
-        uint256 incentiveFee = 100 * 1e18 * 33 / 100;
-        uint256 validatorShare = (100 * 1e18 - incentiveFee) * 20 / 100;
-        uint256 bgtIncentiveDistributorShare = 100 * 1e18 - incentiveFee - validatorShare;
+        uint256 validatorShare = 100 * 1e18 * 20 / 100;
+        uint256 feeCollectorShare = 100 * 1e18 - validatorShare;
 
         vm.startPrank(address(distributor));
         IERC20(bgt).safeIncreaseAllowance(address(vault), 1e18);
         vm.expectEmit();
-        emit IRewardVault.BGTBoosterIncentivesProcessFailed(
-            valData.pubkey, address(approvalPauseERC20), 1e18, bgtIncentiveDistributorShare
-        );
         emit IRewardVault.IncentivesProcessed(valData.pubkey, address(approvalPauseERC20), 1e18, validatorShare);
-        emit IRewardVault.IncentiveFeeCollected(address(approvalPauseERC20), incentiveFee);
+        emit IRewardVault.IncentivesCollected(valData.pubkey, address(approvalPauseERC20), 1e18, feeCollectorShare);
         vault.notifyRewardAmount(valData.pubkey, 1e18);
 
         (,, uint256 amountRemainingApprovalPauseERC20,) = vault.incentives(address(approvalPauseERC20));
-        // Only fee and validator share are processed successfully
-        // BGT booster share fails due to approval failure, so it remains in the contract
-        assertEq(amountRemainingApprovalPauseERC20, 100 * 1e18 - incentiveFee - validatorShare);
-        assertEq(approvalPauseERC20.balanceOf(bgtIncentiveDistributor), 0);
+        assertEq(amountRemainingApprovalPauseERC20, 0);
         assertEq(approvalPauseERC20.balanceOf(address(operator)), validatorShare);
-        assertEq(approvalPauseERC20.balanceOf(bgtIncentiveFeeCollector), incentiveFee);
+        assertEq(approvalPauseERC20.balanceOf(incetiveTokensCollector), feeCollectorShare);
     }
 
     function test_ProcessIncentives_NotFailWithMaliciusIncentive() public {
@@ -1452,28 +1384,18 @@ contract RewardVaultTest is DistributorTest, StakingTest {
         vm.startPrank(address(distributor));
         IERC20(bgt).safeIncreaseAllowance(address(vault), 1e17);
 
-        // given 33% fee on incentive tokens, 33% moves to bgtIncentiveFeeCollector and rest moves to
-        // bgtIncentiveDistributor and validator based on validator commission.
-        uint256 incentiveFee = 20 * 1e18 * 33 / 100;
-        uint256 validatorShare = (20 * 1e18 - incentiveFee) * 5 / 100;
-        uint256 bgtIncentiveDistributorShare = 20 * 1e18 - incentiveFee - validatorShare;
+        // validator's operator gets 5% commission, remaining goes to incetiveTokensCollector.
+        // incentive amount = min(200 * 1e17, 100 * 1e18) = 20 * 1e18
+        uint256 validatorShare = 20 * 1e18 * 5 / 100;
+        uint256 feeCollectorShare = 20 * 1e18 - validatorShare;
 
         vm.expectEmit();
-        emit IRewardVault.BGTBoosterIncentivesProcessed(
-            valData.pubkey, address(dai), 1e17, bgtIncentiveDistributorShare
-        );
-        emit IRewardVault.BGTBoosterIncentivesProcessed(
-            valData.pubkey, address(honey), 1e17, bgtIncentiveDistributorShare
-        );
-        emit IRewardVault.BGTBoosterIncentivesProcessFailed(
-            valData.pubkey, address(pausableERC20), 1e17, bgtIncentiveDistributorShare
-        );
         emit IRewardVault.IncentivesProcessed(valData.pubkey, address(dai), 1e17, validatorShare);
         emit IRewardVault.IncentivesProcessed(valData.pubkey, address(honey), 1e17, validatorShare);
         emit IRewardVault.IncentivesProcessFailed(valData.pubkey, address(pausableERC20), 1e17, validatorShare);
-        emit IRewardVault.IncentiveFeeCollected(address(dai), incentiveFee);
-        emit IRewardVault.IncentiveFeeCollected(address(honey), incentiveFee);
-        emit IRewardVault.IncentiveFeeCollectionFailed(address(pausableERC20), incentiveFee);
+        emit IRewardVault.IncentivesCollected(valData.pubkey, address(dai), 1e17, feeCollectorShare);
+        emit IRewardVault.IncentivesCollected(valData.pubkey, address(honey), 1e17, feeCollectorShare);
+        emit IRewardVault.IncentivesCollectionFailed(valData.pubkey, address(pausableERC20), 1e17, feeCollectorShare);
         vault.notifyRewardAmount(valData.pubkey, 1e17);
 
         (,, uint256 amountRemainingDAI,) = vault.incentives(address(dai));
@@ -1481,11 +1403,11 @@ contract RewardVaultTest is DistributorTest, StakingTest {
 
         assertEq(amountRemainingDAI, 80 * 1e18);
         assertEq(amountRemainingPausableERC20, 100 * 1e18); // Amount remaining should not change
-        assertEq(dai.balanceOf(bgtIncentiveDistributor), bgtIncentiveDistributorShare);
+        assertEq(dai.balanceOf(incetiveTokensCollector), feeCollectorShare);
         assertEq(dai.balanceOf(operator), validatorShare);
         // No tokens should be transferred for malicious incentive token
-        assertEq(pausableERC20.balanceOf(bgtIncentiveDistributor), 0);
         assertEq(pausableERC20.balanceOf(address(operator)), 0);
+        assertEq(pausableERC20.balanceOf(incetiveTokensCollector), 0);
     }
 
     function test_WithdrawFailsIfPaused() public {
@@ -1597,25 +1519,23 @@ contract RewardVaultTest is DistributorTest, StakingTest {
         beraChef.activateQueuedValCommission(valData.pubkey);
     }
 
-    function test_ProcessIncentives_FailsIfApprovalCrossesSafeGasLimit() public {
+    function test_ProcessIncentives_WithMaxGasConsumeERC20() public {
         MaxGasConsumeERC20 maxGasConsumeERC20 = new MaxGasConsumeERC20();
         addMaliciusIncentive(maxGasConsumeERC20, 100 * 1e18, 200 * 1e18);
 
         vm.startPrank(address(distributor));
         IERC20(bgt).safeIncreaseAllowance(address(vault), 1e17);
 
-        // given 33% fee on incentive tokens, 33% moves to bgtIncentiveFeeCollector and 67% moves to
-        // bgtIncentiveDistributor and validator based on validator commission.
-        uint256 incentiveFee = 20 * 1e18 * 33 / 100;
-        uint256 validatorShare = (20 * 1e18 - incentiveFee) * 5 / 100;
-        uint256 bgtIncentiveDistributorShare = 20 * 1e18 - incentiveFee - validatorShare;
+        // incentive amount = min(200 * 1e17, 100 * 1e18) = 20 * 1e18
+        // Both trySafeTransfer calls fail because MaxGasConsumeERC20's transfer exceeds the gas limit.
+        uint256 validatorShare = 20 * 1e18 * 5 / 100;
+        uint256 feeCollectorShare = 20 * 1e18 - validatorShare;
 
         vm.expectEmit();
-        emit IRewardVault.BGTBoosterIncentivesProcessFailed(
-            valData.pubkey, address(maxGasConsumeERC20), 1e17, bgtIncentiveDistributorShare
+        emit IRewardVault.IncentivesProcessFailed(valData.pubkey, address(maxGasConsumeERC20), 1e17, validatorShare);
+        emit IRewardVault.IncentivesCollectionFailed(
+            valData.pubkey, address(maxGasConsumeERC20), 1e17, feeCollectorShare
         );
-        emit IRewardVault.IncentivesProcessed(valData.pubkey, address(maxGasConsumeERC20), 1e17, validatorShare);
-        emit IRewardVault.IncentiveFeeCollected(address(maxGasConsumeERC20), incentiveFee);
         vault.notifyRewardAmount(valData.pubkey, 1e17);
     }
 
@@ -1737,6 +1657,11 @@ contract RewardVaultTest is DistributorTest, StakingTest {
         vault.stakeOnBehalf(user, 0);
     }
 
+    function test_StakeOnBehalfFailsWithZeroAddress() public {
+        vm.expectRevert(IPOLErrors.ZeroAddress.selector);
+        vault.stakeOnBehalf(address(0), 1 ether);
+    }
+
     function test_StakeOnBehalfWithInsufficientAllowance() public {
         honey.mint(address(this), 100 ether);
         honey.approve(address(vault), 50 ether); // Only approve 50 ether
@@ -1820,11 +1745,11 @@ contract RewardVaultTest is DistributorTest, StakingTest {
         uint256 totalRewards = vault.earned(_account);
         _partialAmount = bound(_partialAmount, 1, totalRewards);
 
-        uint256 initialBalance = bgt.balanceOf(_account);
+        uint256 initialBalance = emissionToken.balanceOf(_account);
         vm.expectEmit();
         emit IStakingRewards.RewardPaid(_account, _account, _partialAmount);
         _getPartialReward(_account, _account, _partialAmount);
-        assertEq(bgt.balanceOf(_account), initialBalance + _partialAmount);
+        assertEq(emissionToken.balanceOf(_account), initialBalance + _partialAmount);
         assertEq(vault.earned(_account), totalRewards - _partialAmount);
     }
 
@@ -1852,9 +1777,9 @@ contract RewardVaultTest is DistributorTest, StakingTest {
         uint256 totalRewards = vault.earned(_account);
         _partialAmount = bound(_partialAmount, 1, totalRewards);
 
-        uint256 initialRecipientBalance = bgt.balanceOf(_recipient);
+        uint256 initialRecipientBalance = emissionToken.balanceOf(_recipient);
         _getPartialReward(_account, _account, _recipient, _partialAmount);
-        assertEq(bgt.balanceOf(_recipient), initialRecipientBalance + _partialAmount);
+        assertEq(emissionToken.balanceOf(_recipient), initialRecipientBalance + _partialAmount);
         assertEq(vault.earned(_account), totalRewards - _partialAmount);
     }
 
@@ -1909,9 +1834,9 @@ contract RewardVaultTest is DistributorTest, StakingTest {
         uint256 totalRewards = vault.earned(user);
         uint256 partialAmount = totalRewards / 2;
 
-        uint256 initialOperatorBalance = bgt.balanceOf(operator);
+        uint256 initialOperatorBalance = emissionToken.balanceOf(operator);
         _getPartialReward(operator, user, operator, partialAmount);
-        assertEq(bgt.balanceOf(operator), initialOperatorBalance + partialAmount);
+        assertEq(emissionToken.balanceOf(operator), initialOperatorBalance + partialAmount);
         assertEq(vault.earned(user), totalRewards - partialAmount);
     }
 
@@ -2536,7 +2461,7 @@ contract RewardVaultTest is DistributorTest, StakingTest {
         // check the incentive fees
         (,, uint256 amountRemaining,) = vault.incentives(address(dai));
 
-        assertEq(0, IERC20(address(dai)).balanceOf(bgtIncentiveFeeCollector));
+        assertEq(0, IERC20(address(dai)).balanceOf(incetiveTokensCollector));
         assertEq(incentiveAmount, IERC20(address(dai)).balanceOf(address(vault)));
         assertEq(incentiveAmount, amountRemaining);
     }
@@ -2548,7 +2473,7 @@ contract RewardVaultTest is DistributorTest, StakingTest {
         // check the incentive fees
         (,, uint256 amountRemaining,) = vault.incentives(address(dai));
 
-        assertEq(0, IERC20(address(dai)).balanceOf(bgtIncentiveFeeCollector));
+        assertEq(0, IERC20(address(dai)).balanceOf(incetiveTokensCollector));
         assertEq(incentiveAmount, IERC20(address(dai)).balanceOf(address(vault)));
         assertEq(incentiveAmount, amountRemaining);
     }
@@ -2561,14 +2486,11 @@ contract RewardVaultTest is DistributorTest, StakingTest {
         vault.accountIncentives(address(dai), amount);
     }
 
-    function _setIncentiveFeeRateAndCollector(uint256 rate, address collector) internal {
-        vm.startPrank(governance);
+    function _setIncentiveTokensCollector(address collector) internal {
         IRewardVaultFactory factory = IRewardVaultFactory(vault.factory());
-        factory.setBGTIncentiveFeeRate(rate);
-        factory.setBGTIncentiveFeeCollector(collector);
-        vm.stopPrank();
-        assertEq(factory.bgtIncentiveFeeRate(), rate);
-        assertEq(factory.bgtIncentiveFeeCollector(), collector);
+        vm.prank(governance);
+        factory.setIncentiveTokensCollector(collector);
+        assertEq(factory.incentiveTokensCollector(), collector);
     }
 
     function _setRewardVaultHelper(address helper) internal {
@@ -2577,5 +2499,164 @@ contract RewardVaultTest is DistributorTest, StakingTest {
         factory.setRewardVaultHelper(helper);
         vm.stopPrank();
         assertEq(factory.rewardVaultHelper(), helper);
+    }
+
+    function test_GetRewards() public override {
+        test_NotifyRewardsSetRewardRate();
+        vm.warp(block.timestamp + VAULT.rewardsDuration());
+        uint256 earned = VAULT.earned(address(this));
+        _getReward(address(this), address(this), address(this));
+        assertEq(emissionToken.balanceOf(address(this)), earned);
+    }
+
+    /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
+    /*                  REWARD TOKEN MIGRATION TESTS                */
+    /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
+
+    function test_RewardTokenMigration_TriggeredOnNotify() public {
+        // rewardToken() returns the emission token (pol-v-next: WBERA) immediately after the beacon upgrade, even
+        // before the per-vault lazy migration triggers.
+        assertEq(address(vault.rewardToken()), address(emissionToken));
+
+        vm.deal(address(bgt), address(bgt).balance + 10 ether);
+        vm.prank(address(blockRewardController));
+        bgt.mint(address(distributor), 10 ether);
+        vm.prank(address(distributor));
+        IERC20(address(bgt)).approve(address(vault), 10 ether);
+
+        vm.expectEmit(true, true, false, false, address(vault));
+        emit IRewardVault.RewardTokenMigrated(address(bgt), address(emissionToken));
+        _notifyRewardAmount(10 ether);
+
+        assertEq(address(vault.rewardToken()), address(emissionToken));
+    }
+
+    function test_RewardTokenMigration_TriggeredOnStake() public {
+        assertEq(address(vault.rewardToken()), address(emissionToken));
+
+        deal(address(honey), user, 10 ether);
+        vm.prank(user);
+        honey.approve(address(vault), 10 ether);
+
+        vm.expectEmit(true, true, false, false, address(vault));
+        emit IRewardVault.RewardTokenMigrated(address(bgt), address(emissionToken));
+        _stake(user, 10 ether);
+
+        assertEq(address(vault.rewardToken()), address(emissionToken));
+    }
+
+    function test_RewardTokenMigration_Idempotent() public {
+        performNotify(10 ether);
+        assertEq(address(vault.rewardToken()), address(emissionToken));
+
+        // subsequent interactions should not re-emit
+        vm.recordLogs();
+        performStake(user, 10 ether);
+        Vm.Log[] memory logs = vm.getRecordedLogs();
+        bytes32 migrationTopic = IRewardVault.RewardTokenMigrated.selector;
+        for (uint256 i; i < logs.length; ++i) {
+            assertTrue(logs[i].topics[0] != migrationTopic, "Migration event should not fire again");
+        }
+    }
+
+    function test_RewardTokenMigration_FullRewardFlow() public {
+        assertEq(address(vault.rewardToken()), address(emissionToken));
+
+        performNotify(100 ether);
+        assertEq(address(vault.rewardToken()), address(emissionToken));
+
+        performStake(user, 10 ether);
+        vm.warp(block.timestamp + vault.rewardsDuration());
+
+        uint256 earned = vault.earned(user);
+        assertTrue(earned > 0, "User should have earned rewards");
+
+        uint256 emissionTokenBalBefore = emissionToken.balanceOf(user);
+        _getReward(user, user, user);
+        assertEq(emissionToken.balanceOf(user), emissionTokenBalBefore + earned);
+    }
+
+    function test_RewardTokenMigration_ReceiveStillAcceptsBGT() public {
+        performNotify(10 ether);
+        assertEq(address(vault.rewardToken()), address(emissionToken));
+
+        // vault should still accept native BERA from BGT contract (for redeem flow)
+        vm.deal(address(bgt), 1 ether);
+        vm.prank(address(bgt));
+        (bool success,) = address(vault).call{ value: 1 ether }("");
+        assertTrue(success, "Vault should accept ETH from BGT after migration");
+    }
+
+    function test_RewardTokenMigration_ReceiveRejectsOtherSenders() public {
+        performNotify(10 ether);
+        assertEq(address(vault.rewardToken()), address(emissionToken));
+
+        vm.deal(user, 1 ether);
+        vm.prank(user);
+        (bool success,) = address(vault).call{ value: 1 ether }("");
+        assertFalse(success, "Vault should reject ETH from non-BGT after migration");
+    }
+
+    function test_RewardTokenMigration_ConsumeBGTAllowanceFirst() public {
+        // SETUP
+        uint256 bgtAmountMinted = 20 ether;
+        uint256 emissionTokenAmount = 10 ether;
+        uint256 rewardAmount = 15 ether;
+        uint256 stakingTokenAmount = 100 ether;
+
+        // Mint BGT to distributor
+        vm.deal(address(bgt), address(bgt).balance + bgtAmountMinted);
+        vm.prank(address(blockRewardController));
+        bgt.mint(address(distributor), bgtAmountMinted);
+
+        // increase the BGT allowance to the vault
+        vm.prank(address(distributor));
+        IERC20(address(bgt)).approve(address(vault), bgtAmountMinted);
+
+        // mint emission token to the distributor
+        vm.deal(address(this), emissionTokenAmount);
+        emissionToken.deposit{ value: emissionTokenAmount }();
+        emissionToken.transfer(address(distributor), emissionTokenAmount);
+
+        vm.prank(address(distributor));
+        IERC20(address(emissionToken)).approve(address(vault), emissionTokenAmount);
+
+        // 1. Notify with rewardAmount which should consume only BGT at first
+        _notifyRewardAmount(rewardAmount);
+
+        performStake(user, stakingTokenAmount);
+
+        // Accrue rewards for user
+        vm.warp(vm.getBlockTimestamp() + vault.rewardsDuration());
+        uint256 earned = vault.earned(user);
+        _getReward(user, user, user);
+
+        // spend only BGT allowance
+        assertEq(IERC20(address(bgt)).allowance(address(distributor), address(vault)), bgtAmountMinted - earned);
+        assertEq(IERC20(address(emissionToken)).allowance(address(distributor), address(vault)), emissionTokenAmount);
+
+        // 2. Notify again, which should spend remaining BGT allowance and start spending emission token allowance next
+        _notifyRewardAmount(rewardAmount);
+
+        vm.warp(vm.getBlockTimestamp() + vault.rewardsDuration());
+
+        earned = vault.earned(user);
+        uint256 bgtRemainingAllowance = IERC20(address(bgt)).allowance(address(distributor), address(vault));
+        _getReward(user, user, user);
+
+        uint256 emissionTokenRemainingAllowance =
+            IERC20(address(emissionToken)).allowance(address(distributor), address(vault));
+        assertEq(IERC20(address(bgt)).allowance(address(distributor), address(vault)), 0);
+        assertEq(emissionTokenRemainingAllowance, emissionTokenAmount - (earned - bgtRemainingAllowance));
+
+        // 3. Use up remaining emission token allowance completely
+        _notifyRewardAmount(emissionTokenRemainingAllowance); // Use up remainder
+
+        vm.warp(block.timestamp + vault.rewardsDuration());
+        _getReward(user, user, user);
+
+        // spend remaining emission token allowance
+        assertEq(IERC20(address(bgt)).allowance(address(distributor), address(vault)), 0);
+        assertEq(IERC20(address(emissionToken)).allowance(address(distributor), address(vault)), 0);
     }
 }

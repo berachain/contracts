@@ -42,7 +42,7 @@ contract WhitelistIncentiveTokenScript is BaseScript {
         internal
     {
         // Reverts if the token is already whitelisted.
-        RewardVault(vault).whitelistIncentiveToken(token, minIncentiveRate, manager);
+        RewardVault(payable(vault)).whitelistIncentiveToken(token, minIncentiveRate, manager);
         console2.log("Whitelisted incentive token %s for reward vault %s with manager %s", token, vault, manager);
         console2.log("Minimum incentive rate: %d", minIncentiveRate);
     }

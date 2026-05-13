@@ -91,49 +91,23 @@ contract DistributorTest is BeaconRootsHelperTest {
         );
     }
 
-    /// @dev Test when the reward rate is zero.
-    function test_ZeroRewards() public {
-        vm.startPrank(governance);
-        blockRewardController.setRewardRate(0);
-        blockRewardController.setMinBoostedRewardRate(0);
-        vm.stopPrank();
-
-        // expect a call to process the rewards
-        bytes memory data =
-            abi.encodeCall(IBlockRewardController.processRewards, (valData.pubkey, DISTRIBUTE_FOR_TIMESTAMP, false));
-        vm.expectCall(address(blockRewardController), data, 1);
-        // expect no call to mint BGT
-        data = abi.encodeCall(IBGT.mint, (address(distributor), TEST_BGT_PER_BLOCK));
-        vm.expectCall(address(bgt), data, 0);
-
-        distributor.distributeFor(
-            DISTRIBUTE_FOR_TIMESTAMP, valData.index, valData.pubkey, valData.proposerIndexProof, valData.pubkeyProof
-        );
-        assertEq(bgt.allowance(address(distributor), address(vault)), 0);
-    }
-
-    /// @dev Test that in genesis no bgts are left unallocated in the distributor.
+    /// @dev Test that in genesis no rewards are left unallocated in the distributor.
     function test_DistributeDuringGenesisNoBgtWaste() public {
-        vm.startPrank(governance);
-        blockRewardController.setRewardRate(1e18);
-        blockRewardController.setMinBoostedRewardRate(1e18);
-        vm.stopPrank();
-
-        BlockRewardController brc = BlockRewardController(address(distributor.blockRewardController()));
+        BlockRewardController brc = BlockRewardController(payable(address(distributor.blockRewardController())));
         address valOperator = IBeaconDeposit(brc.beaconDepositContract()).getOperator(valData.pubkey);
 
-        uint256 distributorBgtBefore = bgt.balanceOf(address(distributor));
-        uint256 valOperatorBgtBefore = bgt.balanceOf(valOperator);
+        uint256 distributorWberaBefore = wbera.balanceOf(address(distributor));
+        uint256 valOperatorWberaBefore = wbera.balanceOf(valOperator);
 
         distributor.distributeFor(
             DISTRIBUTE_FOR_TIMESTAMP, valData.index, valData.pubkey, valData.proposerIndexProof, valData.pubkeyProof
         );
 
         assertEq(bgt.allowance(address(distributor), address(vault)), 0);
-        // distributor should have same bgts as before
-        assertEq(bgt.balanceOf(address(distributor)), distributorBgtBefore);
-        // validator operator should receive base rate as well in genesis
-        assertEq(bgt.balanceOf(valOperator), valOperatorBgtBefore + blockRewardController.baseRate());
+        // distributor should have same WBERA as before
+        assertEq(wbera.balanceOf(address(distributor)), distributorWberaBefore);
+        // validator operator should receive base rate as WBERA in genesis
+        assertEq(wbera.balanceOf(valOperator), valOperatorWberaBefore + blockRewardController.baseRate());
     }
 
     /// @dev Distribute using the default reward allocation if none is set.
@@ -143,16 +117,15 @@ contract DistributorTest is BeaconRootsHelperTest {
         bytes memory data =
             abi.encodeCall(IBlockRewardController.processRewards, (valData.pubkey, DISTRIBUTE_FOR_TIMESTAMP, true));
         vm.expectCall(address(blockRewardController), data, 1);
-        // expect a call to mint the BGT to the distributor
-        data = abi.encodeCall(IBGT.mint, (address(distributor), TEST_BGT_PER_BLOCK));
-        vm.expectCall(address(bgt), data, 1);
         // expect single call to check if ready then activate the queued reward allocation
         // although it wont activate the queued reward allocation since it nothing is queued.
         data = abi.encodeCall(IBeraChef.activateReadyQueuedRewardAllocation, (valData.pubkey));
         vm.expectCall(address(beraChef), data, 1);
 
         vm.expectEmit(true, true, true, true);
-        emit IDistributor.Distributed(valData.pubkey, DISTRIBUTE_FOR_TIMESTAMP, address(vault), TEST_BGT_PER_BLOCK);
+        emit IDistributor.Distributed(
+            valData.pubkey, DISTRIBUTE_FOR_TIMESTAMP, address(vault), blockRewardController.rewardRate()
+        );
         distributor.distributeFor(
             DISTRIBUTE_FOR_TIMESTAMP, valData.index, valData.pubkey, valData.proposerIndexProof, valData.pubkeyProof
         );
@@ -162,7 +135,7 @@ contract DistributorTest is BeaconRootsHelperTest {
         // queued by the validator
         // the default reward allocation was set with `1` as startBlock in RootHelperTest.
         assertEq(beraChef.getActiveRewardAllocation(valData.pubkey).startBlock, 1);
-        assertEq(bgt.allowance(address(distributor), address(vault)), TEST_BGT_PER_BLOCK);
+        assertEq(bgt.allowance(address(distributor), address(vault)), blockRewardController.rewardRate());
     }
 
     /// @dev Test the `multicall` function for distributeFor.
@@ -180,9 +153,6 @@ contract DistributorTest is BeaconRootsHelperTest {
             IBlockRewardController.processRewards, (valData.pubkey, DISTRIBUTE_FOR_TIMESTAMP + 2, true)
         );
         vm.expectCall(address(blockRewardController), data, 1);
-        // expect 3 calls to mint the BGT to the distributor
-        data = abi.encodeCall(IBGT.mint, (address(distributor), TEST_BGT_PER_BLOCK));
-        vm.expectCall(address(bgt), data, 3);
         // expect 3 calls to check if ready then activate the queued reward allocation
         // although it wont activate the queued reward allocation since it nothing is queued.
         data = abi.encodeCall(IBeraChef.activateReadyQueuedRewardAllocation, (valData.pubkey));
@@ -219,7 +189,7 @@ contract DistributorTest is BeaconRootsHelperTest {
 
         // check that all BGT were distributed
         assertEq(beraChef.getActiveRewardAllocation(valData.pubkey).startBlock, 1);
-        assertEq(bgt.allowance(address(distributor), address(vault)), 3 * TEST_BGT_PER_BLOCK);
+        assertEq(bgt.allowance(address(distributor), address(vault)), 3 * blockRewardController.rewardRate());
     }
 
     /// @dev Activate the queued reward allocation if it is ready and distribute the rewards.
@@ -240,22 +210,21 @@ contract DistributorTest is BeaconRootsHelperTest {
         bytes memory data =
             abi.encodeCall(IBlockRewardController.processRewards, (valData.pubkey, DISTRIBUTE_FOR_TIMESTAMP, true));
         vm.expectCall(address(blockRewardController), data, 1);
-        // expect a call to mint the BGT to the distributor
-        data = abi.encodeCall(IBGT.mint, (address(distributor), TEST_BGT_PER_BLOCK));
-        vm.expectCall(address(bgt), data, 1);
         // expect a call to activate the queued reward allocation
         data = abi.encodeCall(IBeraChef.activateReadyQueuedRewardAllocation, (valData.pubkey));
         vm.expectCall(address(beraChef), data, 1);
 
         vm.expectEmit(true, true, true, true);
-        emit IDistributor.Distributed(valData.pubkey, DISTRIBUTE_FOR_TIMESTAMP, address(vault), TEST_BGT_PER_BLOCK);
+        emit IDistributor.Distributed(
+            valData.pubkey, DISTRIBUTE_FOR_TIMESTAMP, address(vault), blockRewardController.rewardRate()
+        );
         distributor.distributeFor(
             DISTRIBUTE_FOR_TIMESTAMP, valData.index, valData.pubkey, valData.proposerIndexProof, valData.pubkeyProof
         );
 
         // check that the queued reward allocation was activated
         assertEq(beraChef.getActiveRewardAllocation(valData.pubkey).startBlock, startBlock);
-        assertEq(bgt.allowance(address(distributor), address(vault)), TEST_BGT_PER_BLOCK);
+        assertEq(bgt.allowance(address(distributor), address(vault)), blockRewardController.rewardRate());
     }
 
     function test_DistributeForNonReentrant() public {
@@ -353,32 +322,6 @@ contract DistributorTest is BeaconRootsHelperTest {
         assertEq(vaultRewards + vault2Rewards, rewardDistributed);
     }
 
-    function testFuzz_DistributeDoesNotLeaveDust(
-        uint256 weight,
-        uint256 rewardRate,
-        uint256 minReward,
-        uint256 multiplier,
-        uint256 convexity
-    )
-        public
-    {
-        rewardRate = _bound(rewardRate, 0, blockRewardController.MAX_REWARD_RATE());
-        minReward = _bound(minReward, 0, blockRewardController.MAX_MIN_BOOSTED_REWARD_RATE());
-        multiplier = _bound(multiplier, 0, blockRewardController.MAX_BOOST_MULTIPLIER());
-        convexity = _bound(convexity, 1, blockRewardController.MAX_REWARD_CONVEXITY());
-
-        vm.startPrank(governance);
-        blockRewardController.setRewardRate(rewardRate);
-        blockRewardController.setMinBoostedRewardRate(minReward);
-        blockRewardController.setBoostMultiplier(multiplier);
-        blockRewardController.setRewardConvexity(convexity);
-        vm.stopPrank();
-
-        vm.deal(address(bgt), address(bgt).balance + rewardRate * multiplier / 1e18); // add max bgt minted in a block
-
-        testFuzz_DistributeDoesNotLeaveDust(weight);
-    }
-
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
     /*                    SYSTEM CALL TESTS                       */
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
@@ -392,22 +335,20 @@ contract DistributorTest is BeaconRootsHelperTest {
             abi.encodeCall(IBlockRewardController.processRewards, (valData.pubkey, uint64(block.timestamp), true));
         vm.expectCall(address(blockRewardController), data, 1);
 
-        // expect a call to mint the BGT to the distributor
-        data = abi.encodeCall(IBGT.mint, (address(distributor), TEST_BGT_PER_BLOCK));
-        vm.expectCall(address(bgt), data, 1);
-
         // expect a call to activate the queued reward allocation
         data = abi.encodeCall(IBeraChef.activateReadyQueuedRewardAllocation, (valData.pubkey));
         vm.expectCall(address(beraChef), data, 1);
 
         vm.expectEmit(true, true, true, true);
-        emit IDistributor.Distributed(valData.pubkey, uint64(block.timestamp), address(vault), TEST_BGT_PER_BLOCK);
+        emit IDistributor.Distributed(
+            valData.pubkey, uint64(block.timestamp), address(vault), blockRewardController.rewardRate()
+        );
 
         // Call as system address
         vm.prank(0xffffFFFfFFffffffffffffffFfFFFfffFFFfFFfE);
         distributor.distributeFor(valData.pubkey);
 
-        assertEq(bgt.allowance(address(distributor), address(vault)), TEST_BGT_PER_BLOCK);
+        assertEq(bgt.allowance(address(distributor), address(vault)), blockRewardController.rewardRate());
     }
 
     /// @dev Test that the new distributeFor function fails when called by non-system address.
@@ -445,17 +386,17 @@ contract DistributorTest is BeaconRootsHelperTest {
             abi.encodeCall(IBlockRewardController.processRewards, (valData.pubkey, uint64(block.timestamp), true));
         vm.expectCall(address(blockRewardController), data, 1);
 
-        // expect a call to mint the BGT to the distributor
-        data = abi.encodeCall(IBGT.mint, (address(distributor), TEST_BGT_PER_BLOCK));
-        vm.expectCall(address(bgt), data, 1);
-
         // expect a call to activate the queued reward allocation
         data = abi.encodeCall(IBeraChef.activateReadyQueuedRewardAllocation, (valData.pubkey));
         vm.expectCall(address(beraChef), data, 1);
 
         vm.expectEmit(true, true, true, true);
-        emit IDistributor.Distributed(valData.pubkey, uint64(block.timestamp), address(vault), TEST_BGT_PER_BLOCK / 2);
-        emit IDistributor.Distributed(valData.pubkey, uint64(block.timestamp), vault2, TEST_BGT_PER_BLOCK / 2);
+        emit IDistributor.Distributed(
+            valData.pubkey, uint64(block.timestamp), address(vault), blockRewardController.rewardRate() / 2
+        );
+        emit IDistributor.Distributed(
+            valData.pubkey, uint64(block.timestamp), vault2, blockRewardController.rewardRate() / 2
+        );
 
         // Call as system address
         vm.prank(0xffffFFFfFFffffffffffffffFfFFFfffFFFfFFfE);
@@ -463,8 +404,8 @@ contract DistributorTest is BeaconRootsHelperTest {
 
         // check that the queued reward allocation was activated
         assertEq(beraChef.getActiveRewardAllocation(valData.pubkey).startBlock, uint64(block.number));
-        assertEq(bgt.allowance(address(distributor), address(vault)), TEST_BGT_PER_BLOCK / 2);
-        assertEq(bgt.allowance(address(distributor), vault2), TEST_BGT_PER_BLOCK / 2);
+        assertEq(bgt.allowance(address(distributor), address(vault)), blockRewardController.rewardRate() / 2);
+        assertEq(bgt.allowance(address(distributor), vault2), blockRewardController.rewardRate() / 2);
     }
 
     /// @dev Test that permissionless distributeFor function fails after Pectra11 hard fork.
@@ -486,6 +427,60 @@ contract DistributorTest is BeaconRootsHelperTest {
             timestamp, valData.index, valData.pubkey, valData.proposerIndexProof, valData.pubkeyProof
         );
         // Verify no BGT was distributed
+        assertEq(bgt.allowance(address(distributor), address(vault)), 0);
+    }
+
+    /// @dev Test that setEmissionToken updates the emission token to WBERA and emits the event.
+    function test_SetEmissionToken() public {
+        assertEq(distributor.emissionToken(), address(bgt));
+
+        vm.prank(governance);
+        vm.expectEmit(true, true, true, true);
+        emit IDistributor.EmissionTokenSet(address(wbera));
+        distributor.setEmissionToken();
+
+        assertEq(distributor.emissionToken(), address(wbera));
+    }
+
+    /// @dev Test that setEmissionToken reverts when called by a non-admin.
+    function test_SetEmissionToken_RevertIfNotAdmin() public {
+        vm.expectRevert();
+        distributor.setEmissionToken();
+
+        vm.prank(manager);
+        vm.expectRevert();
+        distributor.setEmissionToken();
+
+        assertEq(distributor.emissionToken(), address(bgt));
+    }
+
+    /// @dev Test that distribution approves WBERA (not BGT) after migration.
+    function test_DistributeAfterEmissionTokenMigration() public {
+        helper_SetDefaultRewardAllocation();
+
+        vm.prank(governance);
+        distributor.setEmissionToken();
+
+        vm.deal(address(wbera), 1000 ether);
+        vm.prank(address(wbera));
+        wbera.deposit{ value: 1000 ether }();
+        vm.prank(address(wbera));
+        wbera.transfer(address(distributor), 1000 ether);
+
+        // Mock the vault's notifyRewardAmount to succeed — the vault still pulls BGT internally,
+        // but we're testing that the Distributor approves WBERA.
+        // TODO: remove this mock once the vault is updated to use WBERA.
+        vm.mockCall(address(vault), abi.encodeWithSelector(RewardVault.notifyRewardAmount.selector), abi.encode());
+
+        vm.expectEmit(true, true, true, true);
+        emit IDistributor.Distributed(
+            valData.pubkey, DISTRIBUTE_FOR_TIMESTAMP, address(vault), blockRewardController.rewardRate()
+        );
+        distributor.distributeFor(
+            DISTRIBUTE_FOR_TIMESTAMP, valData.index, valData.pubkey, valData.proposerIndexProof, valData.pubkeyProof
+        );
+
+        assertEq(wbera.allowance(address(distributor), address(vault)), blockRewardController.rewardRate());
         assertEq(bgt.allowance(address(distributor), address(vault)), 0);
     }
 }

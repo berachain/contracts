@@ -16,27 +16,11 @@ interface IRewardVaultFactory is IPOLErrors {
     event VaultCreated(address indexed stakingToken, address indexed vault);
 
     /**
-     * @notice Emitted when the BGTIncentiveDistributor contract is set.
-     * @param newBGTIncentiveDistributor The address of the new BGTIncentiveDistributor contract.
-     * @param oldBGTIncentiveDistributor The address of the old BGTIncentiveDistributor contract.
+     * @notice Emitted when the incentive tokens collector address is updated.
+     * @param newAddress The new address for incentive tokens collector.
+     * @param oldAddress The old address for incentive tokens collector.
      */
-    event BGTIncentiveDistributorSet(
-        address indexed newBGTIncentiveDistributor, address indexed oldBGTIncentiveDistributor
-    );
-
-    /**
-     * @notice Emitted when the incentive fee percentage is updated.
-     * @param newValue The new rate (in basis points).
-     * @param oldValue The old rate (in basis points).
-     */
-    event IncentiveFeeRateUpdated(uint256 newValue, uint256 oldValue);
-
-    /**
-     * @notice Emitted when the incentive fee collector address is updated.
-     * @param newAddress The new address for incentive fees.
-     * @param oldAddress The old address for incentive fees.
-     */
-    event IncentiveFeeCollectorUpdated(address newAddress, address oldAddress);
+    event IncentiveTokensCollectorUpdated(address newAddress, address oldAddress);
 
     /**
      * @notice Emitted when the reward vault helper address is updated.
@@ -50,25 +34,11 @@ interface IRewardVaultFactory is IPOLErrors {
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
 
     /**
-     * @notice Sets the BGTIncentiveDistributor contract.
+     * @notice Sets the incentive tokens collector address.
      * @dev Only callable by the admin.
-     * @param _bgtIncentiveDistributor The address of the new BGTIncentiveDistributor contract.
+     * @param _incentiveTokensCollector The address of the new incentive tokens collector contract.
      */
-    function setBGTIncentiveDistributor(address _bgtIncentiveDistributor) external;
-
-    /**
-     * @notice Sets the incentives fee rate.
-     * @dev Only callable by the admin.
-     * @param _bgtIncentiveFeeRate The new value for the rate (in basis points).
-     */
-    function setBGTIncentiveFeeRate(uint256 _bgtIncentiveFeeRate) external;
-
-    /**
-     * @notice Sets the BGTIncentiveDistributor contract.
-     * @dev Only callable by the admin.
-     * @param _bgtIncentiveFeeCollector The address of the new BGTIncentiveFeeCollector contract.
-     */
-    function setBGTIncentiveFeeCollector(address _bgtIncentiveFeeCollector) external;
+    function setIncentiveTokensCollector(address _incentiveTokensCollector) external;
 
     /**
      * @notice Sets the reward vault helper address.
@@ -119,12 +89,6 @@ interface IRewardVaultFactory is IPOLErrors {
     function allVaultsLength() external view returns (uint256);
 
     /**
-     * @notice Gets the address of the BGTIncentiveDistributor contract.
-     * @return The address of the BGTIncentiveDistributor contract.
-     */
-    function bgtIncentiveDistributor() external view returns (address);
-
-    /**
      * @notice Gets the address of the RewardVaultHelper contract.
      * @return The address of the RewardVaultHelper contract.
      */
@@ -138,21 +102,8 @@ interface IRewardVaultFactory is IPOLErrors {
     function predictRewardVaultAddress(address stakingToken) external view returns (address);
 
     /**
-     * @notice Gets the value of the incentive fee rate.
-     * @return The rate (in basis points).
+     * @notice Gets the address of the incentive tokens collector.
+     * @return The address of the incentive tokens collector.
      */
-    function bgtIncentiveFeeRate() external view returns (uint256);
-
-    /**
-     * @notice Gets the address of the incentive fee collector.
-     * @return The address of the BGTIncentiveFeeCollector contract.
-     */
-    function bgtIncentiveFeeCollector() external view returns (address);
-
-    /**
-     * @notice Applies the fee percentage on the incentive amount.
-     * @param incentiveAmount The amount of incentive tokens.
-     * @return The fee amount.
-     */
-    function getIncentiveFeeAmount(uint256 incentiveAmount) external view returns (uint256);
+    function incentiveTokensCollector() external view returns (address);
 }

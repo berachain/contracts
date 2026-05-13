@@ -5,6 +5,7 @@ import { FixedPointMathLib } from "solady/src/utils/FixedPointMathLib.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IERC1967 } from "@openzeppelin/contracts/interfaces/IERC1967.sol";
 import { OwnableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import { PausableUpgradeable } from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 
 import { POLTest } from "./POL.t.sol";
 import { MockERC20 } from "@mock/token/MockERC20.sol";
@@ -17,6 +18,7 @@ contract BGTIncentiveReceiverTest is POLTest {
 
     address claimUser = 0xEE8d5FD148c18e79927d8DE79d8E688Abf0b3af5;
     uint256 claimAmount = 62_452_330_923_580_633_174;
+    address internal pauser = makeAddr("pauser");
     bytes32 internal merkleRoot = hex"9541b35c714a035b8ede23f1cd3daf0c9e7d3e9075ddc3438a42dea643afcafd";
     bytes32 internal merkleRootUpdated = hex"0000000000000000000000000000000000000000000000000000000000000000";
     bytes32[] internal validProof = [
@@ -30,6 +32,9 @@ contract BGTIncentiveReceiverTest is POLTest {
     function setUp() public override(POLTest) {
         super.setUp();
         token = new MockERC20();
+        bytes32 PAUSER_ROLE = BGTIncentiveDistributor(bgtIncentiveDistributor).PAUSER_ROLE();
+        vm.prank(governance);
+        BGTIncentiveDistributor(bgtIncentiveDistributor).grantRole(PAUSER_ROLE, pauser);
     }
 
     function test_ReceiveIncentive(uint256 amount) public {
@@ -91,6 +96,7 @@ contract BGTIncentiveReceiverTest is POLTest {
         BGTIncentiveDistributor(bgtIncentiveDistributor).updateRewardsMetadata(distributions);
         (address _token, bytes32 _merkleRoot, bytes32 _proof, uint256 _activeAt, bytes memory _pubkey) =
             BGTIncentiveDistributor(bgtIncentiveDistributor).rewards(identifier);
+        vm.stopPrank();
         assertEq(_token, address(token));
         assertEq(_merkleRoot, merkleRoot);
         assertEq(_proof, bytes32(0));
@@ -161,6 +167,38 @@ contract BGTIncentiveReceiverTest is POLTest {
         IBGTIncentiveDistributor.Claim[] memory claims = new IBGTIncentiveDistributor.Claim[](1);
         claims[0] = claim;
 
+        BGTIncentiveDistributor(bgtIncentiveDistributor).claim(claims);
+        assertEq(token.balanceOf(claimUser), claimAmount);
+        assertEq(token.balanceOf(address(bgtIncentiveDistributor)), 0);
+        assertEq(BGTIncentiveDistributor(bgtIncentiveDistributor).claimed(identifier, claimUser), claimAmount);
+    }
+
+    function test_ClaimReward_Paused() public {
+        _helperReceiveIncentive(claimAmount);
+        bytes32 identifier = test_updateRewardsMetadata();
+
+        vm.warp(vm.getBlockTimestamp() + BGTIncentiveDistributor(bgtIncentiveDistributor).rewardClaimDelay() + 1);
+
+        // preconditions
+        assertEq(token.balanceOf(address(this)), 0);
+        assertEq(token.balanceOf(address(bgtIncentiveDistributor)), claimAmount);
+
+        IBGTIncentiveDistributor.Claim memory claim = IBGTIncentiveDistributor.Claim({
+            identifier: identifier, account: claimUser, amount: claimAmount, merkleProof: validProof
+        });
+
+        IBGTIncentiveDistributor.Claim[] memory claims = new IBGTIncentiveDistributor.Claim[](1);
+        claims[0] = claim;
+
+        vm.prank(pauser);
+        BGTIncentiveDistributor(bgtIncentiveDistributor).setPauseState(true);
+
+        // should revert if not called by manager and contract is paused
+        vm.expectRevert(abi.encodeWithSelector(PausableUpgradeable.EnforcedPause.selector));
+        BGTIncentiveDistributor(bgtIncentiveDistributor).claim(claims);
+
+        // should go through if called by manager
+        vm.prank(bgtIncentiveReceiverManager);
         BGTIncentiveDistributor(bgtIncentiveDistributor).claim(claims);
         assertEq(token.balanceOf(claimUser), claimAmount);
         assertEq(token.balanceOf(address(bgtIncentiveDistributor)), 0);

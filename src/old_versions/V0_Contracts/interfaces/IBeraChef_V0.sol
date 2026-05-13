@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.26;
 
-import { IPOLErrors } from "src/pol/interfaces/IPOLErrors.sol";
+import { IPOLErrors_V0 as IPOLErrors } from "./IPOLErrors_V0.sol";
 
 /// @notice Interface of the BeraChef module
 interface IBeraChef_V0 is IPOLErrors {

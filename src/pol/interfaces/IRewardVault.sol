@@ -43,7 +43,7 @@ interface IRewardVault is IPOLErrors, IStakingRewards {
 
     /// @notice Emitted when an incentive token is whitelisted.
     /// @param token The address of the token that has been whitelisted.
-    /// @param minIncentiveRate The minimum amount of the token to incentivize per BGT emission.
+    /// @param minIncentiveRate The minimum amount of the token to incentivize per emission token emitted.
     /// @param manager The address of the manager that can addIncentive for this incentive token.
     event IncentiveTokenWhitelisted(address indexed token, uint256 minIncentiveRate, address manager);
 
@@ -56,45 +56,33 @@ interface IRewardVault is IPOLErrors, IStakingRewards {
     event MaxIncentiveTokensCountUpdated(uint8 maxIncentiveTokensCount);
 
     /// @notice Emitted when validator share of incentives are processed to the operator address of a validator.
-    event IncentivesProcessed(bytes indexed pubkey, address indexed token, uint256 bgtEmitted, uint256 amount);
+    event IncentivesProcessed(bytes indexed pubkey, address indexed token, uint256 rewardsEmitted, uint256 amount);
 
     /// @notice Emitted when validator share of incentives fail to be processed to the operator address of a validator.
-    event IncentivesProcessFailed(bytes indexed pubkey, address indexed token, uint256 bgtEmitted, uint256 amount);
+    event IncentivesProcessFailed(bytes indexed pubkey, address indexed token, uint256 rewardsEmitted, uint256 amount);
 
     /// @notice Emitted when incentives are added to the vault.
     /// @param token The incentive token.
     /// @param sender The address that added the incentive.
     /// @param amount The amount of the incentive.
-    /// @param incentiveRate The amount of the token to incentivize per BGT emission.
+    /// @param incentiveRate The amount of the token to incentivize per emission token emitted.
     event IncentiveAdded(address indexed token, address sender, uint256 amount, uint256 incentiveRate);
 
-    /// @notice Emitted when the BGT booster share of the incentive is processed.
+    /// @notice Emitted when the incentive tokens are collected.
     /// @param pubkey The pubkey of the validator.
     /// @param token The address of the incentive token.
-    /// @param bgtEmitted The amount of BGT emitted by the validator.
-    /// @param amount The amount of the incentive.
-    event BGTBoosterIncentivesProcessed(
-        bytes indexed pubkey, address indexed token, uint256 bgtEmitted, uint256 amount
-    );
+    /// @param rewardsEmitted The amount of rewards emitted by the validator.
+    /// @param amount The amount of the incentives collected.
+    event IncentivesCollected(bytes indexed pubkey, address indexed token, uint256 rewardsEmitted, uint256 amount);
 
-    /// @notice Emitted when the BGT booster share of the incentive fails to be processed.
+    /// @notice Emitted when the incentive tokens failed to be sent to the collector.
     /// @param pubkey The pubkey of the validator.
     /// @param token The address of the incentive token.
-    /// @param bgtEmitted The amount of BGT emitted by the validator.
-    /// @param amount The amount of the incentive.
-    event BGTBoosterIncentivesProcessFailed(
-        bytes indexed pubkey, address indexed token, uint256 bgtEmitted, uint256 amount
+    /// @param rewardsEmitted The amount of rewards emitted by the validator.
+    /// @param amount The amount of the incentives not collected due to failure.
+    event IncentivesCollectionFailed(
+        bytes indexed pubkey, address indexed token, uint256 rewardsEmitted, uint256 amount
     );
-
-    /// @notice Emitted when the incentive fee is sent to the collector.
-    /// @param token The address of the incentive token.
-    /// @param amount The amount of the incentive fee.
-    event IncentiveFeeCollected(address indexed token, uint256 amount);
-
-    /// @notice Emitted when the incentive fee is failed to be sent to the collector.
-    /// @param token The address of the incentive token.
-    /// @param amount The amount of the incentive fee.
-    event IncentiveFeeCollectionFailed(address indexed token, uint256 amount);
 
     /// @notice Emitted when the target rewards per second is updated.
     /// @param newTargetRewardsPerSecond The new target rewards per second.
@@ -112,6 +100,11 @@ interface IRewardVault is IPOLErrors, IStakingRewards {
     event MinRewardDurationForTargetRateUpdated(
         uint256 newMinRewardDurationForTargetRate, uint256 oldMinRewardDurationForTargetRate
     );
+
+    /// @notice Emitted when the reward token is migrated from BGT to WBERA.
+    /// @param oldToken The previous reward token address (BGT).
+    /// @param newToken The new reward token address (WBERA).
+    event RewardTokenMigrated(address indexed oldToken, address indexed newToken);
 
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
     /*                          GETTERS                           */
@@ -149,7 +142,7 @@ interface IRewardVault is IPOLErrors, IStakingRewards {
     /**
      * @notice Initialize the vault, this is only callable once and by the factory since its the deployer.
      * @param _berachef The address of the berachef.
-     * @param _bgt The address of the BGT token.
+     * @param _bgt The address of the BGT token, preserved for the lazy migration to WBERA as reward token.
      * @param _distributor The address of the distributor.
      * @param _stakingToken The address of the staking token.
      */
@@ -194,7 +187,7 @@ interface IRewardVault is IPOLErrors, IStakingRewards {
 
     /// @notice Allows the factory owner to whitelist a token to incentivize with.
     /// @param token The address of the token to whitelist.
-    /// @param minIncentiveRate The minimum amount of the token to incentivize per BGT emission.
+    /// @param minIncentiveRate The minimum amount of the token to incentivize per emission token emitted.
     /// @param manager The address of the manager that can addIncentive for this token.
     function whitelistIncentiveToken(address token, uint256 minIncentiveRate, address manager) external;
 
@@ -223,11 +216,11 @@ interface IRewardVault is IPOLErrors, IStakingRewards {
     /// @notice Exit the vault with the staked tokens and claim the reward.
     /// @dev Only the account holder can call this function, not the operator.
     /// @dev Clears out the user self-staked balance and rewards.
-    /// @param recipient The address to send the 'BGT' reward to.
+    /// @param recipient The address to send the reward to.
     function exit(address recipient) external;
 
     /// @notice Claim the reward.
-    /// @dev The operator only handles BGT, not STAKING_TOKEN.
+    /// @dev The operator only handles the reward token, not STAKING_TOKEN.
     /// @dev Callable by the operator or the account holder.
     /// @param account The account to get the reward for.
     /// @param recipient The address to send the reward to.
@@ -236,7 +229,7 @@ interface IRewardVault is IPOLErrors, IStakingRewards {
 
     /// @notice Claim a partial reward.
     /// @notice Use `getReward` if you want to claim the full reward.
-    /// @dev The operator only handles BGT, not STAKING_TOKEN.
+    /// @dev The operator only handles the reward token, not STAKING_TOKEN.
     /// @dev Callable by the operator or the account holder.
     /// @param account The account to get the reward for.
     /// @param recipient The address to send the reward to.
@@ -282,7 +275,7 @@ interface IRewardVault is IPOLErrors, IStakingRewards {
     /// its delegates.
     /// @param token The address of the token to add as an incentive.
     /// @param amount The amount of the token to add as an incentive.
-    /// @param incentiveRate The amount of the token to incentivize per BGT emission.
+    /// @param incentiveRate The amount of the token to incentivize per emission token emitted.
     /// @dev Permissioned function, only callable by incentive token manager.
     function addIncentive(address token, uint256 amount, uint256 incentiveRate) external;
 

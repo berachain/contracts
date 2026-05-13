@@ -17,12 +17,6 @@ contract UpgradeRewardVaultFactoryScript is BaseDeployScript, AddressBook {
         console2.log("New RewardVaultFactory implementation address:", newRewardVaultFactoryImpl);
     }
 
-    function printSetBGTIncentiveDistributorCallSignature() public view {
-        console2.logBytes(
-            abi.encodeCall(RewardVaultFactory.setBGTIncentiveDistributor, (_polAddresses.bgtIncentiveDistributor))
-        );
-    }
-
     /// @dev This function is only for testnet or test purposes.
     function upgradeToAndCallTestnet(bytes memory callSignature) public broadcast {
         address newRewardVaultFactoryImpl = _deployNewImplementation();

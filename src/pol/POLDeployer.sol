@@ -61,8 +61,9 @@ contract POLDeployer is Create2Deployer {
         address blockRewardControllerImpl =
             deployWithCreate2(blockRewardControllerSalt.implementation, type(BlockRewardController).creationCode);
         // deploy the BlockRewardController proxy
-        blockRewardController =
-            BlockRewardController(deployProxyWithCreate2(blockRewardControllerImpl, blockRewardControllerSalt.proxy));
+        blockRewardController = BlockRewardController(
+            payable(deployProxyWithCreate2(blockRewardControllerImpl, blockRewardControllerSalt.proxy))
+        );
 
         // deploy the Distributor implementation
         address distributorImpl = deployWithCreate2(distributorSalt.implementation, type(Distributor).creationCode);

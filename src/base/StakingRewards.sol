@@ -38,7 +38,7 @@ abstract contract StakingRewards is Initializable, IStakingRewards {
     IERC20 public stakeToken;
 
     /// @notice ERC20 token in which rewards are denominated and distributed.
-    IERC20 public rewardToken;
+    IERC20 internal _rewardToken;
 
     /// @notice The reward rate for the current reward period scaled by PRECISION.
     uint256 public rewardRate;
@@ -73,18 +73,18 @@ abstract contract StakingRewards is Initializable, IStakingRewards {
 
     /// @dev Must be called by the initializer of the inheriting contract.
     /// @param _stakingToken The address of the token that users will stake.
-    /// @param _rewardToken The address of the token that will be distributed as rewards.
+    /// @param rewardToken_ The address of the token that will be distributed as rewards.
     /// @param _rewardsDuration The duration of the rewards cycle.
     function __StakingRewards_init(
         address _stakingToken,
-        address _rewardToken,
+        address rewardToken_,
         uint256 _rewardsDuration
     )
         internal
         onlyInitializing
     {
         stakeToken = IERC20(_stakingToken);
-        rewardToken = IERC20(_rewardToken);
+        _rewardToken = IERC20(rewardToken_);
         rewardsDuration = _rewardsDuration;
     }
 
@@ -125,7 +125,7 @@ abstract contract StakingRewards is Initializable, IStakingRewards {
     /// @notice Check if the rewards are solvent.
     /// @dev Inherited contracts may override this function to implement custom solvency checks.
     function _checkRewardSolvency() internal view virtual {
-        if (undistributedRewards / PRECISION > rewardToken.balanceOf(address(this))) {
+        if (undistributedRewards / PRECISION > _rewardToken.balanceOf(address(this))) {
             InsolventReward.selector.revertWith();
         }
     }
@@ -150,7 +150,7 @@ abstract contract StakingRewards is Initializable, IStakingRewards {
     /// @param to The recipient address.
     /// @param amount The amount of reward tokens to transfer.
     function _safeTransferRewardToken(address to, uint256 amount) internal virtual {
-        rewardToken.safeTransfer(to, amount);
+        _rewardToken.safeTransfer(to, amount);
     }
 
     /// @notice Stakes tokens in the vault for a specified account.
@@ -258,6 +258,11 @@ abstract contract StakingRewards is Initializable, IStakingRewards {
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
     /*                          GETTERS                           */
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
+
+    /// @notice Returns the reward token.
+    function rewardToken() public view virtual returns (IERC20) {
+        return _rewardToken;
+    }
 
     function balanceOf(address account) public view virtual returns (uint256) {
         return _accountInfo[account].balance;

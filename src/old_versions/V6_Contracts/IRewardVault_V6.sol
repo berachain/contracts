@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.26;
 
-import { IPOLErrors } from "src/pol/interfaces/IPOLErrors.sol";
+import { IPOLErrors_V0 as IPOLErrors } from "../V0_Contracts/interfaces/IPOLErrors_V0.sol";
 import { IStakingRewards } from "src/base/IStakingRewards.sol";
 
 interface IRewardVault_V6 is IPOLErrors, IStakingRewards {

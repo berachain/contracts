@@ -7,7 +7,7 @@ import { LibClone } from "solady/src/utils/LibClone.sol";
 import { UpgradeableBeacon } from "solady/src/utils/UpgradeableBeacon.sol";
 import { Utils } from "../../libraries/Utils.sol";
 import { IRewardVaultFactory } from "./interfaces/IRewardVaultFactory_V2.sol";
-import { RewardVault } from "src/pol/rewards/RewardVault.sol";
+import { RewardVault_V2 as RewardVault } from "./RewardVault_V2.sol";
 
 /// @title RewardVaultFactory
 /// @author Berachain Team

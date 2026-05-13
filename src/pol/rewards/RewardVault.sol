@@ -6,21 +6,23 @@ import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.s
 import { PausableUpgradeable } from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 import { ReentrancyGuardUpgradeable } from "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
 import { FixedPointMathLib } from "solady/src/utils/FixedPointMathLib.sol";
+import { IWBERA } from "../interfaces/IWBERA.sol";
 
 import { Utils } from "../../libraries/Utils.sol";
 import { IBeaconDeposit } from "../interfaces/IBeaconDeposit.sol";
+import { IBGT } from "../interfaces/IBGT.sol";
 import { IRewardVault } from "../interfaces/IRewardVault.sol";
 import { FactoryOwnable } from "../../base/FactoryOwnable.sol";
 import { StakingRewards } from "../../base/StakingRewards.sol";
 import { IBeraChef } from "../interfaces/IBeraChef.sol";
 import { IDistributor } from "../interfaces/IDistributor.sol";
-import { IBGTIncentiveDistributor } from "../interfaces/IBGTIncentiveDistributor.sol";
 import { IRewardVaultFactory } from "../interfaces/IRewardVaultFactory.sol";
 
 /// @title Rewards Vault
 /// @author Berachain Team
-/// @notice This contract is the vault for the Berachain rewards, it handles the staking and rewards accounting of BGT.
-/// @dev This contract is taken from the stable and tested:
+/// @notice This contract is the vault for the Berachain rewards, it handles the staking and rewards accounting of
+/// WBERA.
+///@dev This contract is taken from the stable and tested:
 /// https://github.com/Synthetixio/synthetix/blob/develop/contracts/StakingRewards.sol
 /// We are using this model instead of 4626 because we want to incentivize staying in the vault for x period of time
 /// to be considered a 'miner' and not a 'trader'.
@@ -42,8 +44,8 @@ contract RewardVault is PausableUpgradeable, ReentrancyGuardUpgradeable, Factory
     }
 
     /// @notice Struct to hold an incentive data.
-    /// @param minIncentiveRate The minimum amount of the token to incentivize per BGT emission.
-    /// @param incentiveRate The amount of the token to incentivize per BGT emission.
+    /// @param minIncentiveRate The minimum amount of the token to incentivize per emission token emitted.
+    /// @param incentiveRate The amount of the token to incentivize per emission token emitted.
     /// @param amountRemaining The amount of the token remaining to incentivize.
     /// @param manager The address of the manager that can addIncentive for this incentive token.
     struct Incentive {
@@ -54,12 +56,10 @@ contract RewardVault is PausableUpgradeable, ReentrancyGuardUpgradeable, Factory
     }
 
     uint256 private constant MAX_INCENTIVE_RATE = 1e36; // for 18 decimal token, this will mean 1e18 incentiveTokens
-    // per BGT emission.
+    // per emission token emitted.
 
-    // Safe gas limit for low level call operations to avoid griefing.
-    // This is mostly for low level call like approve, receiveIncentive (IBGTIncentiveDistributor which uses
-    // transferFrom).
-    uint256 private constant SAFE_GAS_LIMIT = 500_000;
+    /// @notice The WBERA token address (genesis contract).
+    address private constant WBERA_ADDRESS = 0x6969696969696969696969696969696969696969;
 
     /// @notice The minimum reward duration.
     uint256 public constant MIN_REWARD_DURATION = 3 days;
@@ -112,6 +112,10 @@ contract RewardVault is PausableUpgradeable, ReentrancyGuardUpgradeable, Factory
     /// @dev must be between MIN_REWARD_DURATION and MAX_REWARD_DURATION and can be set only by reward vault manager.
     uint256 public minRewardDurationForTargetRate;
 
+    /// @notice The BGT token address, preserved during reward token migration from BGT to WBERA.
+    /// @dev address(0) means the vault has not yet migrated; rewardToken still points to BGT.
+    IERC20 private bgt;
+
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
         _disableInitializers();
@@ -137,6 +141,11 @@ contract RewardVault is PausableUpgradeable, ReentrancyGuardUpgradeable, Factory
         beaconDepositContract = IBeaconDeposit(_beaconDepositContract);
         emit DistributorSet(_distributor);
         emit MaxIncentiveTokensCountUpdated(maxIncentiveTokensCount);
+    }
+
+    /// @notice Accept native BERA only from the BGT contract (during BGT redemption for the migration path).
+    receive() external payable {
+        if (msg.sender != address(_getBgtToken())) UnauthorizedETHTransfer.selector.revertWith();
     }
 
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
@@ -363,6 +372,20 @@ contract RewardVault is PausableUpgradeable, ReentrancyGuardUpgradeable, Factory
         return _delegateStake[account].stakedByDelegate[delegate];
     }
 
+    /// @notice Returns the current reward token, always WBERA after the beacon upgrade.
+    /// @dev Pre-migration (bgt == address(0)): returns the WBERA_ADDRESS constant so all vaults
+    /// advertise a uniform reward token from the moment the implementation is deployed, regardless
+    /// of when the lazy per-vault migration triggers.
+    /// Post-migration (bgt != address(0)): returns the storage-backed value set by
+    /// _migrateRewardToken(), so the getter reflects actual on-chain state rather than a hardcoded
+    /// constant.
+    function rewardToken() public view override returns (IERC20) {
+        if (address(bgt) == address(0)) {
+            return IERC20(WBERA_ADDRESS);
+        }
+        return super.rewardToken();
+    }
+
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
     /*                          WRITES                            */
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
@@ -374,6 +397,7 @@ contract RewardVault is PausableUpgradeable, ReentrancyGuardUpgradeable, Factory
 
     /// @inheritdoc IRewardVault
     function delegateStake(address account, uint256 amount) external nonReentrant whenNotPaused {
+        if (account == address(0)) ZeroAddress.selector.revertWith();
         if (msg.sender == account) NotDelegate.selector.revertWith();
 
         _stake(account, amount);
@@ -391,6 +415,7 @@ contract RewardVault is PausableUpgradeable, ReentrancyGuardUpgradeable, Factory
 
     /// @inheritdoc IRewardVault
     function stakeOnBehalf(address account, uint256 amount) external nonReentrant whenNotPaused {
+        if (account == address(0)) ZeroAddress.selector.revertWith();
         _stake(account, amount);
     }
 
@@ -476,7 +501,7 @@ contract RewardVault is PausableUpgradeable, ReentrancyGuardUpgradeable, Factory
         if (msg.sender != manager) NotIncentiveManager.selector.revertWith();
 
         // The incentive amount should be equal to or greater than the `minIncentiveRate` to avoid spamming.
-        // If the `minIncentiveRate` is 100 USDC/BGT, the amount should be at least 100 USDC.
+        // If the `minIncentiveRate` is 100 USDC per emission token, the amount should be at least 100 USDC.
         if (amount < minIncentiveRate) AmountLessThanMinIncentiveRate.selector.revertWith();
 
         // The incentive rate should be greater than or equal to the `minIncentiveRate`.
@@ -531,6 +556,28 @@ contract RewardVault is PausableUpgradeable, ReentrancyGuardUpgradeable, Factory
     /*                        INTERNAL FUNCTIONS                  */
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
 
+    /// @dev One-shot migration: saves the current _rewardToken (BGT) into bgt and
+    /// switches _rewardToken to WBERA so integrators reading rewardToken() see the actual reward token.
+    function _migrateRewardToken() internal {
+        if (address(bgt) == address(0) && address(_rewardToken) != WBERA_ADDRESS) {
+            bgt = _rewardToken;
+            _rewardToken = IERC20(WBERA_ADDRESS);
+            emit RewardTokenMigrated(address(bgt), WBERA_ADDRESS);
+        }
+    }
+
+    /// @dev Returns the BGT token regardless of migration state.
+    /// Post-migration: returns bgt. Pre-migration: returns _rewardToken (which IS BGT).
+    function _getBgtToken() internal view returns (IERC20) {
+        IERC20 cached = bgt;
+        return address(cached) != address(0) ? cached : _rewardToken;
+    }
+
+    function _updateReward(address account) internal override {
+        _migrateRewardToken();
+        super._updateReward(account);
+    }
+
     /// @dev Check if the account has enough self-staked balance.
     /// @param account The account to check the self-staked balance for.
     /// @param amount The amount being withdrawn.
@@ -541,41 +588,68 @@ contract RewardVault is PausableUpgradeable, ReentrancyGuardUpgradeable, Factory
         }
     }
 
-    /// @dev The Distributor grants this contract the allowance to transfer the BGT in its balance.
+    /// @dev Transfers reward to the recipient, handling dual reward tokens (BGT and WBERA).
+    /// If BGT allowance is available on the Distributor, pulls BGT, redeems it for BERA,
+    /// wraps to WBERA, and sends WBERA to the recipient. Falls back to WBERA allowance otherwise.
+    /// Handles the partial case where BGT allowance covers only part of the amount.
     function _safeTransferRewardToken(address to, uint256 amount) internal override {
-        rewardToken.safeTransferFrom(distributor, to, amount);
+        uint256 bgtAllowance = _getBgtToken().allowance(distributor, address(this));
+        if (bgtAllowance >= amount) {
+            // BGT allowance is greater then the emission amount
+            _redeemBGTAndTransferWBERA(to, amount);
+        } else if (bgtAllowance > 0) {
+            // BGT allowance is greater then 0, but less than the emission amount
+            uint256 wberaAmount = amount - bgtAllowance;
+            _redeemBGTAndTransferWBERA(to, bgtAllowance);
+            _rewardToken.safeTransferFrom(distributor, to, wberaAmount);
+        } else {
+            // BGT allowance is 0
+            _rewardToken.safeTransferFrom(distributor, to, amount);
+        }
     }
 
-    // Ensure the provided reward amount is not more than the balance in the contract.
+    /// @dev Pulls BGT from the Distributor, redeems it for BERA, wraps to WBERA, and sends to recipient.
+    function _redeemBGTAndTransferWBERA(address to, uint256 amount) internal {
+        IERC20 bgt_ = _getBgtToken();
+        bgt_.safeTransferFrom(distributor, address(this), amount);
+        IBGT(address(bgt_)).redeem(address(this), amount);
+        IWBERA(payable(address(_rewardToken))).deposit{ value: amount }();
+        _rewardToken.safeTransfer(to, amount);
+    }
+
+    // Ensure the provided reward amount is not more than the combined BGT + WBERA allowance.
     // This keeps the reward rate in the right range, preventing overflows due to
     // very high values of rewardRate in the earned and rewardsPerToken functions;
     // Reward + leftover must be less than 2^256 / 10^18 to avoid overflow.
     function _checkRewardSolvency() internal view override {
-        uint256 allowance = rewardToken.allowance(distributor, address(this));
-        if (undistributedRewards / PRECISION > allowance) InsolventReward.selector.revertWith();
+        uint256 bgtAllowance = _getBgtToken().allowance(distributor, address(this));
+        uint256 wberaAllowance = _rewardToken.allowance(distributor, address(this));
+        if (undistributedRewards / PRECISION > bgtAllowance + wberaAllowance) {
+            InsolventReward.selector.revertWith();
+        }
     }
 
     /// @notice process the incentives for a validator.
     /// @notice If a token transfer consumes more than 500k gas units, the transfer alone will fail.
     /// @param pubkey The pubkey of the validator to process the incentives for.
-    /// @param bgtEmitted The amount of BGT emitted by the validator.
-    function _processIncentives(bytes calldata pubkey, uint256 bgtEmitted) internal {
+    /// @param rewardsEmitted The amount of rewards emitted by the validator.
+    function _processIncentives(bytes calldata pubkey, uint256 rewardsEmitted) internal {
         // Validator's operator corresponding to the pubkey receives the incentives.
         // The pubkey -> operator relationship is maintained by the BeaconDeposit contract.
         address _operator = beaconDepositContract.getOperator(pubkey);
         IBeraChef beraChef = IDistributor(distributor).beraChef();
-        address bgtIncentiveDistributor = getBGTIncentiveDistributor();
 
         uint256 whitelistedTokensCount = whitelistedTokens.length;
+        address incentiveTokensCollector = getIncentiveTokensCollector();
+        bool incentiveTransferSuccess;
         unchecked {
             for (uint256 i; i < whitelistedTokensCount; ++i) {
                 address token = whitelistedTokens[i];
                 Incentive storage incentive = incentives[token];
-                uint256 amount = FixedPointMathLib.mulDiv(bgtEmitted, incentive.incentiveRate, PRECISION);
                 uint256 amountRemaining = incentive.amountRemaining;
+                uint256 amount = FixedPointMathLib.mulDiv(rewardsEmitted, incentive.incentiveRate, PRECISION);
+
                 amount = FixedPointMathLib.min(amount, amountRemaining);
-                // collect the incentive fee.
-                (amount, amountRemaining) = _collectIncentiveFee(token, amount, amountRemaining);
 
                 uint256 validatorShare;
                 if (amount > 0) {
@@ -586,44 +660,26 @@ contract RewardVault is PausableUpgradeable, ReentrancyGuardUpgradeable, Factory
                 if (validatorShare > 0) {
                     // Transfer the validator share of the incentive to its operator address.
                     // slither-disable-next-line arbitrary-send-erc20
-                    bool success = token.trySafeTransfer(_operator, validatorShare);
-                    if (success) {
+                    incentiveTransferSuccess = token.trySafeTransfer(_operator, validatorShare);
+                    if (incentiveTransferSuccess) {
                         // Update the remaining amount only if tokens were transferred.
                         amountRemaining -= validatorShare;
-                        emit IncentivesProcessed(pubkey, token, bgtEmitted, validatorShare);
+                        emit IncentivesProcessed(pubkey, token, rewardsEmitted, validatorShare);
                     } else {
-                        emit IncentivesProcessFailed(pubkey, token, bgtEmitted, validatorShare);
+                        emit IncentivesProcessFailed(pubkey, token, rewardsEmitted, validatorShare);
                     }
                 }
 
                 if (amount > 0) {
-                    // Transfer the remaining amount of the incentive to the bgtIncentiveDistributor contract for
-                    // distribution among BGT boosters.
-                    // give the bgtIncentiveDistributor the allowance to transfer the incentive token.
-                    bytes memory data = abi.encodeCall(IERC20.approve, (bgtIncentiveDistributor, amount));
-                    (bool success,) = token.call{ gas: SAFE_GAS_LIMIT }(data);
-                    if (success) {
-                        // reuse the already defined data variable to avoid stack too deep error.
-                        data = abi.encodeCall(IBGTIncentiveDistributor.receiveIncentive, (pubkey, token, amount));
-                        (success,) = bgtIncentiveDistributor.call{ gas: SAFE_GAS_LIMIT }(data);
-                        if (success) {
-                            amountRemaining -= amount;
-                            emit BGTBoosterIncentivesProcessed(pubkey, token, bgtEmitted, amount);
-                        } else {
-                            // If the transfer fails, set the allowance back to 0.
-                            // If we don't reset the allowance, the approved tokens remain unused, and future calls to
-                            // _processIncentives would revert for tokens like USDT that require allowance to be 0
-                            // before setting a new value, blocking the entire incentive distribution process.
-                            data = abi.encodeCall(IERC20.approve, (bgtIncentiveDistributor, 0));
-                            (success,) = token.call{ gas: SAFE_GAS_LIMIT }(data);
-                            emit BGTBoosterIncentivesProcessFailed(pubkey, token, bgtEmitted, amount);
-                        }
-                    }
-                    // if the approve fails, log the failure in sending the incentive to the bgtIncentiveDistributor.
-                    else {
-                        emit BGTBoosterIncentivesProcessFailed(pubkey, token, bgtEmitted, amount);
+                    incentiveTransferSuccess = token.trySafeTransfer(incentiveTokensCollector, amount);
+                    if (incentiveTransferSuccess) {
+                        amountRemaining -= amount;
+                        emit IncentivesCollected(pubkey, token, rewardsEmitted, amount);
+                    } else {
+                        emit IncentivesCollectionFailed(pubkey, token, rewardsEmitted, amount);
                     }
                 }
+
                 incentive.amountRemaining = amountRemaining;
             }
         }
@@ -642,30 +698,6 @@ contract RewardVault is PausableUpgradeable, ReentrancyGuardUpgradeable, Factory
                 }
             }
         }
-    }
-
-    function _collectIncentiveFee(
-        address token,
-        uint256 amount,
-        uint256 amountRemaining
-    )
-        internal
-        returns (uint256, uint256)
-    {
-        // Computes the fee amount based on the incentive fee rate, and transfers it to the collector.
-        IRewardVaultFactory factory = IRewardVaultFactory(factory());
-        uint256 feeAmount = factory.getIncentiveFeeAmount(amount);
-        if (feeAmount > 0) {
-            amount -= feeAmount;
-            bool success = token.trySafeTransfer(factory.bgtIncentiveFeeCollector(), feeAmount);
-            if (success) {
-                amountRemaining -= feeAmount;
-                emit IncentiveFeeCollected(token, feeAmount);
-            } else {
-                emit IncentiveFeeCollectionFailed(token, feeAmount);
-            }
-        }
-        return (amount, amountRemaining);
     }
 
     function _setRewardRate() internal override {

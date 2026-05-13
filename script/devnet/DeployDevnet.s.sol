@@ -19,6 +19,8 @@ import { BGTIncentiveDistributor } from "src/pol/rewards/BGTIncentiveDistributor
 import { BGTIncentiveDistributorDeployer } from "src/pol/BGTIncentiveDistributorDeployer.sol";
 import { BGTIncentiveFeeDeployer } from "src/pol/BGTIncentiveFeeDeployer.sol";
 import { WBERAStakerVault } from "src/pol/WBERAStakerVault.sol";
+import { WBERAStakerVaultWithdrawalRequest } from "src/pol/WBERAStakerVaultWithdrawalRequest.sol";
+import { WBERAStakerWithdrawReqDeployer } from "src/pol/WBERAStakerWithdrawReqDeployer.sol";
 import { BGTIncentiveFeeCollector } from "src/pol/BGTIncentiveFeeCollector.sol";
 import { DedicatedEmissionStreamManagerDeployer } from "src/pol/DedicatedEmissionStreamManagerDeployer.sol";
 import { DedicatedEmissionStreamManager } from "src/pol/rewards/DedicatedEmissionStreamManager.sol";
@@ -81,16 +83,6 @@ contract DeployDevnetScript is BaseDeployScript, RBAC, Storage, AddressBook, Con
     /// @dev Block delay before a queued reward allocation becomes active in BeraChef.
     uint64 internal constant REWARD_ALLOCATION_BLOCK_DELAY = 8191;
 
-    // BlockRewardController rates
-    uint256 internal constant BASE_RATE = 0.5e18;
-    uint256 internal constant REWARD_RATE = 3e18;
-    uint256 internal constant MIN_BOOSTED_REWARD_RATE = 0;
-    uint256 internal constant BOOST_MULTIPLIER = 3e18;
-    uint256 internal constant REWARD_CONVEXITY = 1e18;
-
-    /// @dev BGT incentive fee rate on RewardVaultFactory (10% in basis points).
-    uint256 internal constant BGT_INCENTIVE_FEE_RATE = 1000; // 10% = 1000 bps
-
     // ─── Additional storage not in base Storage
     // ───────────────────────────────
 
@@ -120,6 +112,7 @@ contract DeployDevnetScript is BaseDeployScript, RBAC, Storage, AddressBook, Con
         _deployBGTFees();
         _deployBGTIncentiveDistributor();
         _deployBGTIncentiveFees();
+        _deployWBERAStakerWithdrawReq();
         _deployDedicatedEmissionStreamManager();
         _deployRewardVaultHelper();
 
@@ -360,6 +353,29 @@ contract DeployDevnetScript is BaseDeployScript, RBAC, Storage, AddressBook, Con
         );
     }
 
+    function _deployWBERAStakerWithdrawReq() internal {
+        console2.log("\n--- [2/4] WBERAStakerVaultWithdrawalRequest ---");
+
+        WBERAStakerWithdrawReqDeployer wsrDeployer = new WBERAStakerWithdrawReqDeployer(
+            msg.sender, address(wberaStakerVault), _saltsForProxy(type(WBERAStakerVaultWithdrawalRequest).creationCode)
+        );
+
+        wberaStakerVaultWithdrawalRequest = wsrDeployer.wberaStakerVaultWithdrawalRequest();
+        _checkDeploymentAddress(
+            "WBERAStakerVaultWithdrawalRequest",
+            address(wberaStakerVaultWithdrawalRequest),
+            _polAddresses.wberaStakerVaultWithdrawalRequest
+        );
+
+        // Wire the NFT withdrawal-request contract on the staker vault.
+        wberaStakerVault.setWithdrawalRequests721(address(wberaStakerVaultWithdrawalRequest));
+        require(
+            address(wberaStakerVault.withdrawalRequests721()) == address(wberaStakerVaultWithdrawalRequest),
+            "DeployDevnet: withdrawalRequests721 not set on WBERAStakerVault"
+        );
+        console2.log("Wired WBERAStakerVaultWithdrawalRequest on WBERAStakerVault");
+    }
+
     function _deployDedicatedEmissionStreamManager() internal {
         console2.log("\n--- [2/4] DedicatedEmissionStreamManager ---");
 
@@ -490,8 +506,14 @@ contract DeployDevnetScript is BaseDeployScript, RBAC, Storage, AddressBook, Con
         // BGT: set staker, whitelist distributor as sender, set minter.
         _setBGTAddresses(address(bgtStaker), address(distributor), address(blockRewardController));
 
-        // BlockRewardController: set all reward rate parameters.
-        _setPOLParams(BASE_RATE, REWARD_RATE, MIN_BOOSTED_REWARD_RATE, BOOST_MULTIPLIER, REWARD_CONVEXITY);
+        // BlockRewardController V2 reinitializer: wires WBERA and clears deprecated rate/boost slots.
+        // POLDeployer ran the V1 initializer; rates are now constants and WBERA must be set explicitly.
+        blockRewardController.initialize();
+        require(
+            address(blockRewardController.wbera()) == WBERA_ADDRESS,
+            "DeployDevnet: WBERA not set on BlockRewardController"
+        );
+        console2.log("Ran BlockRewardController V2 reinitializer");
 
         // BeraChef: set the block delay for reward allocation activation.
         _setRewardAllocationBlockDelay(REWARD_ALLOCATION_BLOCK_DELAY);
@@ -504,12 +526,23 @@ contract DeployDevnetScript is BaseDeployScript, RBAC, Storage, AddressBook, Con
         );
         console2.log("Set DedicatedEmissionStreamManager on Distributor");
 
-        // RewardVaultFactory: link incentive distributor, fee collector, fee rate and helper.
-        rewardVaultFactory.setBGTIncentiveDistributor(address(bgtIncentiveDistributor));
-        rewardVaultFactory.setBGTIncentiveFeeCollector(address(bgtIncentiveFeeCollector));
-        rewardVaultFactory.setBGTIncentiveFeeRate(BGT_INCENTIVE_FEE_RATE);
+        // Distributor: switch emission token from BGT (set by V1 init in POLDeployer) to WBERA.
+        distributor.setEmissionToken();
+        require(distributor.emissionToken() == WBERA_ADDRESS, "DeployDevnet: emission token not WBERA");
+        console2.log("Set emission token on Distributor to WBERA");
+
+        // RewardVaultFactory: incentive tokens collector + helper.
+        rewardVaultFactory.setIncentiveTokensCollector(address(bgtIncentiveFeeCollector));
         rewardVaultFactory.setRewardVaultHelper(address(rewardVaultHelper));
         console2.log("Configured RewardVaultFactory incentive settings");
+
+        // RewardVaultHelper: wire sWBERA (the WBERAStakerVault is the sWBERA ERC4626 vault).
+        rewardVaultHelper.setSWBERA(address(wberaStakerVault));
+        require(
+            rewardVaultHelper.sWBERA() == address(wberaStakerVault),
+            "DeployDevnet: sWBERA not set on RewardVaultHelper"
+        );
+        console2.log("Set sWBERA on RewardVaultHelper");
 
         require(
             rewardVaultFactory.rewardVaultHelper() == address(rewardVaultHelper),
@@ -704,6 +737,14 @@ contract DeployDevnetScript is BaseDeployScript, RBAC, Storage, AddressBook, Con
             console2.log("BGTIncentiveFeeCollector roles transferred");
         }
 
+        // ── WBERAStakerVaultWithdrawalRequest (Ownable) ──
+        wberaStakerVaultWithdrawalRequest.transferOwnership(owner);
+        require(
+            wberaStakerVaultWithdrawalRequest.owner() == owner,
+            "DeployDevnet: WBERAStakerVaultWithdrawalRequest ownership transfer failed"
+        );
+        console2.log("WBERAStakerVaultWithdrawalRequest ownership transferred");
+
         // ── DedicatedEmissionStreamManager (AccessControl) ──
         {
             RBAC.RoleDescription memory allocationManagerRole = RBAC.RoleDescription({
@@ -842,6 +883,7 @@ contract DeployDevnetScript is BaseDeployScript, RBAC, Storage, AddressBook, Con
         console2.log("FeeCollector:                    ", address(feeCollector));
         console2.log("BGTIncentiveDistributor:         ", address(bgtIncentiveDistributor));
         console2.log("WBERAStakerVault:                ", address(wberaStakerVault));
+        console2.log("WBERAStakerVaultWithdrawalRequest:", address(wberaStakerVaultWithdrawalRequest));
         console2.log("BGTIncentiveFeeCollector:        ", address(bgtIncentiveFeeCollector));
         console2.log("DedicatedEmissionStreamManager:  ", address(dedicatedEmissionStreamManager));
         console2.log("RewardVaultHelper:               ", address(rewardVaultHelper));

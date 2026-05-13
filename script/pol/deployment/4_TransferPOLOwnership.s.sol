@@ -155,7 +155,7 @@ contract TransferPOLOwnershipScript is RBAC, BaseScript, Storage, AddressBook {
         _validateCode("BeraChef", _polAddresses.beraChef);
         beraChef = BeraChef(_polAddresses.beraChef);
         _validateCode("BlockRewardController", _polAddresses.blockRewardController);
-        blockRewardController = BlockRewardController(_polAddresses.blockRewardController);
+        blockRewardController = BlockRewardController(payable(_polAddresses.blockRewardController));
         _validateCode("Distributor", _polAddresses.distributor);
         distributor = Distributor(_polAddresses.distributor);
         _validateCode("RewardVaultFactory", _polAddresses.rewardVaultFactory);

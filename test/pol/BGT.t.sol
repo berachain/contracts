@@ -840,19 +840,8 @@ contract BGTTest is POLTest {
         bgt.setBgtTermsAndConditions("BGT TERMS AND CONDITIONS");
     }
 
-    function testFuzz_BurnExcess(
-        address caller,
-        uint256 nativeTokenBalance,
-        uint256 bgtSupply,
-        uint256 minRewardPerBlock
-    )
-        public
-    {
-        uint256 baseRate = 0.5 ether;
-        minRewardPerBlock =
-            _bound(minRewardPerBlock, 0, BlockRewardController(blockRewardController).MAX_MIN_BOOSTED_REWARD_RATE());
-
-        uint256 maxBgtPerBlock = minRewardPerBlock + baseRate;
+    function testFuzz_BurnExcess(address caller, uint256 nativeTokenBalance, uint256 bgtSupply) public {
+        uint256 maxBgtPerBlock = BlockRewardController(blockRewardController).getMaxBGTPerBlock();
         uint256 potentialMintableAmountInBuffer = 8191 * maxBgtPerBlock;
 
         bgtSupply = _bound(bgtSupply, 0, 1e6 ether - potentialMintableAmountInBuffer);
@@ -863,11 +852,6 @@ contract BGTTest is POLTest {
 
         // Simulate native token accumulated in BGT contract
         vm.deal(address(bgt), nativeTokenBalance);
-
-        vm.startPrank(governance);
-        BlockRewardController(blockRewardController).setMinBoostedRewardRate(minRewardPerBlock);
-        BlockRewardController(blockRewardController).setBaseRate(baseRate);
-        vm.stopPrank();
 
         vm.prank(caller);
         if (nativeTokenBalance > bgtSupply + potentialMintableAmountInBuffer) {

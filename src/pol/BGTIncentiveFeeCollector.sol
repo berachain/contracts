@@ -244,6 +244,9 @@ contract BGTIncentiveFeeCollector is
         }
 
         // 0 edge case: no stakes or no amount to split
+        // In this case, claimer will be able to claim all the fee tokens without paying the payout amount of WBERA.
+        // We are aware of this issue and does not consider it a problem given totalStake being 0 is not practically,
+        // possible situation as all the LST vaults are deployed with initial supply.
         if (totalStake == 0 || amount == 0) {
             return amounts;
         }

@@ -139,7 +139,8 @@ contract BGTIncentiveDistributor is
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
 
     /// @inheritdoc IBGTIncentiveDistributor
-    function claim(Claim[] calldata _claims) external nonReentrant whenNotPaused {
+    function claim(Claim[] calldata _claims) external nonReentrant {
+        if (paused() && !hasRole(MANAGER_ROLE, msg.sender)) EnforcedPause.selector.revertWith();
         uint256 cLen = _claims.length;
 
         if (cLen == 0) InvalidArray.selector.revertWith();

@@ -3,65 +3,71 @@ pragma solidity 0.8.26;
 
 import { OwnableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
-import { FixedPointMathLib } from "solady/src/utils/FixedPointMathLib.sol";
+import { SafeTransferLib } from "solady/src/utils/SafeTransferLib.sol";
 
 import { Utils } from "../../libraries/Utils.sol";
 import { IBlockRewardController } from "../interfaces/IBlockRewardController.sol";
 import { IBeaconDeposit } from "../interfaces/IBeaconDeposit.sol";
 import { BGT } from "../BGT.sol";
+import { IWBERA } from "../interfaces/IWBERA.sol";
 
 /// @title BlockRewardController
 /// @author Berachain Team
-/// @notice The BlockRewardController contract is responsible for managing the reward rate of BGT.
+/// @notice The BlockRewardController contract is responsible for managing the reward rate
+/// and distributing WBERA (migrated from BGT).
 /// @dev It should be owned by the governance module.
-/// @dev It should also be the only contract that can mint the BGT token.
 /// @dev The invariant(s) that should hold true are:
 ///      - processRewards() is only called at most once per block timestamp.
 contract BlockRewardController is IBlockRewardController, OwnableUpgradeable, UUPSUpgradeable {
     using Utils for bytes4;
 
-    /// @notice The maximum value for base rate.
-    uint256 public constant MAX_BASE_RATE = 5 * FixedPointMathLib.WAD;
+    /// @notice The version of the contract.
+    uint64 public constant VERSION = 2;
 
-    /// @notice The maximum value for reward rate.
-    uint256 public constant MAX_REWARD_RATE = 5 * FixedPointMathLib.WAD;
+    /// @notice The constant base rate for the emission token sent to the validator's operator each block.
+    uint256 internal constant _BASE_RATE = 0.4e18;
 
-    /// @notice The maximum value for the minimum reward rate after boosts accounting.
-    uint256 public constant MAX_MIN_BOOSTED_REWARD_RATE = 10 * FixedPointMathLib.WAD;
+    /// @notice The constant reward rate for the emission token sent to the distributor each block.
+    uint256 internal constant _REWARD_RATE = 1.305e18;
 
-    /// @notice The maximum value for boost multiplier.
-    uint256 public constant MAX_BOOST_MULTIPLIER = 5 * FixedPointMathLib.WAD;
-
-    /// @notice The maximum value for reward convexity parameter.
-    uint256 public constant MAX_REWARD_CONVEXITY = FixedPointMathLib.WAD;
+    /// @notice The WBERA token address.
+    address public constant WBERA_ADDRESS = 0x6969696969696969696969696969696969696969;
 
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
     /*                          STORAGE                           */
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
 
-    /// @notice The BGT token contract that we are minting to the distributor.
+    /// @notice The BGT token contract used internally for minting and redeeming to native tokens.
     BGT public bgt;
 
     /// @notice The Beacon deposit contract to check the pubkey -> operator relationship.
     IBeaconDeposit public beaconDepositContract;
 
-    /// @notice The distributor contract that receives the minted BGT.
+    /// @notice The distributor contract that receives the minted WBERA.
     address public distributor;
 
-    /// @notice The constant base rate for BGT.
-    uint256 public baseRate;
+    /// @dev Deprecated. Replaced by the `BASE_RATE` constant. Slot retained to preserve storage layout.
+    uint256 internal _baseRate;
 
-    /// @notice The reward rate for BGT.
-    uint256 public rewardRate;
+    /// @dev Deprecated. Replaced by the `REWARD_RATE` constant. Slot retained to preserve storage layout.
+    uint256 internal _rewardRate;
 
+    /// @dev Deprecated
     /// @notice The minimum reward rate for BGT after accounting for validator boosts.
-    uint256 public minBoostedRewardRate;
+    uint256 internal _minBoostedRewardRate;
 
+    /// @dev Deprecated
     /// @notice The boost multiplier param in the function, determines the inflation cap, 18 dec.
-    uint256 public boostMultiplier;
+    uint256 internal _boostMultiplier;
 
+    /// @dev Deprecated
     /// @notice The reward convexity param in the function, determines how fast it converges to its max, 18 dec.
-    int256 public rewardConvexity;
+    int256 internal _rewardConvexity;
+
+    /// @notice The WBERA token contract used to wrap and distribute rewards.
+    IWBERA public wbera;
+
+    receive() external payable { }
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -87,6 +93,22 @@ contract BlockRewardController is IBlockRewardController, OwnableUpgradeable, UU
         beaconDepositContract = IBeaconDeposit(_beaconDepositContract);
     }
 
+    /// @notice V2 initializer: migrates the emission token from BGT to WBERA.
+    /// @dev Sets the WBERA contract used for wrapping native tokens before distribution,
+    /// and clears deprecated rate and boost parameters from V1 (rates are now constants).
+    function initialize() external reinitializer(VERSION) onlyOwner {
+        wbera = IWBERA(WBERA_ADDRESS);
+
+        emit BaseRateChanged(_baseRate, _BASE_RATE);
+        emit RewardRateChanged(_rewardRate, _REWARD_RATE);
+
+        _baseRate = 0;
+        _rewardRate = 0;
+        _minBoostedRewardRate = 0;
+        _boostMultiplier = 0;
+        _rewardConvexity = 0;
+    }
+
     function _authorizeUpgrade(address newImplementation) internal override onlyOwner { }
 
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
@@ -105,52 +127,6 @@ contract BlockRewardController is IBlockRewardController, OwnableUpgradeable, UU
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
 
     /// @inheritdoc IBlockRewardController
-    function setBaseRate(uint256 _baseRate) external onlyOwner {
-        if (_baseRate > MAX_BASE_RATE) {
-            InvalidBaseRate.selector.revertWith();
-        }
-        emit BaseRateChanged(baseRate, _baseRate);
-        baseRate = _baseRate;
-    }
-
-    /// @inheritdoc IBlockRewardController
-    function setRewardRate(uint256 _rewardRate) external onlyOwner {
-        if (_rewardRate > MAX_REWARD_RATE) {
-            InvalidRewardRate.selector.revertWith();
-        }
-        emit RewardRateChanged(rewardRate, _rewardRate);
-        rewardRate = _rewardRate;
-    }
-
-    /// @inheritdoc IBlockRewardController
-    function setMinBoostedRewardRate(uint256 _minBoostedRewardRate) external onlyOwner {
-        if (_minBoostedRewardRate > MAX_MIN_BOOSTED_REWARD_RATE) {
-            InvalidMinBoostedRewardRate.selector.revertWith();
-        }
-        emit MinBoostedRewardRateChanged(minBoostedRewardRate, _minBoostedRewardRate);
-        minBoostedRewardRate = _minBoostedRewardRate;
-    }
-
-    /// @inheritdoc IBlockRewardController
-    function setBoostMultiplier(uint256 _boostMultiplier) external onlyOwner {
-        if (_boostMultiplier > MAX_BOOST_MULTIPLIER) {
-            InvalidBoostMultiplier.selector.revertWith();
-        }
-        emit BoostMultiplierChanged(boostMultiplier, _boostMultiplier);
-        boostMultiplier = _boostMultiplier;
-    }
-
-    /// @inheritdoc IBlockRewardController
-    function setRewardConvexity(uint256 _rewardConvexity) external onlyOwner {
-        if (_rewardConvexity == 0 || _rewardConvexity > MAX_REWARD_CONVEXITY) {
-            InvalidRewardConvexity.selector.revertWith();
-        }
-        emit RewardConvexityChanged(uint256(rewardConvexity), _rewardConvexity);
-        // store as int256 to avoid casting during computation
-        rewardConvexity = int256(_rewardConvexity);
-    }
-
-    /// @inheritdoc IBlockRewardController
     function setDistributor(address _distributor) external onlyOwner {
         if (_distributor == address(0)) {
             ZeroAddress.selector.revertWith();
@@ -164,49 +140,23 @@ contract BlockRewardController is IBlockRewardController, OwnableUpgradeable, UU
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
 
     /// @inheritdoc IBlockRewardController
-    function computeReward(
-        uint256 boostPower,
-        uint256 _rewardRate,
-        uint256 _boostMultiplier,
-        int256 _rewardConvexity
-    )
-        public
-        pure
-        returns (uint256 reward)
-    {
-        // On conv == 0, mathematical result should be max reward even for boost == 0 (0^0 = 1)
-        // but since BlockRewardController enforces conv > 0, we're not adding code for conv == 0 case
-        if (boostPower > 0) {
-            // Compute intermediate parameters for the reward formula
-            uint256 one = FixedPointMathLib.WAD;
-
-            if (boostPower == one) {
-                // avoid approx errors in the following code
-                reward = FixedPointMathLib.mulWad(_rewardRate, _boostMultiplier);
-            } else {
-                // boost^conv ∈ (0, 1]
-                uint256 tmp_0 = uint256(FixedPointMathLib.powWad(int256(boostPower), _rewardConvexity));
-                // 1 + mul * boost^conv ∈ [1, 1 + mul]
-                uint256 tmp_1 = one + FixedPointMathLib.mulWad(_boostMultiplier, tmp_0);
-                // 1 - 1 / (1 + mul * boost^conv) ∈ [0, mul / (1 + mul)]
-                uint256 tmp_2 = one - FixedPointMathLib.divWad(one, tmp_1);
-
-                // @dev Due to splitting fixed point ops, [mul / (1 + mul)] * (1 + mul) may be slightly > mul
-                uint256 coeff = FixedPointMathLib.mulWad(tmp_2, one + _boostMultiplier);
-                if (coeff > _boostMultiplier) coeff = _boostMultiplier;
-
-                reward = FixedPointMathLib.mulWad(_rewardRate, coeff);
-            }
-        }
+    function baseRate() external pure returns (uint256) {
+        return _BASE_RATE;
     }
 
     /// @inheritdoc IBlockRewardController
-    function getMaxBGTPerBlock() public view returns (uint256 amount) {
-        amount = computeReward(FixedPointMathLib.WAD, rewardRate, boostMultiplier, rewardConvexity);
-        if (amount < minBoostedRewardRate) {
-            amount = minBoostedRewardRate;
-        }
-        amount += baseRate;
+    function rewardRate() external pure returns (uint256) {
+        return _REWARD_RATE;
+    }
+
+    /// @inheritdoc IBlockRewardController
+    function getMaxBGTPerBlock() public pure returns (uint256 amount) {
+        return _BASE_RATE + _REWARD_RATE;
+    }
+
+    /// @inheritdoc IBlockRewardController
+    function getMaxEmissionPerBlock() public pure returns (uint256 amount) {
+        return _BASE_RATE + _REWARD_RATE;
     }
 
     /// @inheritdoc IBlockRewardController
@@ -219,27 +169,37 @@ contract BlockRewardController is IBlockRewardController, OwnableUpgradeable, UU
         onlyDistributor
         returns (uint256)
     {
-        uint256 base = baseRate;
-        uint256 reward = 0;
+        uint256 reward = isReady ? _REWARD_RATE : 0;
+        emit BlockRewardProcessed(pubkey, nextTimestamp, _BASE_RATE, reward);
 
-        // Only compute vaults reward if berachef is ready
-        if (isReady) {
-            // Calculate the boost power for the validator
-            uint256 boostPower = bgt.normalizedBoost(pubkey);
-            reward = computeReward(boostPower, rewardRate, boostMultiplier, rewardConvexity);
-            if (reward < minBoostedRewardRate) reward = minBoostedRewardRate;
-        }
-
-        emit BlockRewardProcessed(pubkey, nextTimestamp, base, reward);
-
-        // Use the beaconDepositContract to fetch the operator, Its gauranteed to return a valid address.
-        // Beacon Deposit contract will enforce validators to set an operator.
         address operator = beaconDepositContract.getOperator(pubkey);
-        if (base > 0) bgt.mint(operator, base);
-
-        // Mint the scaled rewards BGT for validator reward allocation to the distributor.
-        if (reward > 0) bgt.mint(distributor, reward);
+        if (_BASE_RATE != 0) _handleMinting(operator, _BASE_RATE);
+        if (reward != 0) _handleMinting(distributor, reward);
 
         return reward;
+    }
+
+    /// @inheritdoc IBlockRewardController
+    function burnExceedingBalance() external onlyDistributor {
+        uint256 balance = address(this).balance;
+        if (balance > 0) {
+            SafeTransferLib.safeTransferETH(address(0), balance);
+            emit ExceedingBalanceBurnt(balance);
+        }
+    }
+
+    /// @dev Handler to ensure distributeFor will not halt: as long as the consensus layer has not started minting
+    /// native tokens directly to this contract, this function guarantees by minting and redeeming BGT as needed that
+    /// there is always enough
+    /// native balance available to wrap and deliver emissions as WBERA. This wrapper remains necessary until native
+    /// token minting support arrives at the consensus layer.
+    function _handleMinting(address receiver, uint256 amount) internal {
+        if (address(this).balance < amount) {
+            bgt.mint(address(this), amount);
+            bgt.redeem(address(this), amount);
+        }
+
+        wbera.deposit{ value: amount }();
+        wbera.transfer(receiver, amount);
     }
 }

@@ -47,8 +47,6 @@ interface IPOLErrors is IStakingRewardsErrors {
     error RewardAllocationBlockDelayTooLarge();
     // Signature: 0x08519afa
     error NotFactoryVault();
-    // Signature: 0x978dc040
-    error ZeroPercentageWeight();
     // Signature: 0x585b9263
     error InvalidWeight();
     // Signature: 0xcb1ee123
@@ -61,25 +59,10 @@ interface IPOLErrors is IStakingRewardsErrors {
     error CommissionNotQueuedOrDelayNotPassed();
     // Signature: 0xc1abde53
     error InvalidCommissionChangeDelay();
-    // Signature: 0x716e870e
-    error InvalidIncentiveFeeRate();
     // Signature: 0x6a1aee5f
     error NotRewardAllocator();
     // Signature: 0xeb732c63
     error InvalidRewardAllocationInactivityBlockSpan();
-
-    /*                   BLOCK REWARD CONTROLLLER                  */
-
-    // Signature: 0x2e2dab43
-    error InvalidBaseRate();
-    // Signature: 0x22be2284
-    error InvalidRewardRate();
-    // Signature: 0x15482337
-    error InvalidMinBoostedRewardRate();
-    // Signature: 0xb7b2319a
-    error InvalidBoostMultiplier();
-    // Signature: 0x347f95b2
-    error InvalidRewardConvexity();
 
     /*                           STAKING                           */
 
@@ -127,15 +110,10 @@ interface IPOLErrors is IStakingRewardsErrors {
     error DuplicateReceiver(address receiver);
     // Signature: 0xe7726b79
     error InvalidRewardDuration();
-    // Signature: 0x91373fcd
-    error NotRewardDurationManager();
     // Signature: 0xfb89696d
     error NotRewardVaultManager();
     // Signature: 0x4c168419
     error DurationChangeNotAllowed();
-    // Signature: 0x3a70eb50
-    error RewardDurationCoolDownPeriodNotPassed();
-
     /*                         BEACON ROOTS                        */
 
     // Signature: 0x1390f2a1

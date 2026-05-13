@@ -47,6 +47,9 @@ contract Distributor is
     /// @dev Mainnet: 1_756_915_200, 2025-09-03T16:00:00.000Z
     uint64 private constant PECTRA11_HARD_FORK_TIMESTAMP = 1_756_915_200;
 
+    /// @notice The WBERA token address.
+    address private constant WBERA_ADDRESS = 0x6969696969696969696969696969696969696969;
+
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
     /*                          STORAGE                           */
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
@@ -55,11 +58,11 @@ contract Distributor is
     IBeraChef public beraChef;
 
     /// @notice The rewards controller contract that we are getting the rewards rate from.
-    /// @dev And is responsible for minting the BGT token.
+    /// @dev Contract is responsible for minting the emission token.
     IBlockRewardController public blockRewardController;
 
-    /// @notice The BGT token contract that we are distributing to the reward allocation receivers.
-    address public bgt;
+    /// @notice The emission token contract that we are distributing to the reward allocation receivers.
+    address public emissionToken;
 
     /// @notice The dedicated emission stream manager contract.
     IDedicatedEmissionStreamManager public dedicatedEmissionStreamManager;
@@ -71,7 +74,7 @@ contract Distributor is
 
     function initialize(
         address _berachef,
-        address _bgt,
+        address _emissionToken,
         address _blockRewardController,
         address _governance,
         uint64 _zeroValidatorPubkeyGIndex,
@@ -85,7 +88,7 @@ contract Distributor is
         __UUPSUpgradeable_init();
         _grantRole(DEFAULT_ADMIN_ROLE, _governance);
         beraChef = IBeraChef(_berachef);
-        bgt = _bgt;
+        emissionToken = _emissionToken;
         blockRewardController = IBlockRewardController(_blockRewardController);
         super.setZeroValidatorPubkeyGIndex(_zeroValidatorPubkeyGIndex);
         super.setProposerIndexGIndex(_proposerIndexGIndex);
@@ -121,6 +124,12 @@ contract Distributor is
             address(dedicatedEmissionStreamManager), _dedicatedEmissionStreamManager
         );
         dedicatedEmissionStreamManager = IDedicatedEmissionStreamManager(_dedicatedEmissionStreamManager);
+    }
+
+    /// @inheritdoc IDistributor
+    function setEmissionToken() external onlyRole(DEFAULT_ADMIN_ROLE) {
+        emissionToken = WBERA_ADDRESS;
+        emit EmissionTokenSet(emissionToken);
     }
 
     /// @inheritdoc IDistributor
@@ -161,32 +170,34 @@ contract Distributor is
         // Process the rewards with the block rewards controller for the specified block number.
         // Its dependent on the beraChef being ready, if not it will return zero rewards for the current block.
         uint256 rewardRate = blockRewardController.processRewards(pubkey, nextTimestamp, beraChef.isReady());
-        if (rewardRate == 0) {
-            // If berachef is not ready (genesis) or there aren't rewards to distribute, skip. This will skip since
-            // there is no default reward allocation.
-            return;
-        }
 
-        if (address(dedicatedEmissionStreamManager) != address(0)) {
-            uint256 emissionPerc = dedicatedEmissionStreamManager.emissionPerc();
-            IRewardAllocation.Weight[] memory rewardAllocation = dedicatedEmissionStreamManager.getRewardAllocation();
+        if (rewardRate != 0) {
+            if (address(dedicatedEmissionStreamManager) != address(0)) {
+                uint256 emissionPerc = dedicatedEmissionStreamManager.emissionPerc();
+                IRewardAllocation.Weight[] memory rewardAllocation =
+                    dedicatedEmissionStreamManager.getRewardAllocation();
 
-            if (emissionPerc > 0 && rewardAllocation.length > 0) {
-                uint256 graAmount = FixedPointMathLib.fullMulDiv(rewardRate, emissionPerc, ONE_HUNDRED_PERCENT);
-                uint256 excessEmission = _distributeRewards(graAmount, rewardAllocation, pubkey, nextTimestamp, true);
+                if (emissionPerc > 0 && rewardAllocation.length > 0) {
+                    uint256 graAmount = FixedPointMathLib.fullMulDiv(rewardRate, emissionPerc, ONE_HUNDRED_PERCENT);
+                    uint256 excessEmission =
+                        _distributeRewards(graAmount, rewardAllocation, pubkey, nextTimestamp, true);
 
-                // Decrease the reward rate by the reward allocation amount.
-                rewardRate -= graAmount - excessEmission;
+                    // Decrease the reward rate by the reward allocation amount.
+                    rewardRate -= graAmount - excessEmission;
+                }
             }
+
+            // Activate the queued reward allocation if it is ready.
+            beraChef.activateReadyQueuedRewardAllocation(pubkey);
+
+            // Get the active reward allocation for the validator.
+            // This will return the default reward allocation if the validator does not have an active reward
+            // allocation.
+            IRewardAllocation.RewardAllocation memory ra = beraChef.getActiveRewardAllocation(pubkey);
+            _distributeRewards(rewardRate, ra.weights, pubkey, nextTimestamp, false);
         }
 
-        // Activate the queued reward allocation if it is ready.
-        beraChef.activateReadyQueuedRewardAllocation(pubkey);
-
-        // Get the active reward allocation for the validator.
-        // This will return the default reward allocation if the validator does not have an active reward allocation.
-        IRewardAllocation.RewardAllocation memory ra = beraChef.getActiveRewardAllocation(pubkey);
-        _distributeRewards(rewardRate, ra.weights, pubkey, nextTimestamp, false);
+        blockRewardController.burnExceedingBalance();
     }
 
     /// @dev Accumulates any excess emission that cannot be distributed to a vault in the global reward allocation,
@@ -236,8 +247,8 @@ contract Distributor is
 
             if (rewardAmount > 0) {
                 // The reward vault will pull the rewards from this contract so we can keep the approvals for the
-                // soul bound token BGT clean.
-                bgt.safeIncreaseAllowance(receiver, rewardAmount);
+                // emission token.
+                emissionToken.safeIncreaseAllowance(receiver, rewardAmount);
 
                 // Notify the receiver of the reward.
                 IRewardVault(receiver).notifyRewardAmount(pubkey, rewardAmount);

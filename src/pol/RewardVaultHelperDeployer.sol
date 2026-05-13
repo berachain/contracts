@@ -21,7 +21,7 @@ contract RewardVaultHelperDeployer is Create2Deployer {
             deployWithCreate2(rewardVaultHelperSalt.implementation, type(RewardVaultHelper).creationCode);
         // deploy the RewardVaultHelper proxy
         rewardVaultHelper =
-            RewardVaultHelper(deployProxyWithCreate2(rewardVaultHelperImpl, rewardVaultHelperSalt.proxy));
+            RewardVaultHelper(payable(deployProxyWithCreate2(rewardVaultHelperImpl, rewardVaultHelperSalt.proxy)));
         // initialize the contract
         rewardVaultHelper.initialize(owner);
     }

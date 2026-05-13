@@ -28,22 +28,33 @@ contract POLE2EFuzz is POLGasSimulationSimple {
         RewardVault[] memory vaults = setUpFuzz(weights, numVaults, incentivesCount); // Setup the
         // environment with fuzzed data
 
-        // Total rewards for the block are set by super.setUp() to TEST_BGT_PER_BLOCK
-        uint256 totalRewards = TEST_BGT_PER_BLOCK;
+        // Total rewards for the block are set by super.setUp() to blockRewardController.rewardRate()
+        uint256 totalRewards = blockRewardController.rewardRate();
 
-        // Calculate expected rewards for each vault and expect the RewardAdded event
+        // Fund the BlockRewardController so processRewards can wrap rewards directly into WBERA,
+        // skipping the legacy BGT mint/redeem fallback path (BGT is being deprecated).
+        vm.deal(address(blockRewardController), blockRewardController.getMaxBGTPerBlock());
+
+        uint256[] memory undistributedBefore = new uint256[](numVaults);
         for (uint256 i; i < numVaults; ++i) {
-            uint256 expectedReward = (totalRewards * weights[i]) * PRECISION / 10_000;
-            vm.expectEmit(true, true, true, true, address(vaults[i]));
-            emit RewardAdded(expectedReward);
+            undistributedBefore[i] = vaults[i].undistributedRewards();
         }
-
-        deal(address(bgt), address(bgt).balance + TEST_BGT_PER_BLOCK); // simulate native token distribution
 
         distributor.distributeFor(
             lastProcessedTimestamp, valData.index, valData.pubkey, valData.proposerIndexProof, valData.pubkeyProof
         );
         lastProcessedTimestamp++;
+
+        // Each vault should have received its weighted share of the block rewards, scaled by PRECISION
+        // (StakingRewards._notifyRewardAmount stores undistributedRewards = reward * PRECISION).
+        for (uint256 i; i < numVaults; ++i) {
+            uint256 expectedReward = totalRewards * weights[i] * PRECISION / 10_000;
+            assertEq(
+                vaults[i].undistributedRewards() - undistributedBefore[i],
+                expectedReward,
+                "Mismatch in distributed reward"
+            );
+        }
 
         // Verification
         verifyWeights(numVaults, weights);

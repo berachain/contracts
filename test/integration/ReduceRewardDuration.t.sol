@@ -49,7 +49,7 @@ contract ReduceRewardDurationTest is Create2Deployer, Test, POLAddressBook {
         address rewardVault = RewardVaultFactory(_polAddresses.rewardVaultFactory).createRewardVault(stakingToken);
 
         // new reward duration is 7 days
-        assertEq(RewardVault(rewardVault).rewardsDuration(), 7 days);
+        assertEq(RewardVault(payable(rewardVault)).rewardsDuration(), 7 days);
     }
 
     function test_RewardVaultUpgradeOnWhitelistedVaults() public {
@@ -62,7 +62,7 @@ contract ReduceRewardDurationTest is Create2Deployer, Test, POLAddressBook {
         _upgradeVaultImpl();
         // verify that rewardVaultManager on such vault is equal to the rewardDurationManager
         for (uint256 i = 0; i < whitelistedVaults.length; i++) {
-            assertEq(RewardVault(whitelistedVaults[i]).rewardVaultManager(), rewardDurationManagers[i]);
+            assertEq(RewardVault(payable(whitelistedVaults[i])).rewardVaultManager(), rewardDurationManagers[i]);
         }
     }
 
@@ -73,8 +73,8 @@ contract ReduceRewardDurationTest is Create2Deployer, Test, POLAddressBook {
         // upgrade the vault implementation to be able to set maxRewardsPerSecond
         _upgradeVaultImpl();
         // default target rewards per second is 0
-        assertEq(RewardVault(whitelistedVault).targetRewardsPerSecond(), 0);
-        assertEq(RewardVault(whitelistedVault).minRewardDurationForTargetRate(), 0);
+        assertEq(RewardVault(payable(whitelistedVault)).targetRewardsPerSecond(), 0);
+        assertEq(RewardVault(payable(whitelistedVault)).minRewardDurationForTargetRate(), 0);
         vm.prank(rewardDurationManager);
         // set the max rewards per second to 1 BGT per second i.e 1e18 per second and
         // with precision of 18, it becomes 1e36.
@@ -82,11 +82,11 @@ contract ReduceRewardDurationTest is Create2Deployer, Test, POLAddressBook {
         vm.expectEmit();
         emit IRewardVault.TargetRewardsPerSecondUpdated(1e36, 0);
         emit IRewardVault.MinRewardDurationForTargetRateUpdated(3 days, 0);
-        RewardVault(whitelistedVault).setTargetRewardsPerSecond(1e36);
+        RewardVault(payable(whitelistedVault)).setTargetRewardsPerSecond(1e36);
         // verify that the max rewards per second is 1e36
-        assertEq(RewardVault(whitelistedVault).targetRewardsPerSecond(), 1e36);
+        assertEq(RewardVault(payable(whitelistedVault)).targetRewardsPerSecond(), 1e36);
         // verify min reward duration for target rate is set to 3 days
-        assertEq(RewardVault(whitelistedVault).minRewardDurationForTargetRate(), 3 days);
+        assertEq(RewardVault(payable(whitelistedVault)).minRewardDurationForTargetRate(), 3 days);
     }
 
     function _upgradeVaultImpl() internal {

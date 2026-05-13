@@ -124,6 +124,7 @@ interface IBGTIncentiveDistributor is IPOLErrors {
 
     /**
      * @notice Claim rewards based on the specified metadata
+     * @dev If the contract is paused, only address with MANAGER_ROLE can call this function
      * @param _claims Claim[] List of claim metadata
      */
     function claim(Claim[] calldata _claims) external;

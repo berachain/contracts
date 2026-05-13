@@ -135,6 +135,21 @@ contract LSTStakerVaultFactoryTest is Test, Create2Deployer {
         assertEq(address(withdrawal721), secondCreation.withdrawal721);
     }
 
+    function test_CreateLSTStakerVaultSystem_FailsOnInflationAttack() public {
+        mockLst = new MockLST();
+
+        // Seed predicted vault address before deployment to simulate an inflation attack.
+        address predictedVault = factory.predictStakerVaultAddress(address(mockLst));
+        mockLst.mint(predictedVault, 1 ether);
+        mockLst.mint(governance, 10 ether);
+
+        vm.startPrank(governance);
+        mockLst.approve(address(factory), 10 ether);
+        vm.expectRevert(bytes("Inflation attack detected"));
+        factory.createLSTStakerVaultSystem(address(mockLst));
+        vm.stopPrank();
+    }
+
     function test_CreateLSTStakerVaultSystem() public {
         mockLst = new MockLST();
         _deployVault(address(mockLst));

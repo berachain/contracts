@@ -28,7 +28,7 @@ abstract contract BeaconRootsHelperTest is POLTest {
 
         assertEq(address(distributor.beraChef()), address(beraChef));
         assertEq(address(distributor.blockRewardController()), address(blockRewardController));
-        assertEq(address(distributor.bgt()), address(bgt));
+        assertEq(address(distributor.emissionToken()), address(bgt));
 
         // Mock calls to BeaconRoots.ADDRESS to use our mock contract.
         vm.etch(BeaconRoots.ADDRESS, address(new Mock4788BeaconRoots()).code);
@@ -37,18 +37,21 @@ abstract contract BeaconRootsHelperTest is POLTest {
         mockBeaconRoots.setMockBeaconBlockRoot(valData.beaconBlockRoot);
 
         vm.startPrank(governance);
-        // Set the reward rate to be 5 bgt per block.
-        blockRewardController.setRewardRate(TEST_BGT_PER_BLOCK);
-        // Set the min boosted reward rate to be 5 bgt per block.
-        blockRewardController.setMinBoostedRewardRate(TEST_BGT_PER_BLOCK);
-
         // Allow the distributor to send BGT.
         bgt.whitelistSender(address(distributor), true);
 
         // Setup the reward allocation and vault for the honey token.
         honey = new MockHoney();
-        vault = RewardVault(factory.createRewardVault(address(honey)));
+        vault = RewardVault(payable(factory.createRewardVault(address(honey))));
         vm.stopPrank();
+
+        // Fund the BlockRewardController with native tokens for the WBERA wrapping flow.
+        vm.deal(address(blockRewardController), 100 ether);
+        // Pre-fund the distributor with BGT so it can distribute to vaults.
+        vm.deal(address(bgt), address(bgt).balance + 100 ether);
+
+        vm.prank(address(blockRewardController));
+        bgt.mint(address(distributor), 100 ether);
 
         if (initDefaultRewardAllocation) {
             helper_SetDefaultRewardAllocation();

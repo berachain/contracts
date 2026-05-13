@@ -26,7 +26,6 @@ import { DedicatedEmissionStreamManager } from "src/pol/rewards/DedicatedEmissio
 import { DedicatedEmissionStreamManagerDeployer } from "src/pol/DedicatedEmissionStreamManagerDeployer.sol";
 
 abstract contract POLTest is Test, Create2Deployer {
-    uint256 internal constant TEST_BGT_PER_BLOCK = 5 ether;
     uint64 internal constant DISTRIBUTE_FOR_TIMESTAMP = 1_234_567_890;
     uint256 internal constant PAYOUT_AMOUNT = 1e18;
     uint64 internal constant HISTORY_BUFFER_LENGTH = 8191;
@@ -39,6 +38,9 @@ abstract contract POLTest is Test, Create2Deployer {
     WBERA internal wbera = WBERA(payable(0x6969696969696969696969696969696969696969));
     address internal operator = makeAddr("operator");
     address internal bgtIncentiveReceiverManager = makeAddr("bgtIncentiveReceiverManager");
+
+    // pol-v-next: WBERA is the emission token
+    WBERA internal emissionToken = wbera;
 
     struct ValData {
         bytes32 beaconBlockRoot;
@@ -84,6 +86,9 @@ abstract contract POLTest is Test, Create2Deployer {
         deployPOL(governance);
 
         deployCodeTo("WBERA.sol", address(wbera));
+
+        vm.prank(governance);
+        blockRewardController.initialize();
         deployBGTFees(governance);
 
         vm.startPrank(governance);
@@ -91,7 +96,6 @@ abstract contract POLTest is Test, Create2Deployer {
         bgt.setStaker(address(bgtStaker));
         bgt.whitelistSender(address(distributor), true);
 
-        factory.setBGTIncentiveDistributor(bgtIncentiveDistributor);
         beraChef.setCommissionChangeDelay(2 * 8191);
         beraChef.setMaxWeightPerVault(1e4);
         beraChef.setRewardAllocatorFactory(address(rewardAllocatorFactory));

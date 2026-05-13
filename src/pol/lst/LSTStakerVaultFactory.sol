@@ -111,6 +111,8 @@ contract LSTStakerVaultFactory is ILSTStakerVaultFactory, AccessControlUpgradeab
         IERC20(stakingToken).safeTransferFrom(msg.sender, address(this), INITIAL_DEPOSIT);
         IERC20(stakingToken).safeIncreaseAllowance(vault, INITIAL_DEPOSIT);
         LSTStakerVault(vault).deposit(INITIAL_DEPOSIT, msg.sender);
+        // make sure the inflation attack is avoided
+        require(LSTStakerVault(vault).totalSupply() == INITIAL_DEPOSIT, "Inflation attack detected");
 
         return addresses;
     }

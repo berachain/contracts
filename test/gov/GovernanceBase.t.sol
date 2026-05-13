@@ -21,7 +21,7 @@ abstract contract GovernanceBaseTest is POLTest {
         MockHoney consensusAsset = new MockHoney();
 
         // The creation of the vault is permissionless.
-        vault = RewardVault(factory.createRewardVault(address(consensusAsset)));
+        vault = RewardVault(payable(factory.createRewardVault(address(consensusAsset))));
 
         // Update the whitelisted vaults.
         address[] memory targets = new address[](1);

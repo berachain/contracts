@@ -46,10 +46,6 @@ contract DistributeForGasUsageTest is BeaconRootsHelperTest {
         assertEq(ra.weights.length, NUMBER_OF_WEIGHTS);
         assertEq(incentiveTokens.length, NUMBER_OF_WEIGHTS * NUMBER_OF_INCENTIVE_TOKENS);
 
-        // expect a call to mint the BGT to the distributor
-        bytes memory data = abi.encodeCall(IBGT.mint, (address(distributor), TEST_BGT_PER_BLOCK));
-        vm.expectCall(address(bgt), data, 1);
-
         distributor.distributeFor(
             DISTRIBUTE_FOR_TIMESTAMP, valData.index, valData.pubkey, valData.proposerIndexProof, valData.pubkeyProof
         );
@@ -70,9 +66,6 @@ contract DistributeForGasUsageTest is BeaconRootsHelperTest {
             IBlockRewardController.processRewards, (valData.pubkey, DISTRIBUTE_FOR_TIMESTAMP + 2, true)
         );
         vm.expectCall(address(blockRewardController), data, 1);
-        // expect 3 calls to mint the BGT to the distributor
-        data = abi.encodeCall(IBGT.mint, (address(distributor), TEST_BGT_PER_BLOCK));
-        vm.expectCall(address(bgt), data, 3);
 
         // call distributeFor 3 times in a single multicall
         bytes[] memory callData = new bytes[](3);
@@ -114,7 +107,7 @@ contract DistributeForGasUsageTest is BeaconRootsHelperTest {
     }
 
     function _helper_CreateRewardVault() internal returns (address) {
-        RewardVault vault = RewardVault(factory.createRewardVault(_helper_CreateStakingToken()));
+        RewardVault vault = RewardVault(payable(factory.createRewardVault(_helper_CreateStakingToken())));
         vm.prank(governance);
         vault.setMaxIncentiveTokensCount(uint8(NUMBER_OF_INCENTIVE_TOKENS));
         return address(vault);
@@ -141,7 +134,7 @@ contract DistributeForGasUsageTest is BeaconRootsHelperTest {
     }
 
     function _helper_WhitelistIncentiveTokens(address vault) public {
-        uint256 count = RewardVault(vault).maxIncentiveTokensCount();
+        uint256 count = RewardVault(payable(vault)).maxIncentiveTokensCount();
 
         for (uint256 i = 0; i < count; i++) {
             MockERC20 incentiveToken = new MockERC20();
@@ -149,7 +142,8 @@ contract DistributeForGasUsageTest is BeaconRootsHelperTest {
 
             // Whitelist the token
             vm.prank(governance);
-            RewardVault(vault).whitelistIncentiveToken(address(incentiveToken), MIN_INCENTIVE_RATE, address(this));
+            RewardVault(payable(vault))
+                .whitelistIncentiveToken(address(incentiveToken), MIN_INCENTIVE_RATE, address(this));
 
             _helper_AddIncentives(vault, address(incentiveToken), 100 * 1e18);
             incentiveTokens.push(address(incentiveToken));
@@ -160,6 +154,6 @@ contract DistributeForGasUsageTest is BeaconRootsHelperTest {
         MockERC20(token).mint(address(this), type(uint256).max);
         MockERC20(token).approve(vault, type(uint256).max);
 
-        RewardVault(vault).addIncentive(token, amount, INCENTIVE_RATE);
+        RewardVault(payable(vault)).addIncentive(token, amount, INCENTIVE_RATE);
     }
 }

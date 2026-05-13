@@ -84,7 +84,7 @@ contract BGTStaker is IBGTStaker, OwnableUpgradeable, UUPSUpgradeable, StakingRe
 
     /// @inheritdoc IBGTStaker
     function recoverERC20(address tokenAddress, uint256 tokenAmount) external onlyOwner {
-        if (tokenAddress == address(rewardToken)) CannotRecoverRewardToken.selector.revertWith();
+        if (tokenAddress == address(_rewardToken)) CannotRecoverRewardToken.selector.revertWith();
         IERC20(tokenAddress).safeTransfer(owner(), tokenAmount);
         emit Recovered(tokenAddress, tokenAmount);
     }

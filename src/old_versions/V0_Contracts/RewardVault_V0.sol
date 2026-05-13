@@ -11,7 +11,7 @@ import { Utils } from "src/libraries/Utils.sol";
 import { IBeaconDeposit } from "src/pol/interfaces/IBeaconDeposit.sol";
 import { IRewardVault_V0 } from "./interfaces/IRewardVault_V0.sol";
 import { FactoryOwnable } from "src/base/FactoryOwnable.sol";
-import { StakingRewards } from "src/base/StakingRewards.sol";
+import { StakingRewards_V0 } from "src/old_versions/V0_Contracts/base/StakingRewards_V0.sol";
 
 /// @title Rewards Vault_V0
 /// @author Berachain Team
@@ -24,7 +24,7 @@ contract RewardVault_V0 is
     PausableUpgradeable,
     ReentrancyGuardUpgradeable,
     FactoryOwnable,
-    StakingRewards,
+    StakingRewards_V0,
     IRewardVault_V0
 {
     using Utils for bytes4;

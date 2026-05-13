@@ -275,7 +275,7 @@ contract DedicatedEmissionStreamManagerTest is DistributorTest {
             DISTRIBUTE_FOR_TIMESTAMP, valData.index, valData.pubkey, valData.proposerIndexProof, valData.pubkeyProof
         );
 
-        assertEq(bgt.allowance(address(distributor), address(vault)), TEST_BGT_PER_BLOCK);
+        assertEq(bgt.allowance(address(distributor), address(vault)), blockRewardController.rewardRate());
         assertEq(bgt.allowance(address(distributor), graVault1), 0);
         assertEq(bgt.allowance(address(distributor), graVault2), 0);
         assertEq(dedicatedEmissionStreamManager.debt(graVault1), 0);
@@ -296,7 +296,7 @@ contract DedicatedEmissionStreamManagerTest is DistributorTest {
             DISTRIBUTE_FOR_TIMESTAMP, valData.index, valData.pubkey, valData.proposerIndexProof, valData.pubkeyProof
         );
 
-        assertEq(bgt.allowance(address(distributor), address(vault)), TEST_BGT_PER_BLOCK);
+        assertEq(bgt.allowance(address(distributor), address(vault)), blockRewardController.rewardRate());
         assertEq(bgt.allowance(address(distributor), graVault1), 0);
         assertEq(bgt.allowance(address(distributor), graVault2), 0);
         assertEq(dedicatedEmissionStreamManager.debt(graVault1), 0);
@@ -312,8 +312,9 @@ contract DedicatedEmissionStreamManagerTest is DistributorTest {
 
         IRewardAllocation.Weight[] memory rewardAllocation = dedicatedEmissionStreamManager.getRewardAllocation();
 
-        uint256 bgtToRewardAllocation = TEST_BGT_PER_BLOCK * 1000 / 10_000; // 0.5 ether
-        uint256 bgtToDefaultRewardAllocation = TEST_BGT_PER_BLOCK - bgtToRewardAllocation; // 4.5 ether
+        uint256 bgtToRewardAllocation = blockRewardController.rewardRate() * 1000 / 10_000; // 0.5 ether
+        uint256 bgtToDefaultRewardAllocation = blockRewardController.rewardRate() - bgtToRewardAllocation; // 4.5
+        // ether
 
         vm.expectEmit(true, true, true, true);
         // expect events for notifying the emission and distributing the rewards to the reward allocation vaults
@@ -342,15 +343,15 @@ contract DedicatedEmissionStreamManagerTest is DistributorTest {
 
     function test_DistributeWithDedicatedEmissionStream_StopDistributing() public {
         helper_SetDefaultRewardAllocation();
-        // Percentage 10%
-        // Emission target 0.25 ether for each vault
-        // This will stop distributing to the reward allocation vaults after the first distribution.
-        _helper_setUpRewardAllocation(1000, 0.25 ether);
+        // Percentage 10%, two receivers split 50/50 → each receives bgtToRewardAllocation / 2 per block.
+        // Target = bgtToRewardAllocation / 2 stops distributing after the first block.
+        uint256 perReceiverTarget = blockRewardController.rewardRate() / 20;
+        _helper_setUpRewardAllocation(1000, perReceiverTarget);
 
         IRewardAllocation.Weight[] memory rewardAllocation = dedicatedEmissionStreamManager.getRewardAllocation();
 
-        uint256 bgtToRewardAllocation = TEST_BGT_PER_BLOCK * 1000 / 10_000; // 0.5 ether
-        uint256 bgtToDefaultRewardAllocation = TEST_BGT_PER_BLOCK - bgtToRewardAllocation; // 4.5 ether
+        uint256 bgtToRewardAllocation = blockRewardController.rewardRate() * 1000 / 10_000;
+        uint256 bgtToDefaultRewardAllocation = blockRewardController.rewardRate() - bgtToRewardAllocation;
 
         for (uint8 i; i < 2; ++i) {
             if (i == 0) {
@@ -372,7 +373,7 @@ contract DedicatedEmissionStreamManagerTest is DistributorTest {
                 vm.expectEmit(true, true, true, true);
                 // vault receives 4.5 ether
                 emit IDistributor.Distributed(
-                    valData.pubkey, DISTRIBUTE_FOR_TIMESTAMP + i, address(vault), TEST_BGT_PER_BLOCK
+                    valData.pubkey, DISTRIBUTE_FOR_TIMESTAMP + i, address(vault), blockRewardController.rewardRate()
                 );
             }
 
@@ -386,41 +387,33 @@ contract DedicatedEmissionStreamManagerTest is DistributorTest {
         }
 
         assertEq(
-            bgt.allowance(address(distributor), address(vault)), bgtToDefaultRewardAllocation + TEST_BGT_PER_BLOCK
+            bgt.allowance(address(distributor), address(vault)),
+            bgtToDefaultRewardAllocation + blockRewardController.rewardRate()
         );
         for (uint256 i; i < rewardAllocation.length; ++i) {
-            assertEq(bgt.allowance(address(distributor), rewardAllocation[i].receiver), 0.25 ether);
-            assertEq(dedicatedEmissionStreamManager.debt(rewardAllocation[i].receiver), 0.25 ether);
+            assertEq(bgt.allowance(address(distributor), rewardAllocation[i].receiver), perReceiverTarget);
+            assertEq(dedicatedEmissionStreamManager.debt(rewardAllocation[i].receiver), perReceiverTarget);
         }
     }
 
     function test_DistributeWithDedicatedEmissionStream_StopDistributing_DifferentTargetEmissions() public {
         helper_SetDefaultRewardAllocation();
 
+        // 10% pct, two receivers split 50/50 → each receives perBlock per block.
+        uint256 perBlock = blockRewardController.rewardRate() / 20;
         vm.startPrank(allocationManager);
-        dedicatedEmissionStreamManager.setEmissionPerc(1000); // 10%
+        dedicatedEmissionStreamManager.setEmissionPerc(1000);
         dedicatedEmissionStreamManager.setRewardAllocation(_helper_getWeights());
-        dedicatedEmissionStreamManager.setTargetEmission(graVault1, 0.25 ether);
-        dedicatedEmissionStreamManager.setTargetEmission(graVault2, 0.5 ether);
+        dedicatedEmissionStreamManager.setTargetEmission(graVault1, perBlock); // 1 block worth
+        dedicatedEmissionStreamManager.setTargetEmission(graVault2, perBlock * 2); // 2 blocks worth
         vm.stopPrank();
 
-        uint256 bgtToRewardAllocation = TEST_BGT_PER_BLOCK * 1000 / 10_000; // 0.5 ether
-        uint256 bgtToDefaultRewardAllocation = TEST_BGT_PER_BLOCK - bgtToRewardAllocation; // 4.5 ether
+        uint256 bgtToRewardAllocation = blockRewardController.rewardRate() * 1000 / 10_000;
+        uint256 bgtToDefaultRewardAllocation = blockRewardController.rewardRate() - bgtToRewardAllocation;
 
-        // 1st distribution
-        // -- graVault1 -> 0.25 ether
-        // -- graVault2 -> 0.25 ether
-        // -- vault -> 4.5 ether
-
-        // 2nd distribution
-        // -- graVault1 -> 0
-        // -- graVault2 -> 0.25 ether
-        // -- vault -> 4.75 ether
-
-        // 3rd distribution
-        // -- graVault1 -> 0
-        // -- graVault2 -> 0
-        // -- vault -> 5 ether
+        // 1st distribution: graVault1 +perBlock, graVault2 +perBlock, vault +bgtToDefaultRewardAllocation
+        // 2nd distribution: graVault1 capped, graVault2 +perBlock, vault +(bgtToDefaultRewardAllocation + perBlock)
+        // 3rd distribution: both capped, vault +blockRewardController.rewardRate()
         for (uint8 i; i < 3; ++i) {
             distributor.distributeFor(
                 DISTRIBUTE_FOR_TIMESTAMP + i,
@@ -433,31 +426,32 @@ contract DedicatedEmissionStreamManagerTest is DistributorTest {
 
         assertEq(
             bgt.allowance(address(distributor), address(vault)),
-            bgtToDefaultRewardAllocation * 2 + 0.25 ether + TEST_BGT_PER_BLOCK
+            bgtToDefaultRewardAllocation * 2 + perBlock + blockRewardController.rewardRate()
         );
-        assertEq(bgt.allowance(address(distributor), graVault1), 0.25 ether);
-        assertEq(bgt.allowance(address(distributor), graVault2), 0.5 ether);
-        assertEq(dedicatedEmissionStreamManager.debt(graVault1), 0.25 ether);
-        assertEq(dedicatedEmissionStreamManager.debt(graVault2), 0.5 ether);
+        assertEq(bgt.allowance(address(distributor), graVault1), perBlock);
+        assertEq(bgt.allowance(address(distributor), graVault2), perBlock * 2);
+        assertEq(dedicatedEmissionStreamManager.debt(graVault1), perBlock);
+        assertEq(dedicatedEmissionStreamManager.debt(graVault2), perBlock * 2);
     }
 
     function test_DistributeWithDedicatedEmissionStream_RestartDistributing() public {
         test_DistributeWithDedicatedEmissionStream_StopDistributing_DifferentTargetEmissions();
 
+        uint256 perBlock = blockRewardController.rewardRate() / 20;
+        uint256 bgtToRewardAllocation = blockRewardController.rewardRate() * 1000 / 10_000;
+        uint256 bgtToDefaultRewardAllocation = blockRewardController.rewardRate() - bgtToRewardAllocation;
+
         // Increase the target emission for the vaults after the first target was reached.
         vm.startPrank(allocationManager);
-        dedicatedEmissionStreamManager.setTargetEmission(graVault1, 0.5 ether); // 0.25 ether -> 0.5 ether
-        dedicatedEmissionStreamManager.setTargetEmission(graVault2, 0.75 ether); // 0.5 ether -> 0.75 ether
+        dedicatedEmissionStreamManager.setTargetEmission(graVault1, perBlock * 2);
+        dedicatedEmissionStreamManager.setTargetEmission(graVault2, perBlock * 3);
         vm.stopPrank();
 
-        uint256 graVault1PreviousDebt = dedicatedEmissionStreamManager.debt(graVault1); // 0.25 ether
-        uint256 graVault2PreviousDebt = dedicatedEmissionStreamManager.debt(graVault2); // 0.5 ether
-        uint256 vaultPreviousAllowance = bgt.allowance(address(distributor), address(vault)); // 14.25 ether
+        uint256 graVault1PreviousDebt = dedicatedEmissionStreamManager.debt(graVault1);
+        uint256 graVault2PreviousDebt = dedicatedEmissionStreamManager.debt(graVault2);
+        uint256 vaultPreviousAllowance = bgt.allowance(address(distributor), address(vault));
 
-        // Distribute again
-        // -- graVault1 -> 0.25 ether
-        // -- graVault2 -> 0.25 ether
-        // -- vault -> 4.5 ether
+        // Distribute again: each gra vault has 1 block of headroom, vault gets bgtToDefaultRewardAllocation.
         distributor.distributeFor(
             DISTRIBUTE_FOR_TIMESTAMP + 3,
             valData.index,
@@ -466,11 +460,13 @@ contract DedicatedEmissionStreamManagerTest is DistributorTest {
             valData.pubkeyProof
         );
 
-        assertEq(bgt.allowance(address(distributor), address(vault)), vaultPreviousAllowance + 4.5 ether);
-        assertEq(bgt.allowance(address(distributor), graVault1), graVault1PreviousDebt + 0.25 ether);
-        assertEq(bgt.allowance(address(distributor), graVault2), graVault2PreviousDebt + 0.25 ether);
-        assertEq(dedicatedEmissionStreamManager.debt(graVault1), graVault1PreviousDebt + 0.25 ether);
-        assertEq(dedicatedEmissionStreamManager.debt(graVault2), graVault2PreviousDebt + 0.25 ether);
+        assertEq(
+            bgt.allowance(address(distributor), address(vault)), vaultPreviousAllowance + bgtToDefaultRewardAllocation
+        );
+        assertEq(bgt.allowance(address(distributor), graVault1), graVault1PreviousDebt + perBlock);
+        assertEq(bgt.allowance(address(distributor), graVault2), graVault2PreviousDebt + perBlock);
+        assertEq(dedicatedEmissionStreamManager.debt(graVault1), graVault1PreviousDebt + perBlock);
+        assertEq(dedicatedEmissionStreamManager.debt(graVault2), graVault2PreviousDebt + perBlock);
     }
 
     function test_DistributeWithDedicatedEmissionStream_OneHundredPercent() public {
@@ -488,10 +484,10 @@ contract DedicatedEmissionStreamManagerTest is DistributorTest {
         );
 
         assertEq(bgt.allowance(address(distributor), address(vault)), 0);
-        assertEq(bgt.allowance(address(distributor), graVault1), TEST_BGT_PER_BLOCK / 2);
-        assertEq(bgt.allowance(address(distributor), graVault2), TEST_BGT_PER_BLOCK / 2);
-        assertEq(dedicatedEmissionStreamManager.debt(graVault1), TEST_BGT_PER_BLOCK / 2);
-        assertEq(dedicatedEmissionStreamManager.debt(graVault2), TEST_BGT_PER_BLOCK / 2);
+        assertEq(bgt.allowance(address(distributor), graVault1), blockRewardController.rewardRate() / 2);
+        assertEq(bgt.allowance(address(distributor), graVault2), blockRewardController.rewardRate() / 2);
+        assertEq(dedicatedEmissionStreamManager.debt(graVault1), blockRewardController.rewardRate() / 2);
+        assertEq(dedicatedEmissionStreamManager.debt(graVault2), blockRewardController.rewardRate() / 2);
     }
 
     /// @dev target emission will be the same for all vaults

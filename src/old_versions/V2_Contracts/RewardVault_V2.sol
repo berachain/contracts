@@ -10,8 +10,8 @@ import { FixedPointMathLib } from "solady/src/utils/FixedPointMathLib.sol";
 import { Utils } from "src/libraries/Utils.sol";
 import { IBeaconDeposit } from "src/pol/interfaces/IBeaconDeposit.sol";
 import { IRewardVault_V1 } from "../V1_Contracts/interfaces/IRewardVault_V1.sol";
-import { FactoryOwnable } from "src/base/FactoryOwnable.sol";
-import { StakingRewards } from "src/base/StakingRewards.sol";
+import { FactoryOwnable_V0 as FactoryOwnable } from "../V0_Contracts/base/FactoryOwnable_V0.sol";
+import { StakingRewards_V0 } from "src/old_versions/V0_Contracts/base/StakingRewards_V0.sol";
 import { IBeraChef } from "src/pol/interfaces/IBeraChef.sol";
 import { IDistributor } from "src/pol/interfaces/IDistributor.sol";
 import { IBGTIncentiveDistributor } from "src/pol/interfaces/IBGTIncentiveDistributor.sol";
@@ -27,7 +27,7 @@ contract RewardVault_V2 is
     PausableUpgradeable,
     ReentrancyGuardUpgradeable,
     FactoryOwnable,
-    StakingRewards,
+    StakingRewards_V0,
     IRewardVault_V1
 {
     using Utils for bytes4;

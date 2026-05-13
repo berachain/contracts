@@ -7,7 +7,7 @@ import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable/proxy/utils
 import { Utils } from "../../libraries/Utils.sol";
 import { IBeaconDeposit } from "src/pol/interfaces/IBeaconDeposit.sol";
 import { IBeraChef_V3 } from "./interfaces/IBeraChef_V3.sol";
-import { RewardVault } from "src/pol/rewards/RewardVault.sol";
+import { RewardVault_V9 as RewardVault } from "../V9_Contracts/RewardVault_V9.sol";
 import { IRewardVaultFactory } from "src/pol/interfaces/IRewardVaultFactory.sol";
 import { IRewardAllocatorFactory } from "src/pol/interfaces/IRewardAllocatorFactory.sol";
 
