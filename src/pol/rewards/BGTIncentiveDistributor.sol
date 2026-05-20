@@ -49,6 +49,9 @@ contract BGTIncentiveDistributor is
     /// @notice Tracks the amount of incentive tokens currently held by the contract for each validator.
     mapping(bytes => mapping(address => uint256)) public incentiveTokensPerValidator;
 
+    /// @notice The timestamp of the last aggregation of the rewards.
+    uint64 public lastAggregationTimestamp;
+
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
         _disableInitializers();
@@ -77,6 +80,12 @@ contract BGTIncentiveDistributor is
     /// @inheritdoc IBGTIncentiveDistributor
     function setRewardClaimDelay(uint64 _delay) external onlyRole(DEFAULT_ADMIN_ROLE) {
         _setRewardClaimDelay(_delay);
+    }
+
+    /// @inheritdoc IBGTIncentiveDistributor
+    function setLastAggregationTimestamp(uint64 timestamp_) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        lastAggregationTimestamp = timestamp_;
+        emit LastAggregationTimestampSet(timestamp_);
     }
 
     /// @inheritdoc IBGTIncentiveDistributor
@@ -166,6 +175,7 @@ contract BGTIncentiveDistributor is
 
         if (reward.merkleRoot == 0) InvalidMerkleRoot.selector.revertWith();
         if (reward.activeAt > block.timestamp) RewardInactive.selector.revertWith();
+        if (reward.activeAt < lastAggregationTimestamp) InvalidDistribution.selector.revertWith();
 
         uint256 lifeTimeAmount = claimed[_identifier][_account] + _amount;
 

@@ -247,6 +247,44 @@ contract BGTIncentiveReceiverTest is POLTest {
         BGTIncentiveDistributor(bgtIncentiveDistributor).claim(claims);
     }
 
+    function test_SetLastAggregationTimestamp() public {
+        uint64 ts = uint64(block.timestamp + 100);
+        vm.expectEmit(true, true, true, true, bgtIncentiveDistributor);
+        emit IBGTIncentiveDistributor.LastAggregationTimestampSet(ts);
+        vm.prank(governance);
+        BGTIncentiveDistributor(bgtIncentiveDistributor).setLastAggregationTimestamp(ts);
+        assertEq(BGTIncentiveDistributor(bgtIncentiveDistributor).lastAggregationTimestamp(), ts);
+    }
+
+    function test_SetLastAggregationTimestamp_Revert_NotAdmin() public {
+        address notAdmin = makeAddr("notAdmin");
+        vm.prank(notAdmin);
+        vm.expectRevert();
+        BGTIncentiveDistributor(bgtIncentiveDistributor).setLastAggregationTimestamp(uint64(block.timestamp));
+    }
+
+    function test_ClaimReward_Revert_StaleDistribution() public {
+        _helperReceiveIncentive(claimAmount);
+        bytes32 identifier = test_updateRewardsMetadata();
+
+        uint256 claimDelay = BGTIncentiveDistributor(bgtIncentiveDistributor).rewardClaimDelay();
+        vm.warp(vm.getBlockTimestamp() + claimDelay + 1);
+
+        // Set lastAggregationTimestamp to after the distribution's activeAt, making it stale
+        uint64 futureTs = uint64(block.timestamp + 1);
+        vm.prank(governance);
+        BGTIncentiveDistributor(bgtIncentiveDistributor).setLastAggregationTimestamp(futureTs);
+
+        IBGTIncentiveDistributor.Claim memory claim = IBGTIncentiveDistributor.Claim({
+            identifier: identifier, account: claimUser, amount: claimAmount, merkleProof: validProof
+        });
+        IBGTIncentiveDistributor.Claim[] memory claims = new IBGTIncentiveDistributor.Claim[](1);
+        claims[0] = claim;
+
+        vm.expectRevert(IPOLErrors.InvalidDistribution.selector);
+        BGTIncentiveDistributor(bgtIncentiveDistributor).claim(claims);
+    }
+
     function _helperReceiveIncentive(uint256 amount) internal {
         token.mint(address(this), amount);
         token.approve(address(bgtIncentiveDistributor), amount);

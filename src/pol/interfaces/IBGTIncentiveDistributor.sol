@@ -58,6 +58,12 @@ interface IBGTIncentiveDistributor is IPOLErrors {
     event RewardClaimDelaySet(uint64 delay);
 
     /**
+     * @notice Event emitted when the last aggregation timestamp is set
+     * @param timestamp The timestamp of the last aggregation
+     */
+    event LastAggregationTimestampSet(uint64 timestamp);
+
+    /**
      * @notice Event emitted when a reward is claimed
      * @param identifier The identifier of the reward
      * @param token The address of the reward token
@@ -112,6 +118,13 @@ interface IBGTIncentiveDistributor is IPOLErrors {
      * @param _delay The delay in seconds
      */
     function setRewardClaimDelay(uint64 _delay) external;
+
+    /**
+     * @notice Set the last aggregation timestamp
+     * @dev Only address with DEFAULT_ADMIN_ROLE can call this function
+     * @param timestamp_ The timestamp of the last aggregation
+     */
+    function setLastAggregationTimestamp(uint64 timestamp_) external;
 
     /**
      * @notice Receive incentive tokens from POL reward vaults
