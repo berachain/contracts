@@ -100,6 +100,14 @@ interface IBGTIncentiveDistributor is IPOLErrors {
      */
     event IncentiveReceived(bytes indexed pubkey, address indexed token, uint256 amount);
 
+    /**
+     * @notice Event emitted when incentive tokens are allocated to a validator
+     * @param pubkey The pubkey of the validator
+     * @param token The address of the incentive token
+     * @param amount The amount of tokens allocated
+     */
+    event IncentiveAllocated(bytes indexed pubkey, address indexed token, uint256 amount);
+
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
     /*                          FUNCTIONS                          */
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
@@ -134,6 +142,16 @@ interface IBGTIncentiveDistributor is IPOLErrors {
      * @param _amount The amount of tokens received
      */
     function receiveIncentive(bytes calldata pubkey, address token, uint256 _amount) external;
+
+    /**
+     * @notice Allocate incentive tokens to a validator
+     * @dev Only address with MANAGER_ROLE can call this function
+     * @dev This function is used during claim automation to allocate incentive tokens to a validator and collapsed
+     * claims for the same token.
+     * @param token The address of the incentive token
+     * @param amount The amount of tokens to allocate
+     */
+    function allocateIncentiveToValidator(address token, uint256 amount) external;
 
     /**
      * @notice Claim rewards based on the specified metadata

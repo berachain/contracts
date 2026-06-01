@@ -143,6 +143,18 @@ contract BGTIncentiveDistributor is
         emit IncentiveReceived(pubkey, token, _amount);
     }
 
+    /// @inheritdoc IBGTIncentiveDistributor
+    function allocateIncentiveToValidator(address token, uint256 amount) external onlyRole(MANAGER_ROLE) {
+        bytes memory pubkey = bytes(
+            hex"000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+        );
+        if (amount > IERC20(token).balanceOf(address(this))) {
+            InsufficientIncentiveTokens.selector.revertWith();
+        }
+        incentiveTokensPerValidator[pubkey][token] = amount;
+        emit IncentiveAllocated(pubkey, token, amount);
+    }
+
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
     /*                       USER FUNCTIONS                      */
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/

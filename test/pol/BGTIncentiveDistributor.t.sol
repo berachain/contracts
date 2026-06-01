@@ -285,6 +285,63 @@ contract BGTIncentiveReceiverTest is POLTest {
         BGTIncentiveDistributor(bgtIncentiveDistributor).claim(claims);
     }
 
+    function test_AllocateIncentiveToValidator(uint256 amount) public {
+        amount = bound(amount, 1, 1_000_000 ether);
+        _helperReceiveIncentive(amount);
+
+        bytes memory zeroPubkey =
+            hex"000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
+
+        vm.expectEmit(true, true, true, true, bgtIncentiveDistributor);
+        emit IBGTIncentiveDistributor.IncentiveAllocated(zeroPubkey, address(token), amount);
+
+        vm.prank(bgtIncentiveReceiverManager);
+        BGTIncentiveDistributor(bgtIncentiveDistributor).allocateIncentiveToValidator(address(token), amount);
+
+        assertEq(
+            BGTIncentiveDistributor(bgtIncentiveDistributor).incentiveTokensPerValidator(zeroPubkey, address(token)),
+            amount
+        );
+    }
+
+    function test_AllocateIncentiveToValidator_OverwritesPreviousAllocation(uint256 first, uint256 second) public {
+        first = bound(first, 1, 500_000 ether);
+        second = bound(second, 0, 1_000_000 ether);
+        uint256 deposit = second > first ? second : first;
+        _helperReceiveIncentive(deposit);
+
+        bytes memory zeroPubkey =
+            hex"000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
+
+        vm.startPrank(bgtIncentiveReceiverManager);
+        BGTIncentiveDistributor(bgtIncentiveDistributor).allocateIncentiveToValidator(address(token), first);
+        BGTIncentiveDistributor(bgtIncentiveDistributor).allocateIncentiveToValidator(address(token), second);
+        vm.stopPrank();
+
+        assertEq(
+            BGTIncentiveDistributor(bgtIncentiveDistributor).incentiveTokensPerValidator(zeroPubkey, address(token)),
+            second
+        );
+    }
+
+    function test_AllocateIncentiveToValidator_Revert_NotManager() public {
+        _helperReceiveIncentive(1 ether);
+
+        address notManager = makeAddr("notManager");
+        vm.prank(notManager);
+        vm.expectRevert();
+        BGTIncentiveDistributor(bgtIncentiveDistributor).allocateIncentiveToValidator(address(token), 1 ether);
+    }
+
+    function test_AllocateIncentiveToValidator_Revert_InsufficientBalance(uint256 amount) public {
+        amount = bound(amount, 1, 1_000_000 ether);
+        _helperReceiveIncentive(amount - 1);
+
+        vm.prank(bgtIncentiveReceiverManager);
+        vm.expectRevert(IPOLErrors.InsufficientIncentiveTokens.selector);
+        BGTIncentiveDistributor(bgtIncentiveDistributor).allocateIncentiveToValidator(address(token), amount);
+    }
+
     function _helperReceiveIncentive(uint256 amount) internal {
         token.mint(address(this), amount);
         token.approve(address(bgtIncentiveDistributor), amount);
