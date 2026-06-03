@@ -3,21 +3,24 @@ name: Slither Analysis
 on:
   pull_request:
 
+permissions:
+  contents: read
+
 jobs:
   analyze:
     runs-on: ubuntu-latest
     steps:
       # Add Docker Hub authentication with rate limiting configuration
       - name: Login to Docker Hub
-        uses: docker/login-action@v2
+        uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # v4.2.0
         with:
           username: ${{ secrets.DOCKERHUB_USER }}
           password: ${{ secrets.DOCKERHUB_PASSWORD }}
           registry: docker.io
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
-      - uses: crytic/slither-action@v0.4.1
+      - uses: crytic/slither-action@4fd765aeef19915d04ddf0be90c2930036a774d8 # v0.4.1
         with:
           fail-on: none
 
