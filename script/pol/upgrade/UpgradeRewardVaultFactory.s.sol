@@ -1,31 +1,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.26;
 
-import { console2 } from "forge-std/Script.sol";
-import { BaseDeployScript } from "../../base/BaseDeploy.s.sol";
 import { RewardVaultFactory } from "src/pol/rewards/RewardVaultFactory.sol";
+import { BaseERC1967UpgradeScript } from "../../base/BaseUpgrade.s.sol";
 
-import { AddressBook } from "../../base/AddressBook.sol";
-
-contract UpgradeRewardVaultFactoryScript is BaseDeployScript, AddressBook {
-    function run() public pure {
-        console2.log("Please run specific function.");
+contract UpgradeRewardVaultFactoryScript is BaseERC1967UpgradeScript {
+    function _proxyAddress() internal view override returns (address) {
+        return _polAddresses.rewardVaultFactory;
     }
 
-    function deployNewImplementation() public broadcast {
-        address newRewardVaultFactoryImpl = _deployNewImplementation();
-        console2.log("New RewardVaultFactory implementation address:", newRewardVaultFactoryImpl);
-    }
-
-    /// @dev This function is only for testnet or test purposes.
-    function upgradeToAndCallTestnet(bytes memory callSignature) public broadcast {
-        address newRewardVaultFactoryImpl = _deployNewImplementation();
-        console2.log("New RewardVaultFactory implementation address:", newRewardVaultFactoryImpl);
-        RewardVaultFactory(_polAddresses.rewardVaultFactory).upgradeToAndCall(newRewardVaultFactoryImpl, callSignature);
-        console2.log("RewardVaultFactory upgraded successfully");
-    }
-
-    function _deployNewImplementation() internal returns (address) {
+    function _deployNewImplementation() internal override returns (address) {
         return
             _deploy("RewardVaultFactory", type(RewardVaultFactory).creationCode, _polAddresses.rewardVaultFactoryImpl);
     }
