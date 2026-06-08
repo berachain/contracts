@@ -59,7 +59,7 @@ mainnet = "https://eth-mainnet.g.alchemy.com/v2/${API_KEY_ALCHEMY}"
 optimism = "https://optimism-mainnet.infura.io/v3/${API_KEY_INFURA}"
 polygon = "https://polygon-mainnet.infura.io/v3/${API_KEY_INFURA}"
 sepolia = "https://sepolia.infura.io/v3/${API_KEY_INFURA}"
-berachain = "https://rpc.berachain.com"
+berachain = "${BERACHAIN_RPC_URL}"
 bepolia = "https://bepolia.rpc.berachain.com/"
 
 [lint]
