@@ -27,15 +27,15 @@ jobs:
     name: ${{ matrix.job_name }}
     steps:
       - name: Check out the repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
         with:
           submodules: recursive
 
       - name: Install Foundry
-        uses: foundry-rs/foundry-toolchain@v1
+        uses: foundry-rs/foundry-toolchain@c7450ba673e133f5ee30098b3b54f444d3a2ca2d # v1.8.0
 
       - name: Install Bun
-        uses: oven-sh/setup-bun@v1
+        uses: oven-sh/setup-bun@f4d14e03ff726c06358e5557344e1da148b56cf7 # v1.2.2
 
       - name: Install the Node.js dependencies
         run: bun install
@@ -50,7 +50,7 @@ jobs:
 
       - if: ${{ matrix.job_name == 'coverage' }}
         name: Upload coverage reports to Codecov
-        uses: codecov/codecov-action@v2
+        uses: codecov/codecov-action@f32b3a3741e1053eb607407145bc9619351dc93b # v2.1.0
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: ./test-forge-cover.txt

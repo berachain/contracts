@@ -9,15 +9,15 @@ jobs:
     steps:
       # Add Docker Hub authentication with rate limiting configuration
       - name: Login to Docker Hub
-        uses: docker/login-action@v2
+        uses: docker/login-action@465a07811f14bebb1938fbed4728c6a1ff8901fc # v2.2.0
         with:
           username: ${{ secrets.DOCKERHUB_USER }}
           password: ${{ secrets.DOCKERHUB_PASSWORD }}
           registry: docker.io
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
 
-      - uses: crytic/slither-action@v0.4.1
+      - uses: crytic/slither-action@4fd765aeef19915d04ddf0be90c2930036a774d8 # v0.4.1
         with:
           fail-on: none
 
