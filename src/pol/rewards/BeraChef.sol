@@ -33,8 +33,8 @@ contract BeraChef is IBeraChef, OwnableUpgradeable, UUPSUpgradeable {
     /// @dev With 2 second block time, this is ~30 days.
     uint64 public constant MAX_REWARD_ALLOCATION_BLOCK_DELAY = 1_315_000;
 
-    /// @dev Represents the maximum commission rate per validator, set to 20%.
-    uint96 public constant MAX_COMMISSION_RATE = 0.2e4;
+    /// @dev Represents the maximum commission rate per validator, set to 10%.
+    uint96 public constant MAX_COMMISSION_RATE = 0.1e4;
 
     /// @dev The minimum block span to consider a reward allocation inactive, 1 day with 2 second block time.
     uint64 public constant MIN_REWARD_ALLOCATION_INACTIVITY_BLOCK_SPAN = 43_200;
