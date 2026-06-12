@@ -27,4 +27,10 @@ interface IRewardVaultHelper is IPOLErrors {
     /// @param receiver The address to receive the rewards.
     /// @param outputToken The token to convert the rewards to.
     function claimAllRewards(address[] memory vaults, address receiver, address outputToken) external;
+
+    /// @notice Withdraw the caller's self-staked balance from multiple vaults in a single transaction.
+    /// @dev Skips vaults where the caller has no self-staked balance. Delegate-staked amounts are not withdrawn.
+    /// @param vaults The array of vault addresses.
+    /// @param receiver The address to receive the withdrawn stake tokens.
+    function withdrawAllFromVaults(address[] memory vaults, address receiver) external;
 }

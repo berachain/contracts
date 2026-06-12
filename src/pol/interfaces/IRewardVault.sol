@@ -254,6 +254,13 @@ interface IRewardVault is IPOLErrors, IStakingRewards {
     /// @param amount The amount of tokens to withdraw.
     function withdraw(uint256 amount) external;
 
+    /// @notice Withdraw the entire self-staked balance of an account.
+    /// @dev Only the reward vault helper contract can call this function.
+    ///      Withdrawn tokens are sent to the caller which have to handle them appropriately.
+    /// @param account The account whose stake is withdrawn.
+    /// @return The amount of tokens withdrawn.
+    function withdrawAllFor(address account) external returns (uint256);
+
     /// @notice Withdraw tokens staked on behalf of another account by the delegate (msg.sender).
     /// @param account The account to withdraw for.
     /// @param amount The amount of tokens to withdraw.

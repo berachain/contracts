@@ -7,6 +7,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import { RewardVault } from "src/pol/rewards/RewardVault.sol";
 import { RewardVaultHelper } from "src/pol/rewards/RewardVaultHelper.sol";
+import { IStakingRewards } from "src/base/IStakingRewards.sol";
 import { IRewardVaultHelper, IPOLErrors } from "src/pol/interfaces/IRewardVaultHelper.sol";
 import { IRewardAllocation } from "src/pol/interfaces/IRewardAllocation.sol";
 import { DistributorTest } from "./Distributor.t.sol";
@@ -355,6 +356,179 @@ contract RewardVaultHelperTest is DistributorTest {
         helper.claimAllRewards(vaults, user, address(mockSWBERA));
 
         assertEq(mockSWBERA.balanceOf(user), 0);
+    }
+
+    /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
+    /*                   WITHDRAW FROM VAULTS                     */
+    /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
+
+    function test_WithdrawAllFromVaults_SingleVault() public {
+        _stakeInVault(user, address(vault), address(honey), 100 ether);
+        assertEq(vault.balanceOf(user), 100 ether);
+
+        address receiver = makeAddr("receiver");
+        address[] memory vaults = _singleVaultArray(address(vault));
+
+        vm.prank(user);
+        helper.withdrawAllFromVaults(vaults, receiver);
+
+        assertEq(vault.balanceOf(user), 0);
+        assertEq(honey.balanceOf(receiver), 100 ether);
+        assertEq(honey.balanceOf(address(helper)), 0);
+    }
+
+    function test_WithdrawAllFromVaults_ReceiverIsCaller() public {
+        _stakeInVault(user, address(vault), address(honey), 100 ether);
+
+        address[] memory vaults = _singleVaultArray(address(vault));
+
+        vm.prank(user);
+        helper.withdrawAllFromVaults(vaults, user);
+
+        assertEq(vault.balanceOf(user), 0);
+        assertEq(honey.balanceOf(user), 100 ether);
+    }
+
+    function test_WithdrawAllFromVaults_MultipleVaults() public {
+        RewardVault vault2 = _createAndSetupSecondVault();
+        _stakeInVault(user, address(vault), address(honey), 100 ether);
+        _stakeInVault(user, address(vault2), address(dai), 50 ether);
+
+        address receiver = makeAddr("receiver");
+        address[] memory vaults = new address[](2);
+        vaults[0] = address(vault);
+        vaults[1] = address(vault2);
+
+        vm.prank(user);
+        helper.withdrawAllFromVaults(vaults, receiver);
+
+        assertEq(vault.balanceOf(user), 0);
+        assertEq(vault2.balanceOf(user), 0);
+        assertEq(honey.balanceOf(receiver), 100 ether);
+        assertEq(dai.balanceOf(receiver), 50 ether);
+        assertEq(honey.balanceOf(address(helper)), 0);
+        assertEq(dai.balanceOf(address(helper)), 0);
+    }
+
+    function test_WithdrawAllFromVaults_SkipsVaultWithNoStake() public {
+        RewardVault vault2 = _createAndSetupSecondVault();
+        // user only stakes in `vault`, not `vault2`
+        _stakeInVault(user, address(vault), address(honey), 100 ether);
+
+        address receiver = makeAddr("receiver");
+        address[] memory vaults = new address[](2);
+        vaults[0] = address(vault2); // no stake here: must be skipped, not revert
+        vaults[1] = address(vault);
+
+        vm.prank(user);
+        helper.withdrawAllFromVaults(vaults, receiver);
+
+        assertEq(honey.balanceOf(receiver), 100 ether);
+        assertEq(dai.balanceOf(receiver), 0);
+        assertEq(vault.balanceOf(user), 0);
+    }
+
+    function test_WithdrawAllFromVaults_ExcludesDelegateStake() public {
+        address delegate = makeAddr("delegate");
+        _stakeInVault(user, address(vault), address(honey), 100 ether);
+        _delegateStakeInVault(delegate, user, address(vault), address(honey), 40 ether);
+
+        assertEq(vault.balanceOf(user), 140 ether);
+        assertEq(vault.getTotalDelegateStaked(user), 40 ether);
+
+        address receiver = makeAddr("receiver");
+        address[] memory vaults = _singleVaultArray(address(vault));
+
+        vm.prank(user);
+        helper.withdrawAllFromVaults(vaults, receiver);
+
+        // only the self-staked 100 is withdrawn; the delegate-staked 40 stays put
+        assertEq(honey.balanceOf(receiver), 100 ether);
+        assertEq(vault.balanceOf(user), 40 ether);
+        assertEq(vault.getTotalDelegateStaked(user), 40 ether);
+    }
+
+    function test_WithdrawAllFromVaults_PreservesEarnedRewards() public {
+        _distributeRewards();
+        _stakeInVault(user, address(vault), address(honey), 100 ether);
+        vm.warp(block.timestamp + 1 weeks);
+
+        uint256 earnedBefore = vault.earned(user);
+        assertGt(earnedBefore, 0);
+
+        address[] memory vaults = _singleVaultArray(address(vault));
+
+        vm.prank(user);
+        helper.withdrawAllFromVaults(vaults, user);
+
+        assertEq(vault.balanceOf(user), 0);
+        assertEq(vault.earned(user), earnedBefore);
+    }
+
+    function test_WithdrawAllFromVaults_SecondCallWithdrawsNothing() public {
+        _stakeInVault(user, address(vault), address(honey), 100 ether);
+        address[] memory vaults = _singleVaultArray(address(vault));
+
+        vm.prank(user);
+        helper.withdrawAllFromVaults(vaults, user);
+        uint256 balanceAfterFirst = honey.balanceOf(user);
+        assertEq(balanceAfterFirst, 100 ether);
+
+        vm.prank(user);
+        helper.withdrawAllFromVaults(vaults, user);
+        assertEq(honey.balanceOf(user), balanceAfterFirst);
+    }
+
+    function test_WithdrawAllFromVaults_EmptyArray_NoRevert() public {
+        address[] memory vaults = new address[](0);
+
+        vm.prank(user);
+        helper.withdrawAllFromVaults(vaults, user);
+
+        assertEq(honey.balanceOf(user), 0);
+    }
+
+    function test_WithdrawAllFromVaults_RevertsOnZeroReceiver() public {
+        _stakeInVault(user, address(vault), address(honey), 100 ether);
+        address[] memory vaults = _singleVaultArray(address(vault));
+
+        vm.prank(user);
+        vm.expectRevert(IPOLErrors.ZeroAddress.selector);
+        helper.withdrawAllFromVaults(vaults, address(0));
+    }
+
+    function test_WithdrawAllFromVaults_RevertsWhenVaultPaused() public {
+        _stakeInVault(user, address(vault), address(honey), 100 ether);
+
+        // grant this contract the manager role, then the pauser role, then pause the vault.
+        bytes32 managerRole = factory.VAULT_MANAGER_ROLE();
+        bytes32 pauserRole = factory.VAULT_PAUSER_ROLE();
+        vm.prank(governance);
+        factory.grantRole(managerRole, address(this));
+        factory.grantRole(pauserRole, address(this));
+        vault.pause();
+
+        address[] memory vaults = _singleVaultArray(address(vault));
+
+        vm.prank(user);
+        vm.expectRevert(); // PausableUpgradeable.EnforcedPause
+        helper.withdrawAllFromVaults(vaults, user);
+    }
+
+    function _delegateStakeInVault(
+        address _delegate,
+        address _account,
+        address _vault,
+        address _token,
+        uint256 _amount
+    )
+        internal
+    {
+        deal(_token, _delegate, _amount);
+        vm.startPrank(_delegate);
+        IERC20(_token).approve(_vault, _amount);
+        RewardVault(payable(_vault)).delegateStake(_account, _amount);
+        vm.stopPrank();
     }
 
     function _distributeRewards() internal {

@@ -2,6 +2,7 @@
 pragma solidity ^0.8.26;
 
 import { IStakingRewardsErrors } from "./IStakingRewardsErrors.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 /// @notice Interface of staking rewards
 interface IStakingRewards is IStakingRewardsErrors {
@@ -36,6 +37,9 @@ interface IStakingRewards is IStakingRewardsErrors {
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
     /*                          GETTERS                           */
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
+
+    /// @notice The ERC20 token which users stake to earn rewards.
+    function stakeToken() external view returns (IERC20);
 
     /// @notice Get the balance of the staked tokens for an account.
     /// @param account The account to get the balance for.

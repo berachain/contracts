@@ -80,6 +80,8 @@ interface IPOLErrors is IStakingRewardsErrors {
     error NotIncentiveManager();
     // Signature: 0x92949442
     error AmountGreaterThanReward();
+    // Signature: 0x493309ac
+    error NotRewardVaultHelper();
 
     // Signature: 0xf84835a0
     error TokenNotWhitelisted();

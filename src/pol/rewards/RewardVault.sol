@@ -158,13 +158,21 @@ contract RewardVault is PausableUpgradeable, ReentrancyGuardUpgradeable, Factory
     }
 
     modifier onlyUserOrOperator(address account) {
-        IRewardVaultFactory factory = IRewardVaultFactory(factory());
-        address rewardVaultHelper = factory.rewardVaultHelper();
+        address rewardVaultHelper = _getRewardVaultHelper();
 
         if (msg.sender != account && msg.sender != rewardVaultHelper) {
             if (msg.sender != _operators[account]) {
                 NotOperator.selector.revertWith();
             }
+        }
+        _;
+    }
+
+    modifier onlyRewardVaultHelper() {
+        address rewardVaultHelper = _getRewardVaultHelper();
+
+        if (msg.sender != rewardVaultHelper) {
+            NotRewardVaultHelper.selector.revertWith();
         }
         _;
     }
@@ -422,6 +430,20 @@ contract RewardVault is PausableUpgradeable, ReentrancyGuardUpgradeable, Factory
     /// @inheritdoc IRewardVault
     function withdraw(uint256 amount) external nonReentrant checkSelfStakedBalance(msg.sender, amount) whenNotPaused {
         _withdraw(msg.sender, amount);
+    }
+
+    /// @inheritdoc IRewardVault
+    function withdrawAllFor(address account)
+        external
+        nonReentrant
+        onlyRewardVaultHelper
+        whenNotPaused
+        returns (uint256 selfStakedAmount)
+    {
+        selfStakedAmount = _accountInfo[account].balance - _delegateStake[account].delegateTotalStaked;
+        // Early return if there is no self-staked balance to withdraw.
+        if (selfStakedAmount == 0) return 0;
+        _withdraw(account, selfStakedAmount);
     }
 
     /// @inheritdoc IRewardVault
@@ -743,5 +765,10 @@ contract RewardVault is PausableUpgradeable, ReentrancyGuardUpgradeable, Factory
             _safeTransferRewardToken(recipient, amount);
             emit RewardPaid(account, recipient, amount);
         }
+    }
+
+    function _getRewardVaultHelper() internal view returns (address) {
+        IRewardVaultFactory factory = IRewardVaultFactory(factory());
+        return factory.rewardVaultHelper();
     }
 }

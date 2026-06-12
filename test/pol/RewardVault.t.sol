@@ -1440,6 +1440,76 @@ contract RewardVaultTest is DistributorTest, StakingTest {
         vault.withdraw(withdrawAmount);
     }
 
+    function testFuzz_WithdrawAllFor(uint256 selfStake, uint256 delegateStake) public {
+        selfStake = bound(selfStake, 1, type(uint256).max - 1);
+        delegateStake = bound(delegateStake, 1, type(uint256).max - selfStake);
+        performStake(user, selfStake);
+        performDelegateStake(operator, user, delegateStake);
+
+        // the reward vault helper is the only authorized caller and receives the withdrawn tokens.
+        uint256 helperBalanceBefore = honey.balanceOf(rewardVaultHelper);
+
+        vm.prank(rewardVaultHelper);
+        uint256 withdrawn = vault.withdrawAllFor(user);
+
+        assertEq(withdrawn, selfStake);
+        assertEq(honey.balanceOf(rewardVaultHelper) - helperBalanceBefore, selfStake);
+        assertEq(vault.balanceOf(user), delegateStake);
+        assertEq(vault.getTotalDelegateStaked(user), delegateStake);
+    }
+
+    function test_WithdrawAllFor() public {
+        testFuzz_WithdrawAllFor(100 ether, 200 ether);
+    }
+
+    function testFuzz_WithdrawAllFor_MultipleStakes(uint256 stakeAmount) public {
+        stakeAmount = bound(stakeAmount, 1, 1_000_000_000 ether);
+        address staker = makeAddr("staker");
+        performStake(staker, stakeAmount);
+
+        testFuzz_WithdrawAllFor(100 ether, 200 ether);
+
+        assertEq(vault.balanceOf(staker), stakeAmount);
+        assertEq(vault.totalSupply(), stakeAmount + 200 ether);
+    }
+
+    function test_WithdrawAllFor_RevertsIfNotHelper() public {
+        performStake(user, 100 ether);
+
+        vm.prank(user);
+        vm.expectRevert(IPOLErrors.NotRewardVaultHelper.selector);
+        vault.withdrawAllFor(user);
+    }
+
+    function test_WithdrawAllFor_ReturnsZeroWhenNoStake() public {
+        vm.prank(rewardVaultHelper);
+        uint256 amount = vault.withdrawAllFor(user);
+        assertEq(amount, 0);
+    }
+
+    function test_WithdrawAllFor_OnlyDelegateStake() public {
+        testFuzz_WithdrawAllFor_OnlyDelegateStake(200 ether);
+    }
+
+    // account has only delegate stake (balance > 0 but self-staked == 0): withdraws nothing and leaves state intact.
+    function testFuzz_WithdrawAllFor_OnlyDelegateStake(uint256 delegateStake) public {
+        delegateStake = bound(delegateStake, 1, type(uint128).max);
+        performDelegateStake(operator, user, delegateStake);
+
+        // pre-condition: the whole balance is delegate stake, nothing self-staked.
+        assertEq(vault.balanceOf(user), delegateStake);
+        assertEq(vault.getTotalDelegateStaked(user), delegateStake);
+        uint256 totalSupplyBefore = vault.totalSupply();
+
+        vm.prank(rewardVaultHelper);
+        uint256 withdrawn = vault.withdrawAllFor(user);
+
+        assertEq(withdrawn, 0);
+        assertEq(vault.totalSupply(), totalSupplyBefore); // delta 0
+        assertEq(vault.balanceOf(user), delegateStake);
+        assertEq(vault.getTotalDelegateStaked(user), delegateStake);
+    }
+
     // incentive rate changes if undistributed incentive amount is 0.
     function addIncentives(uint256 amount, uint256 _incentiveRate) internal {
         _addIncentiveToken(address(dai), daiIncentiveManager, amount, _incentiveRate);

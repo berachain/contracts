@@ -74,6 +74,17 @@ contract RewardVaultHelper is IRewardVaultHelper, AccessControlUpgradeable, UUPS
         emit RewardsClaimed(rewardsAmount, receiver, outputToken);
     }
 
+    /// @inheritdoc IRewardVaultHelper
+    function withdrawAllFromVaults(address[] memory vaults, address receiver) external {
+        if (receiver == address(0)) ZeroAddress.selector.revertWith();
+
+        for (uint256 i = 0; i < vaults.length; i++) {
+            IRewardVault vault = IRewardVault(vaults[i]);
+            uint256 amount = vault.withdrawAllFor(msg.sender);
+            if (amount > 0) address(vault.stakeToken()).safeTransfer(receiver, amount);
+        }
+    }
+
     function _claimRewards(address[] memory vaults, address receiver) internal returns (uint256 rewardsAmount) {
         for (uint256 i = 0; i < vaults.length; i++) {
             address vault = vaults[i];
