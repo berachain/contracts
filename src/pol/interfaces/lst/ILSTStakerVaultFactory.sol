@@ -35,7 +35,7 @@ interface ILSTStakerVaultFactory is IPOLErrors {
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
 
     /// @notice Creates a new pair LSTStakerVault (ERC4626) / LSTStakerVaultWithdrawalRequest (ERC721)
-    /// to participate to BGTIncentiveFeeCollector redistribution.
+    /// to participate to IncentivesCollector redistribution.
     /// @dev Can only be called by `DEFAULT_ADMIN_ROLE`.
     /// @dev Only supports 18 decimals tokens.
     /// @param stakingToken The address of the staking token.

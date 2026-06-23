@@ -11,21 +11,16 @@ import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable/proxy/utils
 
 import { Utils } from "../libraries/Utils.sol";
 import { IWBERAStakerVault } from "./interfaces/IWBERAStakerVault.sol";
-import { IBGTIncentiveFeeCollector } from "./interfaces/IBGTIncentiveFeeCollector.sol";
+import { IIncentivesCollector } from "./interfaces/IIncentivesCollector.sol";
 import { IStakerVault } from "./interfaces/lst/IStakerVault.sol";
 import { ILSTAdapter } from "./interfaces/lst/ILSTAdapter.sol";
 
-/// @title BGTIncentiveFeeCollector
+/// @title IncentivesCollector
 /// @author Berachain Team
-/// @notice Collects the fees on the incentives posted on reward vaults and auction them for WBERA.
+/// @notice Collects the incentives posted on reward vaults and auction them for WBERA.
 /// Accrued WBERA serves as a payout for the stakers of `WBERAStakerVault.sol` and added `LSTStakerVault.sol`s.
 /// @dev This contract is inspired by the `FeeCollector.sol` for auctioning collected tokens.
-contract BGTIncentiveFeeCollector is
-    IBGTIncentiveFeeCollector,
-    PausableUpgradeable,
-    AccessControlUpgradeable,
-    UUPSUpgradeable
-{
+contract IncentivesCollector is IIncentivesCollector, PausableUpgradeable, AccessControlUpgradeable, UUPSUpgradeable {
     using SafeERC20 for IERC20;
     using Utils for bytes4;
 
@@ -46,19 +41,19 @@ contract BGTIncentiveFeeCollector is
     /*                           STORAGE                          */
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
 
-    /// @inheritdoc IBGTIncentiveFeeCollector
+    /// @inheritdoc IIncentivesCollector
     uint256 public queuedPayoutAmount;
 
-    /// @inheritdoc IBGTIncentiveFeeCollector
+    /// @inheritdoc IIncentivesCollector
     uint256 public payoutAmount;
 
-    /// @inheritdoc IBGTIncentiveFeeCollector
+    /// @inheritdoc IIncentivesCollector
     address public wberaStakerVault;
 
-    /// @inheritdoc IBGTIncentiveFeeCollector
+    /// @inheritdoc IIncentivesCollector
     address[] public lstStakerVaults;
 
-    /// @inheritdoc IBGTIncentiveFeeCollector
+    /// @inheritdoc IIncentivesCollector
     mapping(address lstVault => address lstAdapter) public lstAdapters;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
@@ -93,14 +88,14 @@ contract BGTIncentiveFeeCollector is
 
     function _authorizeUpgrade(address newImplementation) internal override onlyRole(DEFAULT_ADMIN_ROLE) { }
 
-    /// @inheritdoc IBGTIncentiveFeeCollector
+    /// @inheritdoc IIncentivesCollector
     function queuePayoutAmountChange(uint256 _newPayoutAmount) external onlyRole(DEFAULT_ADMIN_ROLE) {
         if (_newPayoutAmount == 0) PayoutAmountIsZero.selector.revertWith();
         emit QueuedPayoutAmount(_newPayoutAmount, payoutAmount);
         queuedPayoutAmount = _newPayoutAmount;
     }
 
-    /// @inheritdoc IBGTIncentiveFeeCollector
+    /// @inheritdoc IIncentivesCollector
     function addLstStakerVault(address lstStakerVault, address lstAdapter) external onlyRole(DEFAULT_ADMIN_ROLE) {
         if (lstStakerVault == address(0)) ZeroAddress.selector.revertWith();
         if (lstAdapter == address(0)) ZeroAddress.selector.revertWith();
@@ -115,7 +110,7 @@ contract BGTIncentiveFeeCollector is
         lstAdapters[lstStakerVault] = lstAdapter;
     }
 
-    /// @inheritdoc IBGTIncentiveFeeCollector
+    /// @inheritdoc IIncentivesCollector
     function removeLstStakerVault(address lstStakerVault) external onlyRole(DEFAULT_ADMIN_ROLE) {
         if (lstAdapters[lstStakerVault] == address(0)) LSTStakerVaultNotFound.selector.revertWith();
         emit LstStakerVaultRemoved(lstStakerVault);
@@ -136,12 +131,12 @@ contract BGTIncentiveFeeCollector is
         }
     }
 
-    /// @inheritdoc IBGTIncentiveFeeCollector
+    /// @inheritdoc IIncentivesCollector
     function pause() external onlyRole(PAUSER_ROLE) {
         _pause();
     }
 
-    /// @inheritdoc IBGTIncentiveFeeCollector
+    /// @inheritdoc IIncentivesCollector
     function unpause() external onlyRole(MANAGER_ROLE) {
         _unpause();
     }
@@ -150,8 +145,26 @@ contract BGTIncentiveFeeCollector is
     /*                       TOKENS AUCTION                       */
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
 
-    /// @inheritdoc IBGTIncentiveFeeCollector
+    /// @inheritdoc IIncentivesCollector
     function claimFees(address _recipient, address[] calldata _feeTokens) external whenNotPaused {
+        _claim(_recipient, _feeTokens);
+    }
+
+    /// @inheritdoc IIncentivesCollector
+    function claim(address _recipient, address[] calldata _incentiveTokens) external whenNotPaused {
+        _claim(_recipient, _incentiveTokens);
+    }
+
+    /// @inheritdoc IIncentivesCollector
+    function lstStakerVaultsLength() external view returns (uint256) {
+        return lstStakerVaults.length;
+    }
+
+    /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
+    /*                     INTERNAL FUNCTIONS                     */
+    /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
+
+    function _claim(address _recipient, address[] calldata _incentiveTokens) internal {
         // Transfer the payout amount of the payout token to this contract from msg.sender.
         IERC20(WBERA).safeTransferFrom(msg.sender, address(this), payoutAmount);
         uint256[] memory amounts = _splitAmount(payoutAmount);
@@ -182,29 +195,20 @@ contract BGTIncentiveFeeCollector is
             }
         }
 
-        // From all the specified fee tokens, transfer them to the recipient.
-        for (uint256 i; i < _feeTokens.length;) {
-            address feeToken = _feeTokens[i];
-            uint256 feeTokenAmountToTransfer = IERC20(feeToken).balanceOf(address(this));
-            IERC20(feeToken).safeTransfer(_recipient, feeTokenAmountToTransfer);
-            emit IncentiveFeeTokenClaimed(msg.sender, _recipient, feeToken, feeTokenAmountToTransfer);
+        // From all the specified incentive tokens, transfer them to the recipient.
+        for (uint256 i; i < _incentiveTokens.length;) {
+            address incentiveToken = _incentiveTokens[i];
+            uint256 incentiveTokenAmountToTransfer = IERC20(incentiveToken).balanceOf(address(this));
+            IERC20(incentiveToken).safeTransfer(_recipient, incentiveTokenAmountToTransfer);
+            emit IncentiveTokenClaimed(msg.sender, _recipient, incentiveToken, incentiveTokenAmountToTransfer);
             unchecked {
                 ++i;
             }
         }
 
-        emit IncentiveFeesClaimed(msg.sender, _recipient);
+        emit IncentivesClaimed(msg.sender, _recipient);
         if (queuedPayoutAmount != 0) _setPayoutAmount();
     }
-
-    /// @inheritdoc IBGTIncentiveFeeCollector
-    function lstStakerVaultsLength() external view returns (uint256) {
-        return lstStakerVaults.length;
-    }
-
-    /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
-    /*                     INTERNAL FUNCTIONS                     */
-    /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
 
     /// @notice Set the payout amount to the queued payout amount
     function _setPayoutAmount() internal {
@@ -244,7 +248,7 @@ contract BGTIncentiveFeeCollector is
         }
 
         // 0 edge case: no stakes or no amount to split
-        // In this case, claimer will be able to claim all the fee tokens without paying the payout amount of WBERA.
+        // In this case, claimer will be able to claim all the tokens without paying the payout amount of WBERA.
         // We are aware of this issue and does not consider it a problem given totalStake being 0 is not practically,
         // possible situation as all the LST vaults are deployed with initial supply.
         if (totalStake == 0 || amount == 0) {

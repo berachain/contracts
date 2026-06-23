@@ -28,7 +28,7 @@ contract TransferPOLV2OwnershipScript is RBAC, BaseScript, Storage, AddressBook 
         RBAC.AccountDescription memory deployer = RBAC.AccountDescription({ name: "deployer", addr: msg.sender });
 
         _transferWBERAStakerVaultOwnership(deployer, governance);
-        _transferBGTIncentiveFeeCollectorOwnership(deployer, governance);
+        _transferIncentivesCollectorOwnership(deployer, governance);
     }
 
     function _transferWBERAStakerVaultOwnership(
@@ -61,40 +61,40 @@ contract TransferPOLV2OwnershipScript is RBAC, BaseScript, Storage, AddressBook 
         _transferRole(wberaStakerVaultAdminRole, deployer, governance);
     }
 
-    function _transferBGTIncentiveFeeCollectorOwnership(
+    function _transferIncentivesCollectorOwnership(
         RBAC.AccountDescription memory deployer,
         RBAC.AccountDescription memory governance
     )
         internal
     {
-        RBAC.RoleDescription memory bgtIncentiveFeeCollectorAdminRole = RBAC.RoleDescription({
-            contractName: "BGTIncentiveFeeCollector",
-            contractAddr: _polAddresses.bgtIncentiveFeeCollector,
+        RBAC.RoleDescription memory incentivesCollectorAdminRole = RBAC.RoleDescription({
+            contractName: "IncentivesCollector",
+            contractAddr: _polAddresses.incentivesCollector,
             name: "DEFAULT_ADMIN_ROLE",
-            role: bgtIncentiveFeeCollector.DEFAULT_ADMIN_ROLE()
+            role: incentivesCollector.DEFAULT_ADMIN_ROLE()
         });
-        RBAC.RoleDescription memory bgtIncentiveFeeCollectorManagerRole = RBAC.RoleDescription({
-            contractName: "BGTIncentiveFeeCollector",
-            contractAddr: _polAddresses.bgtIncentiveFeeCollector,
+        RBAC.RoleDescription memory incentivesCollectorManagerRole = RBAC.RoleDescription({
+            contractName: "IncentivesCollector",
+            contractAddr: _polAddresses.incentivesCollector,
             name: "MANAGER_ROLE",
-            role: bgtIncentiveFeeCollector.MANAGER_ROLE()
+            role: incentivesCollector.MANAGER_ROLE()
         });
-        RBAC.RoleDescription memory bgtIncentiveFeeCollectorPauserRole = RBAC.RoleDescription({
-            contractName: "BGTIncentiveFeeCollector",
-            contractAddr: _polAddresses.bgtIncentiveFeeCollector,
+        RBAC.RoleDescription memory incentivesCollectorPauserRole = RBAC.RoleDescription({
+            contractName: "IncentivesCollector",
+            contractAddr: _polAddresses.incentivesCollector,
             name: "PAUSER_ROLE",
-            role: bgtIncentiveFeeCollector.PAUSER_ROLE()
+            role: incentivesCollector.PAUSER_ROLE()
         });
-        console2.log("Transferring ownership of BGTIncentiveFeeCollector contract...");
-        _transferRole(bgtIncentiveFeeCollectorPauserRole, deployer, governance);
-        _transferRole(bgtIncentiveFeeCollectorManagerRole, deployer, governance);
-        _transferRole(bgtIncentiveFeeCollectorAdminRole, deployer, governance);
+        console2.log("Transferring ownership of IncentivesCollector contract...");
+        _transferRole(incentivesCollectorPauserRole, deployer, governance);
+        _transferRole(incentivesCollectorManagerRole, deployer, governance);
+        _transferRole(incentivesCollectorAdminRole, deployer, governance);
     }
 
     function _loadStorageContracts() internal {
         _validateCode("WBERAStakerVault", _polAddresses.wberaStakerVault);
-        _validateCode("BGTIncentiveFeeCollector", _polAddresses.bgtIncentiveFeeCollector);
+        _validateCode("IncentivesCollector", _polAddresses.incentivesCollector);
         wberaStakerVault = WBERAStakerVault(payable(_polAddresses.wberaStakerVault));
-        bgtIncentiveFeeCollector = BGTIncentiveFeeCollector(_polAddresses.bgtIncentiveFeeCollector);
+        incentivesCollector = IncentivesCollector(_polAddresses.incentivesCollector);
     }
 }

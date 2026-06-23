@@ -5,7 +5,7 @@ import { Test } from "forge-std/Test.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 
-import { BGTIncentiveFeeCollector } from "src/pol/BGTIncentiveFeeCollector.sol";
+import { IncentivesCollector } from "src/pol/IncentivesCollector.sol";
 import { Create2Deployer } from "src/base/Create2Deployer.sol";
 import { InfraredBeraAdapter, IInfraredBera } from "src/pol/lst/InfraredBeraAdapter.sol";
 import { LSTStakerVault } from "src/pol/lst/LSTStakerVault.sol";
@@ -14,10 +14,10 @@ import { LSTStakerVaultFactoryDeployer } from "src/pol/lst/LSTStakerVaultFactory
 import { WBERA } from "src/WBERA.sol";
 import { Salt } from "src/base/Salt.sol";
 
-/// @notice Fork tests for the BGTIncentiveFeeCollector adding InfraredBera as an LST.
+/// @notice Fork tests for the IncentivesCollector adding InfraredBera as an LST.
 contract LSTStakerVaultInfraredBera is Create2Deployer, Test {
     WBERA wbera = WBERA(payable(0x6969696969696969696969696969696969696969));
-    BGTIncentiveFeeCollector collector = BGTIncentiveFeeCollector(0x1984Baf659607Cc5f206c55BB3B00eb3E180190B);
+    IncentivesCollector collector = IncentivesCollector(0x1984Baf659607Cc5f206c55BB3B00eb3E180190B);
     LSTStakerVaultFactory factory;
 
     address iBera = 0x9b6761bf2397Bb5a6624a856cC84A3A14Dcd3fe5;
@@ -63,7 +63,7 @@ contract LSTStakerVaultInfraredBera is Create2Deployer, Test {
         _upgradeCollector();
 
         uint256 svBalanceBefore = wbera.balanceOf(wberaStakerVault);
-        _claimFees();
+        _claim();
         uint256 svDeltaBalance = wbera.balanceOf(wberaStakerVault) - svBalanceBefore;
 
         // Check payout amount has been transferred to the Staker Vault
@@ -111,7 +111,7 @@ contract LSTStakerVaultInfraredBera is Create2Deployer, Test {
         uint256 wberaAmountToIbera = payoutAmount * iberaShare / 1e18;
         uint256 expectedPayoutIbera = IERC4626(iBera).previewMint(wberaAmountToIbera);
 
-        _claimFees();
+        _claim();
 
         uint256 mainDeltaBalance = wbera.balanceOf(wberaStakerVault) - mainBalanceBefore;
         uint256 iberaDeltaBalance = IERC20(iBera).balanceOf(infraredVault) - iberaBalanceBefore;
@@ -133,10 +133,10 @@ contract LSTStakerVaultInfraredBera is Create2Deployer, Test {
     }
 
     function _upgradeCollector() internal {
-        // deploy the new implementation of BgtIncentiveFeeCollector
-        address impl = deployWithCreate2(0, type(BGTIncentiveFeeCollector).creationCode);
+        // deploy the new implementation of IncentivesCollector
+        address impl = deployWithCreate2(0, type(IncentivesCollector).creationCode);
 
-        // upgrade the BgtIncentiveFeeCollector implementation
+        // upgrade the IncentivesCollector implementation
         vm.prank(safeOwner);
         collector.upgradeToAndCall(impl, bytes(""));
     }
@@ -154,6 +154,25 @@ contract LSTStakerVaultInfraredBera is Create2Deployer, Test {
         address[] memory tokensToClaim = new address[](1);
         tokensToClaim[0] = honey;
         collector.claimFees(claimer, tokensToClaim);
+        vm.stopPrank();
+
+        assertEq(0, IERC20(honey).balanceOf(address(collector)));
+        assertEq(honeyBalance, IERC20(honey).balanceOf(claimer));
+    }
+
+    function _claim() public {
+        address claimer = address(0x1234);
+        uint256 payoutAmount = collector.payoutAmount();
+        vm.deal(claimer, payoutAmount);
+
+        uint256 honeyBalance = IERC20(honey).balanceOf(address(collector));
+
+        vm.startPrank(claimer);
+        wbera.deposit{ value: payoutAmount }();
+        wbera.approve(address(collector), payoutAmount);
+        address[] memory tokensToClaim = new address[](1);
+        tokensToClaim[0] = honey;
+        collector.claim(claimer, tokensToClaim);
         vm.stopPrank();
 
         assertEq(0, IERC20(honey).balanceOf(address(collector)));

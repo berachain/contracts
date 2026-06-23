@@ -3,7 +3,7 @@ pragma solidity 0.8.26;
 
 import { IPOLErrors } from "./IPOLErrors.sol";
 
-interface IBGTIncentiveFeeCollector is IPOLErrors {
+interface IIncentivesCollector is IPOLErrors {
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
     /*                           EVENTS                           */
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
@@ -22,21 +22,21 @@ interface IBGTIncentiveFeeCollector is IPOLErrors {
     event PayoutAmountSet(uint256 indexed oldPayoutAmount, uint256 indexed newPayoutAmount);
 
     /**
-     * @notice Emitted when the incentive fees are claimed.
-     * @param caller Caller of the `claimFees` function.
-     * @param recipient The address to which collected incentive fees will be transferred.
+     * @notice Emitted when the incentives are claimed.
+     * @param caller Caller of the `claim` function.
+     * @param recipient The address to which collected incentive tokens will be transferred.
      */
-    event IncentiveFeesClaimed(address indexed caller, address indexed recipient);
+    event IncentivesClaimed(address indexed caller, address indexed recipient);
 
     /**
-     * @notice Emitted when the fee token is claimed.
-     * @param caller Caller of the `claimFees` function.
-     * @param recipient The address to which collected incentive fees will be transferred.
-     * @param feeToken The address of the fee token to collect.
-     * @param amount The amount of fee token to transfer.
+     * @notice Emitted when a incentive token is claimed.
+     * @param caller Caller of the `claim` function.
+     * @param recipient The address to which collected incentive tokens will be transferred.
+     * @param incentiveToken The address of the incentive token to collect.
+     * @param amount The amount of incentive token transferred.
      */
-    event IncentiveFeeTokenClaimed(
-        address indexed caller, address indexed recipient, address indexed feeToken, uint256 amount
+    event IncentiveTokenClaimed(
+        address indexed caller, address indexed recipient, address indexed incentiveToken, uint256 amount
     );
 
     /**
@@ -114,7 +114,7 @@ interface IBGTIncentiveFeeCollector is IPOLErrors {
     function queuePayoutAmountChange(uint256 _newPayoutAmount) external;
 
     /**
-     * @notice Add a new LST staker vault to be considered for incentive fee distribution.
+     * @notice Add a new LST staker vault to be considered for incentive tokens distribution.
      * @dev Can only be called by `DEFAULT_ADMIN_ROLE`.
      * @dev Only supports 18 decimals tokens.
      * @param lstStakerVault The address of the LST staker vault.
@@ -123,7 +123,7 @@ interface IBGTIncentiveFeeCollector is IPOLErrors {
     function addLstStakerVault(address lstStakerVault, address lstAdapter) external;
 
     /**
-     * @notice Remove an existing LST staker vault from the incentive fee distribution list.
+     * @notice Remove an existing LST staker vault from the incentive tokens distribution list.
      * @dev Can only be called by `DEFAULT_ADMIN_ROLE`.
      * @param lstStakerVault The address of the LST staker vault.
      */
@@ -146,6 +146,7 @@ interface IBGTIncentiveFeeCollector is IPOLErrors {
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
 
     /**
+     * @notice Deprecated. Use `claim` instead.
      * @notice Claim collected incentive fees and transfer them to the recipient.
      * @dev Caller needs to pay the PAYOUT_AMOUNT of WBERA tokens.
      * @dev This function is NOT implementing slippage protection. Caller has to check that received amounts match the
@@ -154,4 +155,14 @@ interface IBGTIncentiveFeeCollector is IPOLErrors {
      * @param incentiveFeeTokens The addresses of the incentive fee token to collect to the recipient.
      */
     function claimFees(address recipient, address[] calldata incentiveFeeTokens) external;
+
+    /**
+     * @notice Claim collected incentive tokens and transfer them to the recipient.
+     * @dev Caller needs to pay the PAYOUT_AMOUNT of WBERA tokens.
+     * @dev This function is NOT implementing slippage protection. Caller has to check that received amounts match the
+     * minimum expected.
+     * @param recipient The address to which collected incentive tokens will be transferred.
+     * @param incentiveTokens The addresses of the incentive tokens to collect to the recipient.
+     */
+    function claim(address recipient, address[] calldata incentiveTokens) external;
 }

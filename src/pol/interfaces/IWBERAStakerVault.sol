@@ -105,7 +105,7 @@ interface IWBERAStakerVault is IPOLErrors {
 
     /**
      * @notice Receive rewards.
-     * @dev Rewards are received from `BGTIncentiveFeeCollector` contract and this function is being introduced
+     * @dev Rewards are received from `IncentivesCollector` contract and this function is being introduced
      * for better tracking of rewards.
      * @param amount The amount of rewards to receive.
      */

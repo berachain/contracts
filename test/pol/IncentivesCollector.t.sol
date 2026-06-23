@@ -13,9 +13,9 @@ import { PausableUpgradeable } from "@openzeppelin/contracts-upgradeable/utils/P
 import { DistributorTest } from "./Distributor.t.sol";
 import { MockERC20 } from "../mock/token/MockERC20.sol";
 import { Salt } from "src/base/Salt.sol";
-import { BGTIncentiveFeeDeployer } from "src/pol/BGTIncentiveFeeDeployer.sol";
-import { BGTIncentiveFeeCollector } from "src/pol/BGTIncentiveFeeCollector.sol";
-import { IBGTIncentiveFeeCollector, IPOLErrors } from "src/pol/interfaces/IBGTIncentiveFeeCollector.sol";
+import { IncentivesCollectorDeployer } from "src/pol/IncentivesCollectorDeployer.sol";
+import { IncentivesCollector } from "src/pol/IncentivesCollector.sol";
+import { IIncentivesCollector, IPOLErrors } from "src/pol/interfaces/IIncentivesCollector.sol";
 
 import { WBERAStakerVault } from "src/pol/WBERAStakerVault.sol";
 import { MockLST } from "test/mock/pol/lst/MockLST.sol";
@@ -39,10 +39,10 @@ contract MockNon18DecimalsERC20 is ERC20 {
     }
 }
 
-contract BGTIncentiveFeeCollectorTest is DistributorTest {
-    Salt public BGT_INCENTIVE_FEE_DEPLOYER_SALT = Salt({ implementation: 0, proxy: 1 });
+contract IncentivesCollectorTest is DistributorTest {
+    Salt public INCENTIVES_COLLECTOR_DEPLOYER_SALT = Salt({ implementation: 0, proxy: 1 });
     Salt public WBERA_STAKER_VAULT_SALT = Salt({ implementation: 0, proxy: 1 });
-    Salt public BGT_INCENTIVE_FEE_COLLECTOR_SALT = Salt({ implementation: 0, proxy: 1 });
+    Salt public INCENTIVES_COLLECTOR_SALT = Salt({ implementation: 0, proxy: 1 });
 
     bytes32 internal pauserRole;
     address internal pauser = makeAddr("pauser");
@@ -50,7 +50,7 @@ contract BGTIncentiveFeeCollectorTest is DistributorTest {
     MockERC20 internal feeToken1;
     MockERC20 internal feeToken2;
     address internal wberaStakerVault;
-    BGTIncentiveFeeCollector public incentiveFeeCollector;
+    IncentivesCollector public incentiveFeeCollector;
 
     function setUp() public virtual override {
         // deploy pol
@@ -59,17 +59,15 @@ contract BGTIncentiveFeeCollectorTest is DistributorTest {
         // Deal WBERA tokens to this contract for the deployer's initial deposit
         deal(address(wbera), address(this), 10 ether);
 
-        address bgtIncentiveFeeDeployer = getCreate2AddressWithArgs(
-            BGT_INCENTIVE_FEE_DEPLOYER_SALT.implementation,
-            type(BGTIncentiveFeeDeployer).creationCode,
-            abi.encode(
-                governance, address(this), PAYOUT_AMOUNT, WBERA_STAKER_VAULT_SALT, BGT_INCENTIVE_FEE_COLLECTOR_SALT
-            )
+        address incentivesCollectorDeployer = getCreate2AddressWithArgs(
+            INCENTIVES_COLLECTOR_DEPLOYER_SALT.implementation,
+            type(IncentivesCollectorDeployer).creationCode,
+            abi.encode(governance, address(this), PAYOUT_AMOUNT, WBERA_STAKER_VAULT_SALT, INCENTIVES_COLLECTOR_SALT)
         );
-        wbera.approve(bgtIncentiveFeeDeployer, 10 ether);
+        wbera.approve(incentivesCollectorDeployer, 10 ether);
 
         // deploy incentive fee collector
-        _deployBGTIncentiveFee();
+        _deployIncentivesCollector();
 
         // deploy fee tokens
         feeToken1 = new MockERC20();
@@ -114,7 +112,7 @@ contract BGTIncentiveFeeCollectorTest is DistributorTest {
     function test_QueuePayoutAmount() public {
         vm.prank(governance);
         vm.expectEmit(true, true, true, true);
-        emit IBGTIncentiveFeeCollector.QueuedPayoutAmount(2e18, 1e18);
+        emit IIncentivesCollector.QueuedPayoutAmount(2e18, 1e18);
         incentiveFeeCollector.queuePayoutAmountChange(2e18);
         assertEq(incentiveFeeCollector.queuedPayoutAmount(), 2e18);
     }
@@ -129,7 +127,7 @@ contract BGTIncentiveFeeCollectorTest is DistributorTest {
         incentiveFeeCollector.claimFees(address(this), feeTokens);
     }
 
-    function test_ClaimsFees_FailsIfNotApproved() public {
+    function test_ClaimFees_FailsIfNotApproved() public {
         _mintTokensToIncentiveFeeCollector();
         // approve wbera token for incentive fee collector less than payout amount
         wbera.approve(address(incentiveFeeCollector), PAYOUT_AMOUNT - 1);
@@ -164,6 +162,55 @@ contract BGTIncentiveFeeCollectorTest is DistributorTest {
 
         // claim fees should activate queued payout amount
         test_ClaimFees();
+        assertEq(incentiveFeeCollector.payoutAmount(), 2e18);
+        assertEq(incentiveFeeCollector.queuedPayoutAmount(), 0);
+    }
+
+    function test_Claim_FailsIfPaused() public {
+        vm.prank(pauser);
+        incentiveFeeCollector.pause();
+        address[] memory feeTokens = new address[](2);
+        feeTokens[0] = address(feeToken1);
+        feeTokens[1] = address(feeToken2);
+        vm.expectRevert(abi.encodeWithSelector(PausableUpgradeable.EnforcedPause.selector));
+        incentiveFeeCollector.claim(address(this), feeTokens);
+    }
+
+    function test_Claim_FailsIfNotApproved() public {
+        _mintTokensToIncentiveFeeCollector();
+        // approve wbera token for incentive fee collector less than payout amount
+        wbera.approve(address(incentiveFeeCollector), PAYOUT_AMOUNT - 1);
+
+        address[] memory feeTokens = new address[](2);
+        feeTokens[0] = address(feeToken1);
+        feeTokens[1] = address(feeToken2);
+        vm.expectRevert(ERC20.InsufficientAllowance.selector);
+        incentiveFeeCollector.claim(address(this), feeTokens);
+    }
+
+    function test_Claim() public {
+        uint256 preWberaStakerVaultBalance = wbera.balanceOf(address(wberaStakerVault));
+        _claim();
+
+        // post claim check
+        assertEq(feeToken1.balanceOf(address(incentiveFeeCollector)), 0);
+        assertEq(feeToken2.balanceOf(address(incentiveFeeCollector)), 0);
+
+        assertEq(feeToken1.balanceOf(address(this)), 1e18);
+        assertEq(feeToken2.balanceOf(address(this)), 1e18);
+        // wbera balance should be 0 for this contract and for incentive fee collector
+        assertEq(wbera.balanceOf(address(this)), 0);
+        assertEq(wbera.balanceOf(address(incentiveFeeCollector)), 0);
+        // wbera balance of wberaStakerVault should increase by payout amount.
+        assertEq(wbera.balanceOf(address(wberaStakerVault)), PAYOUT_AMOUNT + preWberaStakerVaultBalance);
+    }
+
+    function test_Claim_ActivateQueuedPayoutAmount() public {
+        vm.prank(governance);
+        incentiveFeeCollector.queuePayoutAmountChange(2e18);
+
+        // claim fees should activate queued payout amount
+        test_Claim();
         assertEq(incentiveFeeCollector.payoutAmount(), 2e18);
         assertEq(incentiveFeeCollector.queuedPayoutAmount(), 0);
     }
@@ -216,7 +263,7 @@ contract BGTIncentiveFeeCollectorTest is DistributorTest {
     }
 
     function test_Upgrade_FailsIfNotGovernance() public {
-        address newImplementation = address(new BGTIncentiveFeeCollector());
+        address newImplementation = address(new IncentivesCollector());
         vm.expectRevert(
             abi.encodeWithSelector(
                 IAccessControl.AccessControlUnauthorizedAccount.selector, address(this), defaultAdminRole
@@ -226,7 +273,7 @@ contract BGTIncentiveFeeCollectorTest is DistributorTest {
     }
 
     function test_Upgrade() public {
-        address newImplementation = address(new BGTIncentiveFeeCollector());
+        address newImplementation = address(new IncentivesCollector());
         vm.prank(governance);
         incentiveFeeCollector.upgradeToAndCall(newImplementation, "");
         assertEq(
@@ -245,18 +292,18 @@ contract BGTIncentiveFeeCollectorTest is DistributorTest {
     }
 
     // Helper function to deploy the incentive fee collector.
-    function _deployBGTIncentiveFee() internal {
-        BGTIncentiveFeeDeployer bgtIncentiveFeeDeployer = BGTIncentiveFeeDeployer(
+    function _deployIncentivesCollector() internal {
+        IncentivesCollectorDeployer incentivesCollectorDeployer = IncentivesCollectorDeployer(
             deployWithCreate2WithArgs(
-                BGT_INCENTIVE_FEE_DEPLOYER_SALT.implementation,
-                type(BGTIncentiveFeeDeployer).creationCode,
+                INCENTIVES_COLLECTOR_DEPLOYER_SALT.implementation,
+                type(IncentivesCollectorDeployer).creationCode,
                 abi.encode(
-                    governance, address(this), PAYOUT_AMOUNT, WBERA_STAKER_VAULT_SALT, BGT_INCENTIVE_FEE_COLLECTOR_SALT
+                    governance, address(this), PAYOUT_AMOUNT, WBERA_STAKER_VAULT_SALT, INCENTIVES_COLLECTOR_SALT
                 )
             )
         );
-        incentiveFeeCollector = bgtIncentiveFeeDeployer.bgtIncentiveFeeCollector();
-        wberaStakerVault = address(bgtIncentiveFeeDeployer.wberaStakerVault());
+        incentiveFeeCollector = incentivesCollectorDeployer.incentivesCollector();
+        wberaStakerVault = address(incentivesCollectorDeployer.wberaStakerVault());
     }
 
     function _claimFees() internal {
@@ -268,10 +315,25 @@ contract BGTIncentiveFeeCollectorTest is DistributorTest {
         feeTokens[0] = address(feeToken1);
         feeTokens[1] = address(feeToken2);
         vm.expectEmit(true, true, true, true);
-        emit IBGTIncentiveFeeCollector.IncentiveFeeTokenClaimed(address(this), address(this), address(feeToken1), 1e18);
-        emit IBGTIncentiveFeeCollector.IncentiveFeeTokenClaimed(address(this), address(this), address(feeToken2), 1e18);
-        emit IBGTIncentiveFeeCollector.IncentiveFeesClaimed(address(this), address(this));
+        emit IIncentivesCollector.IncentiveTokenClaimed(address(this), address(this), address(feeToken1), 1e18);
+        emit IIncentivesCollector.IncentiveTokenClaimed(address(this), address(this), address(feeToken2), 1e18);
+        emit IIncentivesCollector.IncentivesClaimed(address(this), address(this));
         incentiveFeeCollector.claimFees(address(this), feeTokens);
+    }
+
+    function _claim() internal {
+        _mintTokensToIncentiveFeeCollector();
+        // approve wbera token for incentive fee collector
+        wbera.approve(address(incentiveFeeCollector), PAYOUT_AMOUNT);
+
+        address[] memory feeTokens = new address[](2);
+        feeTokens[0] = address(feeToken1);
+        feeTokens[1] = address(feeToken2);
+        vm.expectEmit(true, true, true, true);
+        emit IIncentivesCollector.IncentiveTokenClaimed(address(this), address(this), address(feeToken1), 1e18);
+        emit IIncentivesCollector.IncentiveTokenClaimed(address(this), address(this), address(feeToken2), 1e18);
+        emit IIncentivesCollector.IncentivesClaimed(address(this), address(this));
+        incentiveFeeCollector.claim(address(this), feeTokens);
     }
 
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
@@ -285,7 +347,7 @@ contract BGTIncentiveFeeCollectorTest is DistributorTest {
 
         vm.prank(governance);
         vm.expectEmit(true, true, true, true);
-        emit IBGTIncentiveFeeCollector.LstStakerVaultAdded(lstStakerVault, lstAdapter);
+        emit IIncentivesCollector.LstStakerVaultAdded(lstStakerVault, lstAdapter);
         incentiveFeeCollector.addLstStakerVault(lstStakerVault, lstAdapter);
 
         assertEq(incentiveFeeCollector.lstAdapters(lstStakerVault), lstAdapter);
@@ -356,7 +418,7 @@ contract BGTIncentiveFeeCollectorTest is DistributorTest {
 
         vm.prank(governance);
         vm.expectEmit(true, true, true, true);
-        emit IBGTIncentiveFeeCollector.LstStakerVaultRemoved(lstStakerVault);
+        emit IIncentivesCollector.LstStakerVaultRemoved(lstStakerVault);
         incentiveFeeCollector.removeLstStakerVault(lstStakerVault);
 
         assertEq(incentiveFeeCollector.lstStakerVaultsLength(), 0);
@@ -396,16 +458,16 @@ contract BGTIncentiveFeeCollectorTest is DistributorTest {
 
         uint256 payoutAmount = incentiveFeeCollector.payoutAmount();
 
-        // _claimFees() expansion to test RewardConverted event
+        // _claim() expansion to test RewardConverted event
         _mintTokensToIncentiveFeeCollector();
         wbera.approve(address(incentiveFeeCollector), payoutAmount);
         address[] memory feeTokens = new address[](2);
         feeTokens[0] = address(feeToken1);
         feeTokens[1] = address(feeToken2);
         vm.expectEmit(true, true, true, true);
-        emit IBGTIncentiveFeeCollector.RewardConverted(lstStakerVault, payoutAmount / 2, payoutAmount / 2);
-        incentiveFeeCollector.claimFees(address(this), feeTokens);
-        // _claimFees() end
+        emit IIncentivesCollector.RewardConverted(lstStakerVault, payoutAmount / 2, payoutAmount / 2);
+        incentiveFeeCollector.claim(address(this), feeTokens);
+        // _claim() end
 
         uint256 balanceAfterLst = IERC20(lst).balanceOf(lstStakerVault);
         uint256 balanceAfterWbera = wbera.balanceOf(wberaStakerVault);
@@ -430,7 +492,7 @@ contract BGTIncentiveFeeCollectorTest is DistributorTest {
         uint256 balanceBeforeLst1 = IERC20(lst1).balanceOf(lstStakerVault1);
         uint256 balanceBeforeWbera = wbera.balanceOf(wberaStakerVault);
 
-        _claimFees();
+        _claim();
 
         uint256 balanceAfterLst0 = IERC20(lst0).balanceOf(lstStakerVault0);
         uint256 balanceAfterLst1 = IERC20(lst1).balanceOf(lstStakerVault1);

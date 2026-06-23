@@ -19,7 +19,7 @@ import { BeaconDeposit } from "src/pol/BeaconDeposit.sol";
 import { BGTIncentiveDistributor } from "src/pol/rewards/BGTIncentiveDistributor.sol";
 import { WBERAStakerVault } from "src/pol/WBERAStakerVault.sol";
 import { WBERAStakerVaultWithdrawalRequest } from "src/pol/WBERAStakerVaultWithdrawalRequest.sol";
-import { BGTIncentiveFeeCollector } from "src/pol/BGTIncentiveFeeCollector.sol";
+import { IncentivesCollector } from "src/pol/IncentivesCollector.sol";
 import { LSTStakerVaultFactory } from "src/pol/lst/LSTStakerVaultFactory.sol";
 import { LSTStakerVault } from "src/pol/lst/LSTStakerVault.sol";
 import { LSTStakerVaultWithdrawalRequest } from "src/pol/lst/LSTStakerVaultWithdrawalRequest.sol";
@@ -45,7 +45,7 @@ abstract contract Storage {
     BGTIncentiveDistributor internal bgtIncentiveDistributor;
     WBERAStakerVault internal wberaStakerVault;
     WBERAStakerVaultWithdrawalRequest internal wberaStakerVaultWithdrawalRequest;
-    BGTIncentiveFeeCollector internal bgtIncentiveFeeCollector;
+    IncentivesCollector internal incentivesCollector;
     LSTStakerVaultFactory internal lstStakerVaultFactory;
     LSTStakerVault internal lstStakerVault;
     LSTStakerVaultWithdrawalRequest internal lstStakerVaultWithdrawalRequest;

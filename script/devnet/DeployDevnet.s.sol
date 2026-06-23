@@ -17,11 +17,11 @@ import { POLDeployer } from "src/pol/POLDeployer.sol";
 import { BGTFeeDeployer } from "src/pol/BGTFeeDeployer.sol";
 import { BGTIncentiveDistributor } from "src/pol/rewards/BGTIncentiveDistributor.sol";
 import { BGTIncentiveDistributorDeployer } from "src/pol/BGTIncentiveDistributorDeployer.sol";
-import { BGTIncentiveFeeDeployer } from "src/pol/BGTIncentiveFeeDeployer.sol";
+import { IncentivesCollectorDeployer } from "src/pol/IncentivesCollectorDeployer.sol";
 import { WBERAStakerVault } from "src/pol/WBERAStakerVault.sol";
 import { WBERAStakerVaultWithdrawalRequest } from "src/pol/WBERAStakerVaultWithdrawalRequest.sol";
 import { WBERAStakerWithdrawReqDeployer } from "src/pol/WBERAStakerWithdrawReqDeployer.sol";
-import { BGTIncentiveFeeCollector } from "src/pol/BGTIncentiveFeeCollector.sol";
+import { IncentivesCollector } from "src/pol/IncentivesCollector.sol";
 import { DedicatedEmissionStreamManagerDeployer } from "src/pol/DedicatedEmissionStreamManagerDeployer.sol";
 import { DedicatedEmissionStreamManager } from "src/pol/rewards/DedicatedEmissionStreamManager.sol";
 import { RewardVaultHelperDeployer } from "src/pol/RewardVaultHelperDeployer.sol";
@@ -74,7 +74,7 @@ contract DeployDevnetScript is BaseDeployScript, RBAC, Storage, AddressBook, Con
     /// @dev Payout amount for FeeCollector (WBERA per claim).
     uint256 internal constant PAYOUT_AMOUNT_FEE = 5000 ether;
 
-    /// @dev Payout amount for BGTIncentiveFeeCollector (WBERA per claim).
+    /// @dev Payout amount for IncentivesCollector (WBERA per claim).
     uint256 internal constant PAYOUT_AMOUNT_INCENTIVE = 50_000 ether;
 
     /// @dev Initial WBERA deposit to WBERAStakerVault to prevent inflation attacks.
@@ -284,7 +284,7 @@ contract DeployDevnetScript is BaseDeployScript, RBAC, Storage, AddressBook, Con
     function _deployBGTIncentiveFees() internal {
         console2.log("\n--- [2/4] BGTIncentiveFees ---");
 
-        // Wrap BERA → WBERA; the BGTIncentiveFeeDeployer will pull INITIAL_DEPOSIT_AMOUNT via transferFrom.
+        // Wrap BERA → WBERA; the IncentivesCollectorDeployer will pull INITIAL_DEPOSIT_AMOUNT via transferFrom.
         WBERA(payable(WBERA_ADDRESS)).deposit{ value: INITIAL_DEPOSIT_AMOUNT }();
 
         bytes memory args = abi.encode(
@@ -292,26 +292,24 @@ contract DeployDevnetScript is BaseDeployScript, RBAC, Storage, AddressBook, Con
             msg.sender, // tokenProvider (will transferFrom this address)
             PAYOUT_AMOUNT_INCENTIVE,
             _saltsForProxy(type(WBERAStakerVault).creationCode),
-            _saltsForProxy(type(BGTIncentiveFeeCollector).creationCode)
+            _saltsForProxy(type(IncentivesCollector).creationCode)
         );
 
         // Must approve before deploying because the constructor calls transferFrom(tokenProvider).
-        address predictedDeployer = _predictAddressWithArgs(type(BGTIncentiveFeeDeployer).creationCode, args);
+        address predictedDeployer = _predictAddressWithArgs(type(IncentivesCollectorDeployer).creationCode, args);
         IERC20(WBERA_ADDRESS).approve(predictedDeployer, INITIAL_DEPOSIT_AMOUNT);
 
-        BGTIncentiveFeeDeployer bgtIncFeeDeployer = BGTIncentiveFeeDeployer(
+        IncentivesCollectorDeployer bgtIncFeeDeployer = IncentivesCollectorDeployer(
             _deployWithArgs(
-                "BGTIncentiveFeeDeployer", type(BGTIncentiveFeeDeployer).creationCode, args, predictedDeployer
+                "IncentivesCollectorDeployer", type(IncentivesCollectorDeployer).creationCode, args, predictedDeployer
             )
         );
 
         wberaStakerVault = bgtIncFeeDeployer.wberaStakerVault();
         _checkDeploymentAddress("WBERAStakerVault", address(wberaStakerVault), _polAddresses.wberaStakerVault);
 
-        bgtIncentiveFeeCollector = bgtIncFeeDeployer.bgtIncentiveFeeCollector();
-        _checkDeploymentAddress(
-            "BGTIncentiveFeeCollector", address(bgtIncentiveFeeCollector), _polAddresses.bgtIncentiveFeeCollector
-        );
+        incentivesCollector = bgtIncFeeDeployer.incentivesCollector();
+        _checkDeploymentAddress("IncentivesCollector", address(incentivesCollector), _polAddresses.incentivesCollector);
 
         // PAUSER_ROLE's admin is MANAGER_ROLE on both contracts.
         RBAC.AccountDescription memory deployer = RBAC.AccountDescription({ name: "deployer", addr: msg.sender });
@@ -335,19 +333,19 @@ contract DeployDevnetScript is BaseDeployScript, RBAC, Storage, AddressBook, Con
         );
         _grantRole(
             RBAC.RoleDescription({
-                contractName: "BGTIncentiveFeeCollector",
-                contractAddr: address(bgtIncentiveFeeCollector),
+                contractName: "IncentivesCollector",
+                contractAddr: address(incentivesCollector),
                 name: "MANAGER_ROLE",
-                role: bgtIncentiveFeeCollector.MANAGER_ROLE()
+                role: incentivesCollector.MANAGER_ROLE()
             }),
             deployer
         );
         _grantRole(
             RBAC.RoleDescription({
-                contractName: "BGTIncentiveFeeCollector",
-                contractAddr: address(bgtIncentiveFeeCollector),
+                contractName: "IncentivesCollector",
+                contractAddr: address(incentivesCollector),
                 name: "PAUSER_ROLE",
-                role: bgtIncentiveFeeCollector.PAUSER_ROLE()
+                role: incentivesCollector.PAUSER_ROLE()
             }),
             deployer
         );
@@ -532,7 +530,7 @@ contract DeployDevnetScript is BaseDeployScript, RBAC, Storage, AddressBook, Con
         console2.log("Set emission token on Distributor to WBERA");
 
         // RewardVaultFactory: incentive tokens collector + helper.
-        rewardVaultFactory.setIncentiveTokensCollector(address(bgtIncentiveFeeCollector));
+        rewardVaultFactory.setIncentiveTokensCollector(address(incentivesCollector));
         rewardVaultFactory.setRewardVaultHelper(address(rewardVaultHelper));
         console2.log("Configured RewardVaultFactory incentive settings");
 
@@ -711,30 +709,30 @@ contract DeployDevnetScript is BaseDeployScript, RBAC, Storage, AddressBook, Con
             console2.log("WBERAStakerVault roles transferred");
         }
 
-        // ── BGTIncentiveFeeCollector (AccessControl) ──
+        // ── IncentivesCollector (AccessControl) ──
         {
             RBAC.RoleDescription memory pauserRole = RBAC.RoleDescription({
-                contractName: "BGTIncentiveFeeCollector",
-                contractAddr: address(bgtIncentiveFeeCollector),
+                contractName: "IncentivesCollector",
+                contractAddr: address(incentivesCollector),
                 name: "PAUSER_ROLE",
-                role: bgtIncentiveFeeCollector.PAUSER_ROLE()
+                role: incentivesCollector.PAUSER_ROLE()
             });
             RBAC.RoleDescription memory managerRole = RBAC.RoleDescription({
-                contractName: "BGTIncentiveFeeCollector",
-                contractAddr: address(bgtIncentiveFeeCollector),
+                contractName: "IncentivesCollector",
+                contractAddr: address(incentivesCollector),
                 name: "MANAGER_ROLE",
-                role: bgtIncentiveFeeCollector.MANAGER_ROLE()
+                role: incentivesCollector.MANAGER_ROLE()
             });
             RBAC.RoleDescription memory adminRole = RBAC.RoleDescription({
-                contractName: "BGTIncentiveFeeCollector",
-                contractAddr: address(bgtIncentiveFeeCollector),
+                contractName: "IncentivesCollector",
+                contractAddr: address(incentivesCollector),
                 name: "DEFAULT_ADMIN_ROLE",
-                role: bgtIncentiveFeeCollector.DEFAULT_ADMIN_ROLE()
+                role: incentivesCollector.DEFAULT_ADMIN_ROLE()
             });
             _transferRole(pauserRole, deployer, ownerDesc);
             _transferRole(managerRole, deployer, ownerDesc);
             _transferRole(adminRole, deployer, ownerDesc);
-            console2.log("BGTIncentiveFeeCollector roles transferred");
+            console2.log("IncentivesCollector roles transferred");
         }
 
         // ── WBERAStakerVaultWithdrawalRequest (Ownable) ──
@@ -884,7 +882,7 @@ contract DeployDevnetScript is BaseDeployScript, RBAC, Storage, AddressBook, Con
         console2.log("BGTIncentiveDistributor:         ", address(bgtIncentiveDistributor));
         console2.log("WBERAStakerVault:                ", address(wberaStakerVault));
         console2.log("WBERAStakerVaultWithdrawalRequest:", address(wberaStakerVaultWithdrawalRequest));
-        console2.log("BGTIncentiveFeeCollector:        ", address(bgtIncentiveFeeCollector));
+        console2.log("IncentivesCollector:        ", address(incentivesCollector));
         console2.log("DedicatedEmissionStreamManager:  ", address(dedicatedEmissionStreamManager));
         console2.log("RewardVaultHelper:               ", address(rewardVaultHelper));
         console2.log("PeggedPriceOracle:               ", address(peggedPriceOracle));

@@ -22,8 +22,8 @@ struct POLAddresses {
     address feeCollectorImpl;
     address bgtIncentiveDistributor;
     address bgtIncentiveDistributorImpl;
-    address bgtIncentiveFeeCollector;
-    address bgtIncentiveFeeCollectorImpl;
+    address incentivesCollector;
+    address incentivesCollectorImpl;
     address wberaStakerVault;
     address wberaStakerVaultImpl;
     address wberaStakerVaultWithdrawalRequest;
@@ -78,8 +78,8 @@ abstract contract POLAddressBook {
             feeCollectorImpl: 0x0fE7B2A78f8c239569ec22cdbdb472694afc289c,
             bgtIncentiveDistributor: 0x77DA09bC82652f9A14d1b170a001e759640298e6,
             bgtIncentiveDistributorImpl: 0x5c5BfeFddB6f6A51F1D24A6a99F3BeA53eE59F29,
-            bgtIncentiveFeeCollector: 0x1984Baf659607Cc5f206c55BB3B00eb3E180190B,
-            bgtIncentiveFeeCollectorImpl: 0x56808698929c56D72851E18E5d8E1859B8E6FaCC,
+            incentivesCollector: 0x1984Baf659607Cc5f206c55BB3B00eb3E180190B,
+            incentivesCollectorImpl: 0x16565CCEc1b6782cf06C9fab051a1299036d1ddB,
             wberaStakerVault: 0x118D2cEeE9785eaf70C15Cd74CD84c9f8c3EeC9a,
             wberaStakerVaultImpl: 0x657EC58fDc6CebBDB78d74f814b1C5fA3C0423B1,
             wberaStakerVaultWithdrawalRequest: 0x30e47fd0452a14Caf18A0444cb6f35eaCaC899DA,
@@ -120,8 +120,8 @@ abstract contract POLAddressBook {
             feeCollectorImpl: 0x6ca4930Efc5cb995D83e2607571A3b2060532f75,
             bgtIncentiveDistributor: 0xb0d005Fe83E3F1ec876C1a64700c5F0d6265d9E3,
             bgtIncentiveDistributorImpl: 0x4AA432E9a3FD5dC58146Ef231ff346364E36Cc6D,
-            bgtIncentiveFeeCollector: 0x1984Baf659607Cc5f206c55BB3B00eb3E180190B,
-            bgtIncentiveFeeCollectorImpl: 0xd4013ce734d58AE0B20215c356B5DF4a89D46Cd3,
+            incentivesCollector: 0x1984Baf659607Cc5f206c55BB3B00eb3E180190B,
+            incentivesCollectorImpl: 0xf79936BFF041a489CE7bE62cc46bbbdf86003689,
             wberaStakerVault: 0x118D2cEeE9785eaf70C15Cd74CD84c9f8c3EeC9a,
             wberaStakerVaultImpl: 0x68348D7c5973bB932c108F03C04C16900827Fc14,
             wberaStakerVaultWithdrawalRequest: 0x30e47fd0452a14Caf18A0444cb6f35eaCaC899DA,
@@ -160,8 +160,8 @@ abstract contract POLAddressBook {
             feeCollectorImpl: 0xca68B6742c78Fac8276082eb74E4532B8E24887d,
             bgtIncentiveDistributor: 0x20CA52119499531EF4ac7e83a35Bf1C505538E74,
             bgtIncentiveDistributorImpl: 0x2b9308e4a09F8BEEab2860D255A1a635B8E9FBCF,
-            bgtIncentiveFeeCollector: 0x4A80d51B5306f412b573ebA9Cce1c62EA986e371,
-            bgtIncentiveFeeCollectorImpl: 0x6eD35D56914822D487f968397CCf0acB0dCacfC8,
+            incentivesCollector: 0x2F375FcEa0C162b22a70099D36A01263B681f42b,
+            incentivesCollectorImpl: 0xe0aFf6182F9A6E97D423C197fCF2D21b304ac015,
             wberaStakerVault: 0x0651f7834678e19BAf01de086864240DE4FfBE45,
             wberaStakerVaultImpl: 0x7571c17da478022fa3C4C8eD646B282E930F4C67,
             wberaStakerVaultWithdrawalRequest: 0xa48b32DE980349893de3C2Eb6cC2C5505E8A53c6,
@@ -200,8 +200,8 @@ abstract contract POLAddressBook {
             feeCollectorImpl: 0xa5D7a877297B31da1A3D0CcfdfC41D1C27428d36,
             bgtIncentiveDistributor: 0xf015eeC023E2Db26D2aa99D84b372E215bd59B65,
             bgtIncentiveDistributorImpl: 0x36a91B80a4f74FE7cfeddF0fc24959d04b89203A,
-            bgtIncentiveFeeCollector: 0xBE4f441CcE02268Ca29C85DeBB558002E1133b25,
-            bgtIncentiveFeeCollectorImpl: 0x22256464F89582B65A6FaAdf8d562B6E89a6BA66,
+            incentivesCollector: 0xF158F72596415078803dcC0B8BF7723b0dA5Fcf6,
+            incentivesCollectorImpl: 0x319dE2A3Ab9D8F42548F439ABbb4CC4c20F3B489,
             wberaStakerVault: 0x806A948acc78DA018b76aE8afabB6B71Ab95D3DB,
             wberaStakerVaultImpl: 0xEBf7759047f1027B4cC9de0211d611e23841C1e1,
             wberaStakerVaultWithdrawalRequest: 0x8bbFF3F485B1263CFb1960e7505FC6456dC14D5B,

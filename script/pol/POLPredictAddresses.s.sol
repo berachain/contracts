@@ -12,7 +12,7 @@ import { Distributor } from "src/pol/rewards/Distributor.sol";
 import { BGTStaker } from "src/pol/BGTStaker.sol";
 import { FeeCollector } from "src/pol/FeeCollector.sol";
 import { WBERAStakerVault } from "src/pol/WBERAStakerVault.sol";
-import { BGTIncentiveFeeCollector } from "src/pol/BGTIncentiveFeeCollector.sol";
+import { IncentivesCollector } from "src/pol/IncentivesCollector.sol";
 import { BGTIncentiveDistributor } from "src/pol/rewards/BGTIncentiveDistributor.sol";
 import { WBERAStakerVaultWithdrawalRequest } from "src/pol/WBERAStakerVaultWithdrawalRequest.sol";
 import { RewardVaultHelper } from "src/pol/rewards/RewardVaultHelper.sol";
@@ -42,8 +42,8 @@ contract POLPredictAddressesScript is BasePredictScript, AddressBook {
         _predictAddress("FeeCollector Impl", type(FeeCollector).creationCode);
         _predictProxyAddress("BGTIncentiveDistributor", type(BGTIncentiveDistributor).creationCode);
         _predictAddress("BGTIncentiveDistributor Impl", type(BGTIncentiveDistributor).creationCode);
-        _predictProxyAddress("BGT Incentive Fee Collector", type(BGTIncentiveFeeCollector).creationCode);
-        _predictAddress("BGT Incentive Fee Collector Impl", type(BGTIncentiveFeeCollector).creationCode);
+        _predictProxyAddress("Incentives Collector", type(IncentivesCollector).creationCode);
+        _predictAddress("Incentives Collector Impl", type(IncentivesCollector).creationCode);
         _predictProxyAddress("WBERA Staker Vault", type(WBERAStakerVault).creationCode);
         _predictAddress("WBERA Staker Vault Impl", type(WBERAStakerVault).creationCode);
         _predictProxyAddress(
