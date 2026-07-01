@@ -64,7 +64,7 @@ abstract contract POLAddressBook {
             wbera: 0x6969696969696969696969696969696969696969, // From genesis files
             bgt: 0x656b95E550C07a9ffe548bd4085c72418Ceb1dba,
             beraChef: 0xdf960E8F3F19C481dDE769edEDD439ea1a63426a,
-            beraChefImpl: 0x2d3D6e563627d87ea238fDF78cb106da47474F1c,
+            beraChefImpl: 0x7BE46e21Af81E432228E7ae15DfAA409E4ea211e,
             blockRewardController: 0x1AE7dD7AE06F6C58B4524d9c1f816094B1bcCD8e,
             blockRewardControllerImpl: 0x6341356004D27821CBBd9b8554F0aF53FB39776C,
             distributor: 0xD2f19a79b026Fb636A7c300bF5947df113940761,
@@ -106,7 +106,7 @@ abstract contract POLAddressBook {
             wbera: 0x6969696969696969696969696969696969696969, // From genesis files
             bgt: 0x656b95E550C07a9ffe548bd4085c72418Ceb1dba,
             beraChef: 0xdf960E8F3F19C481dDE769edEDD439ea1a63426a,
-            beraChefImpl: 0x0E8551a5C38bc5D77193E5672AA8Bd6a10cd1a6b,
+            beraChefImpl: 0xb0857802D9B91ffD797562627f4801BA080c512b,
             blockRewardController: 0x1AE7dD7AE06F6C58B4524d9c1f816094B1bcCD8e,
             blockRewardControllerImpl: 0x3e6286bEeB457fBDc6C1218215be12c2B1a6D9B2,
             distributor: 0xD2f19a79b026Fb636A7c300bF5947df113940761,
@@ -145,8 +145,8 @@ abstract contract POLAddressBook {
             beaconDeposit: 0x4242424242424242424242424242424242424242, // From genesis files
             wbera: 0x6969696969696969696969696969696969696969, // From genesis files
             bgt: 0xEE0BD9569e41fA26A79305Fc31a663986Deb79FB,
-            beraChef: 0xF824727fAA2200507390279CbC6EA7Cf4AfAaBf1,
-            beraChefImpl: 0xDa153387AB9d480ef7E3DB602eb06C5C8EB26a5e,
+            beraChef: 0xD93EB81ff6d6D6a67b60edaE2cf8B5E95Ec47467,
+            beraChefImpl: 0xaBE258a826B1fbD00eA0ea3D766a891133B3d93c,
             blockRewardController: 0xe96aD3b5Ea4763B66979d1D76028227bb5CF1951,
             blockRewardControllerImpl: 0x68Ee183142A289a1D1059647fFA905256BE45C7E,
             distributor: 0xEFBA19B83712c6FF15e8bDeB624aB223A1b89af6,
@@ -185,8 +185,8 @@ abstract contract POLAddressBook {
             beaconDeposit: 0x4242424242424242424242424242424242424242, // From genesis files
             wbera: 0x6969696969696969696969696969696969696969, // From genesis files
             bgt: 0xe804A615556BB2c4B530057DdBc77E5385957a25,
-            beraChef: 0xCe1CBFdC0a8D0F25FaC09D16ab1d45E97C14a1f6,
-            beraChefImpl: 0x2eBf1844217469F82B9f63684253eb60Ed5f58bB,
+            beraChef: 0x4898c5fb3af0Be5E709e35E75800a5E313BF6e8a,
+            beraChefImpl: 0xa8399eA9bb56B02838294003cddF8e6933fC3B57,
             blockRewardController: 0xf1aDf7a50773FF65c7cE8662A309F8e277Cd7Ec6,
             blockRewardControllerImpl: 0xE16dc304d1aF660A03e618F4948f84042aaEE03c,
             distributor: 0x046e3BeED5090A8f6EF88eeFD1a1877360560F71,

@@ -1188,7 +1188,7 @@ contract RewardVaultTest is DistributorTest, StakingTest {
     }
 
     function testFuzz_ProcessIncentivesWithNonZeroCommission(uint256 bgtEmitted, uint256 commission) public {
-        commission = bound(commission, 1, 0.1e4); // capped at 10%
+        commission = bound(commission, 1, 0.2e4); // capped at 20%
         bgtEmitted = bound(bgtEmitted, 0, 1000 * 1e18);
 
         // adds 100 dai, 100 honey incentive with rate 200 * 1e18.
@@ -1219,13 +1219,13 @@ contract RewardVaultTest is DistributorTest, StakingTest {
     function test_ProcessIncentives_WithNonZeroCommission() public {
         addIncentives(100 * 1e18, 200 * 1e18);
 
-        // Set the commission on the validator to 10%
-        setValCommission(1e3);
+        // Set the commission on the validator to 20%
+        setValCommission(2e3);
 
         // validator emit 1 BGT to the vault and will get all the incentives
         vm.startPrank(address(distributor));
         IERC20(bgt).safeIncreaseAllowance(address(vault), 1 ether);
-        uint256 validatorShare = 100 * 1e18 * 10 / 100;
+        uint256 validatorShare = 100 * 1e18 * 20 / 100;
         uint256 feeCollectorShare = 100 * 1e18 - validatorShare;
         vm.expectEmit();
         emit IRewardVault.IncentivesProcessed(valData.pubkey, address(dai), 1e18, validatorShare);
@@ -1328,15 +1328,15 @@ contract RewardVaultTest is DistributorTest, StakingTest {
 
     function test_ProcessIncentives_WithNonZeroCommissionAndMaliciousIncentive() public {
         addMaliciusIncentive(pausableERC20, 100 * 1e18, 100 * 1e18);
-        // Set the commission on the validator to 10%
-        setValCommission(1e3);
+        // Set the commission on the validator to 20%
+        setValCommission(2e3);
 
         // Pause the contract in order to make it revert on transfer
         pausableERC20.pause();
 
         vm.startPrank(address(distributor));
         IERC20(bgt).safeIncreaseAllowance(address(vault), 1e18);
-        uint256 validatorShare = 100 * 1e18 * 10 / 100;
+        uint256 validatorShare = 100 * 1e18 * 20 / 100;
         uint256 feeCollectorShare = 100 * 1e18 - validatorShare;
 
         vm.expectEmit(true, true, true, true);
@@ -1353,12 +1353,12 @@ contract RewardVaultTest is DistributorTest, StakingTest {
 
     function test_ProcessIncentives_WithApprovalPauseERC20() public {
         addMaliciusIncentive(approvalPauseERC20, 100 * 1e18, 100 * 1e18);
-        // Set the commission on the validator to 10%
-        setValCommission(1e3);
+        // Set the commission on the validator to 20%
+        setValCommission(2e3);
         // Pause the contract in order to make it revert on approval.
         // Since the new flow uses trySafeTransfer (no approve step), all transfers succeed.
         approvalPauseERC20.pause();
-        uint256 validatorShare = 100 * 1e18 * 10 / 100;
+        uint256 validatorShare = 100 * 1e18 * 20 / 100;
         uint256 feeCollectorShare = 100 * 1e18 - validatorShare;
 
         vm.startPrank(address(distributor));

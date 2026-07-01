@@ -711,11 +711,11 @@ contract BeraChefTest is POLTest {
     }
 
     function test_QueueValCommission() public {
-        testFuzz_QueueValCommission(1e3);
+        testFuzz_QueueValCommission(2e3);
     }
 
     function testFuzz_QueueValCommission(uint256 commission) public {
-        commission = bound(commission, 1, 0.1e4); // capped at 10%
+        commission = bound(commission, 1, 0.2e4); // capped at 20%
         vm.prank(operator);
         vm.expectEmit();
         emit IBeraChef.QueuedValCommission(valData.pubkey, uint96(commission));
@@ -727,10 +727,10 @@ contract BeraChefTest is POLTest {
     }
 
     function test_QueueValCommission_FailIfAlreadyQueued() public {
-        testFuzz_QueueValCommission(1e3);
+        testFuzz_QueueValCommission(2e3);
         vm.prank(operator);
         vm.expectRevert(IPOLErrors.CommissionChangeAlreadyQueued.selector);
-        beraChef.queueValCommission(valData.pubkey, uint96(0.1e4));
+        beraChef.queueValCommission(valData.pubkey, uint96(0.2e4));
     }
 
     function test_QueueValCommission_FailIfCommissionHigherThanMax() public {
@@ -763,13 +763,13 @@ contract BeraChefTest is POLTest {
         assertEq(queuedCommission.blockNumberLast, 0);
         assertEq(queuedCommission.commissionRate, 0);
 
-        testFuzz_QueueValCommission(1e3);
+        testFuzz_QueueValCommission(2e3);
         vm.roll(vm.getBlockNumber() + (2 * 8191));
         vm.expectEmit();
         // old commission will be equal to default 5%.
-        emit IBeraChef.ValCommissionSet(valData.pubkey, 1, 0.1e4);
+        emit IBeraChef.ValCommissionSet(valData.pubkey, 1, 0.2e4);
         beraChef.activateQueuedValCommission(valData.pubkey);
-        assertEq(beraChef.getValCommissionOnIncentiveTokens(valData.pubkey), 1e3);
+        assertEq(beraChef.getValCommissionOnIncentiveTokens(valData.pubkey), 2e3);
         // queued commission should be deleted
         queuedCommission = beraChef.getValQueuedCommissionOnIncentiveTokens(valData.pubkey);
         assertEq(queuedCommission.blockNumberLast, 0);
@@ -782,7 +782,7 @@ contract BeraChefTest is POLTest {
     }
 
     function test_ActivateQueuedValCommission_FailIfCommissionChangeDelayNotPassed() public {
-        testFuzz_QueueValCommission(1e3);
+        testFuzz_QueueValCommission(2e3);
         vm.roll(block.number + 2 * 8191 - 1);
         vm.expectRevert(IPOLErrors.CommissionNotQueuedOrDelayNotPassed.selector);
         beraChef.activateQueuedValCommission(valData.pubkey);

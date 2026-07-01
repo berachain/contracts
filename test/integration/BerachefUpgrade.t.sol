@@ -44,7 +44,7 @@ contract BeraChefUpgradeTest is Create2Deployer, Test, POLAddressBook {
 
         // check if there is the MAX_COMMISSION_RATE constant
         uint256 maxCommissionRate = BeraChef(_polAddresses.beraChef).MAX_COMMISSION_RATE();
-        assertEq(maxCommissionRate, 0.1e4); // 10% commission rate
+        assertEq(maxCommissionRate, 0.2e4); // 20% commission rate
     }
 
     function test_CommissionRate_PostUpdate() public {
@@ -53,18 +53,18 @@ contract BeraChefUpgradeTest is Create2Deployer, Test, POLAddressBook {
         assertEq(commissionRate, 1e4); // 100% commission
 
         // upgrade the BeraChef implementation
-        // check if MAX_COMMISSION_RATE constant is set to 10% after the upgrade
+        // check if MAX_COMMISSION_RATE constant is set to 20% after the upgrade
         // has been done in the test_Upgrade function
         test_Upgrade();
 
-        uint96 maxCommissionRate = 0.1e4; // 10% commission rate
+        uint96 maxCommissionRate = 0.2e4; // 20% commission rate
 
-        // commission rate should automatically be set to 10% after the upgrade
+        // commission rate should automatically be set to 20% after the upgrade
         commissionRate = BeraChef(_polAddresses.beraChef).getValCommissionOnIncentiveTokens(pubkey);
-        assertEq(commissionRate, maxCommissionRate); // 10% commission
+        assertEq(commissionRate, maxCommissionRate); // 20% commission
 
-        // try to queue a commission change higher than 10%
-        uint96 newCommissionRate = maxCommissionRate + 0.1e4; // 20% commission
+        // try to queue a commission change higher than 20%
+        uint96 newCommissionRate = maxCommissionRate + 0.1e4; // 30% commission
         // expect revert with InvalidCommissionValue error
         vm.prank(operator);
         vm.expectRevert(
@@ -72,8 +72,8 @@ contract BeraChefUpgradeTest is Create2Deployer, Test, POLAddressBook {
         );
         BeraChef(_polAddresses.beraChef).queueValCommission(pubkey, newCommissionRate);
 
-        // try to queue a commission change lower than 10%
-        newCommissionRate = 0.05e4; // 5% commission
+        // try to queue a commission change lower than 20%
+        newCommissionRate = maxCommissionRate - 0.1e4; // 10% commission
 
         // it should succeed
         vm.prank(operator);
@@ -87,7 +87,7 @@ contract BeraChefUpgradeTest is Create2Deployer, Test, POLAddressBook {
 
         vm.roll(vm.getBlockNumber() + (2 * 8191));
         vm.expectEmit(true, true, true, true);
-        // 10% (maxCommissionRate) is the old commission rate after the upgrade
+        // 20% (maxCommissionRate) is the old commission rate after the upgrade
         emit IBeraChef.ValCommissionSet(pubkey, maxCommissionRate, newCommissionRate);
         BeraChef(_polAddresses.beraChef).activateQueuedValCommission(pubkey);
         // check the new commission
