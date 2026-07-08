@@ -75,7 +75,7 @@ abstract contract POLAddressBook {
             bgtStaker: 0x44F07Ce5AfeCbCC406e6beFD40cc2998eEb8c7C6,
             bgtStakerImpl: 0xDD7FA46a1a735DBD7E7eD4B1928176D28002e205,
             feeCollector: 0x7Bb8DdaC7FbE3FFC0f4B3c73C4F158B06CF82650,
-            feeCollectorImpl: 0x0fE7B2A78f8c239569ec22cdbdb472694afc289c,
+            feeCollectorImpl: 0xAc74e54BAAe195Dd88fDC1aCdd967925B3eB220f,
             bgtIncentiveDistributor: 0x77DA09bC82652f9A14d1b170a001e759640298e6,
             bgtIncentiveDistributorImpl: 0x5c5BfeFddB6f6A51F1D24A6a99F3BeA53eE59F29,
             incentivesCollector: 0x1984Baf659607Cc5f206c55BB3B00eb3E180190B,

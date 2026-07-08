@@ -140,4 +140,18 @@ contract FeeCollector is IFeeCollector, PausableUpgradeable, AccessControlUpgrad
         payoutAmount = queuedPayoutAmount;
         queuedPayoutAmount = 0;
     }
+
+    /// @notice Recover ERC20 tokens from the contract
+    /// @param tokens The tokens to recover
+    /// @dev Used to recover funds once the contract is deprecated.
+    function recoverERC20(address[] calldata tokens) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        for (uint256 i; i < tokens.length;) {
+            address token = tokens[i];
+            uint256 tokenAmount = IERC20(token).balanceOf(address(this));
+            IERC20(token).safeTransfer(msg.sender, tokenAmount);
+            unchecked {
+                ++i;
+            }
+        }
+    }
 }

@@ -265,4 +265,26 @@ contract FeeCollectorTest is POLTest {
         feeCollector.grantRole(pauserRole, newVaultPauser);
         assert(feeCollector.hasRole(pauserRole, newVaultPauser));
     }
+
+    function test_RecoverERC20() public {
+        _addFees();
+        address[] memory tokens = new address[](1);
+        tokens[0] = address(feeToken);
+        vm.prank(governance);
+        feeCollector.recoverERC20(tokens);
+        assertEq(feeToken.balanceOf(governance), 10 ether);
+        assertEq(feeToken.balanceOf(address(feeCollector)), 0);
+    }
+
+    function test_RecoverERC20_FailIfNotOwner() public {
+        _addFees();
+        address[] memory tokens = new address[](1);
+        tokens[0] = address(feeToken);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IAccessControl.AccessControlUnauthorizedAccount.selector, address(this), defaultAdminRole
+            )
+        );
+        feeCollector.recoverERC20(tokens);
+    }
 }
