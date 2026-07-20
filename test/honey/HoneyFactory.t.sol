@@ -286,32 +286,6 @@ contract HoneyFactoryTest is HoneyBaseTest {
         factory.setDepegOffsets(address(dai), lowerOffset, upperOffset);
     }
 
-    function test_setMaxDelay_failsWithoutManager() external {
-        uint256 newMaxDelay = 60 seconds;
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                IAccessControl.AccessControlUnauthorizedAccount.selector, address(this), MANAGER_ROLE
-            )
-        );
-        factory.setMaxFeedDelay(newMaxDelay);
-    }
-
-    function test_setMaxDelay_failsOutOfRange() external {
-        uint256 newMaxDelay = 121 seconds;
-        vm.prank(manager);
-        vm.expectRevert(abi.encodeWithSelector(IHoneyErrors.AmountOutOfRange.selector));
-        factory.setMaxFeedDelay(newMaxDelay);
-    }
-
-    function testFuzz_setMaxDelay(uint256 newMaxDelay) public {
-        newMaxDelay = _bound(newMaxDelay, 0, 60 seconds);
-        vm.startPrank(manager);
-        vm.expectEmit();
-        emit IHoneyFactory.MaxFeedDelaySet(newMaxDelay);
-        factory.setMaxFeedDelay(newMaxDelay);
-        assertEq(factory.priceFeedMaxDelay(), newMaxDelay);
-    }
-
     function test_ForceBasketModeWhenMint() public {
         assertFalse(factory.isBasketModeEnabled(true));
         vm.prank(manager);
@@ -341,62 +315,6 @@ contract HoneyFactoryTest is HoneyBaseTest {
             )
         );
         factory.setForcedBasketMode(true);
-    }
-
-    function test_BasketModeEnabledWhenAllFeedsAreStale_WhenMint() external {
-        // basket mode is disabled because all the feeds are pegged and the price is not stale
-        assertFalse(factory.isBasketModeEnabled(true));
-        // Increase chain time in order to set the time to the upper bound of the stale price
-        vm.warp(block.timestamp + factory.priceFeedMaxDelay());
-        assertFalse(factory.isBasketModeEnabled(true));
-        // Increase time to the upper bound of the stale price + 1
-        vm.warp(block.timestamp + 1);
-        // Because all the feeds are pegged due to the stale price, basket mode should be enabled
-        assertTrue(factory.isBasketModeEnabled(true));
-    }
-
-    function test_BasketModeEnabledWhenStalePriceOnOneFeed_DisabledWhenMint() external {
-        // basket mode is disabled because all the feeds are pegged and the price is not stale
-        assertFalse(factory.isBasketModeEnabled(true));
-        // Increase chain time in order to set the time to the upper bound of the stale price
-        vm.warp(block.timestamp + factory.priceFeedMaxDelay());
-        assertFalse(factory.isBasketModeEnabled(true));
-        // Increase time to the upper bound of the stale price + 1
-        vm.warp(block.timestamp + 1);
-        // Because all the feeds are not pegged due to the stale price, basket mode should be enabled
-        assertTrue(factory.isBasketModeEnabled(true));
-
-        // Change price feed to a non-stale price
-        pyth.setData(daiFeed, int64(99_993_210), uint64(31_155), int32(-8), block.timestamp);
-        pyth.setData(usdtFeed, int64(99_993_210), uint64(31_155), int32(-8), block.timestamp);
-        // If there is one stale price, basket mode should be disable on mint because of 2 good feeds
-        assertFalse(factory.isBasketModeEnabled(true));
-        // Make the last price feed non-stale
-        pyth.setData(dummyFeed, int64(99_993_210), uint64(31_155), int32(-8), block.timestamp);
-        // If all price feeds are non-stale, basket mode should be disabled
-        assertFalse(factory.isBasketModeEnabled(true));
-    }
-
-    function test_BasketModeEnabledWhenStalePriceOnOneFeed_WhenRedeem() external {
-        _factoryMint(dai, daiBalance, receiver, false);
-        // basket mode is disabled because all the feeds are pegged and the price is not stale
-        assertFalse(factory.isBasketModeEnabled(false));
-        // Increase chain time in order to set the time to the upper bound of the stale price
-        vm.warp(block.timestamp + factory.priceFeedMaxDelay());
-        assertFalse(factory.isBasketModeEnabled(false));
-        // Increase time to the upper bound of the stale price + 1
-        vm.warp(block.timestamp + 1);
-        assertTrue(factory.isBasketModeEnabled(false));
-
-        // Change price feed to a non-stale price
-        pyth.setData(dummyFeed, int64(99_993_210), uint64(31_155), int32(-8), block.timestamp);
-        pyth.setData(usdtFeed, int64(99_993_210), uint64(31_155), int32(-8), block.timestamp);
-        // Basket mode is enabled because of the dai collateral is used and it's still stale.
-        assertTrue(factory.isBasketModeEnabled(false));
-        // Make the last price feed non-stale
-        pyth.setData(daiFeed, int64(99_993_210), uint64(31_155), int32(-8), block.timestamp);
-        // If all price feeds are non-stale, basket mode should be disabled
-        assertFalse(factory.isBasketModeEnabled(false));
     }
 
     function testFuzz_BasketModeDisabledWhenAnAssetDepegUnderOneDollar_WhenMint(uint256 pegOffset) public {

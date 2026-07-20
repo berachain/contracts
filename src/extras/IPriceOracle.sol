@@ -2,7 +2,7 @@
 pragma solidity ^0.8.26;
 
 /// @title Provide asset prices in USD with WAD precision
-/// @dev Generic interface that wraps the Pyth oracle
+/// @dev Generic interface that wraps the Pyth oracle and redstone price oracle
 interface IPriceOracle {
     /// @dev TBD whether to also return a confidence interval.
     struct Data {

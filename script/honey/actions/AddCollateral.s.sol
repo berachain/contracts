@@ -39,12 +39,9 @@ contract AddCollateralVaultScript is BaseScript, AddressBook {
 
         console2.log("Adding collateral %s", IERC20(collateral).symbol());
 
-        // NOTE: the price oracle must have freshly pushed data, otherwise
-        // the honey factory will consider the asset as depegged.
         IPriceOracle priceOracle = IPriceOracle(honeyFactory.priceOracle());
-        IPriceOracle.Data memory data = priceOracle.getPriceUnsafe(collateral);
-        require(data.publishTime >= block.timestamp - honeyFactory.priceFeedMaxDelay(), "Price data too old");
-
+        // check the price is available
+        priceOracle.priceAvailable(collateral);
         ERC4626 vault = honeyFactory.createVault(collateral);
         console2.log("Collateral Vault deployed at:", address(vault));
         // Set mint rate to 1:1

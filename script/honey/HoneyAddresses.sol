@@ -38,7 +38,7 @@ abstract contract HoneyAddressBook {
             honeyImpl: 0x96b1a552A97dA5503343d0F9FF2766c616E62905,
             honeyFactory: 0xA4aFef880F5cE1f63c9fb48F661E27F8B4216401,
             honeyFactoryReader: 0x285e147060CDc5ba902786d3A471224ee6cE0F91,
-            honeyFactoryImpl: 0x6331F0a4E0220a14Be27BD31aF091F0a1AC036A1,
+            honeyFactoryImpl: 0xB587F98c81c37432067060196aC1DdAEC106ED8D,
             honeyFactoryReaderImpl: 0x91C54526A9f8D0391F64392f24C7E8ff94A5f4fB,
             collateralVaultImpl: 0xAa4f2Bc7a06c89BEAB5125D82e25D4166b4a4681,
             honeyFactoryPythWrapper: 0xF5686e448BE103beA465105bEb9d284a34ae7e95
@@ -54,7 +54,7 @@ abstract contract HoneyAddressBook {
             honeyImpl: 0xD1886E0659Ed88812aeA75862Cc9891097c25542,
             honeyFactory: 0xA4aFef880F5cE1f63c9fb48F661E27F8B4216401,
             honeyFactoryReader: 0x285e147060CDc5ba902786d3A471224ee6cE0F91,
-            honeyFactoryImpl: 0xD38a1fD3E943a61066903889b8e0889EcAc6Dedd,
+            honeyFactoryImpl: 0xF44F412c1CC4e92aE657aF93740De86048A06b95,
             honeyFactoryReaderImpl: 0x22ee76216B1b7E4f34CF1417da3E4773F7cbA8E6,
             collateralVaultImpl: 0xE3689043e7F860FbC0c814839cd7dF5022223172,
             honeyFactoryPythWrapper: 0xE5Ad9BA751714ec8cdd554b5a9f12BFcA13980cB
@@ -68,7 +68,7 @@ abstract contract HoneyAddressBook {
             honeyImpl: 0x4D4Ff71C50D47a5A45682F42E1E96bdED8fE7516,
             honeyFactory: 0x2AA7F988284fD04cE83b27d017B89731c67d8F67,
             honeyFactoryReader: 0xf1CF3467C9508dfa6D1197F5359419856B3A3300,
-            honeyFactoryImpl: 0xd6E9728eefa526F9B6Cf3c9ba5CbC060F937cDb0,
+            honeyFactoryImpl: 0xFc5d7EDd77f0b2386f5F960D6868D9022E6603d6,
             honeyFactoryReaderImpl: 0x52d5848Ab7A304369cd2879DAfd9Ed3349E8ebB1,
             collateralVaultImpl: 0x5DeDB0F5587F83798245a53189c1A52437A52475,
             honeyFactoryPythWrapper: 0xA55F4a5D0415bFAaaE8207F77Ab2dc406e7594A2
@@ -82,7 +82,7 @@ abstract contract HoneyAddressBook {
             honeyImpl: 0x36a10E516452BD2A80Bd5F421B0bC69eB0dFBca9,
             honeyFactory: 0xeBF958b3b453f76fBE491a7F3ED29e37a509F530,
             honeyFactoryReader: 0x353F8910914a46b3b971d54A131184fB46B8d7f8,
-            honeyFactoryImpl: 0x6178832DAC009EDA2e1D97f158cd94545F49c289,
+            honeyFactoryImpl: 0x22F160db4f4a5C17E985430b25de9B57609D31F1,
             honeyFactoryReaderImpl: 0x1eD95AF653E0a540fC61AD8d1C7D2C5271855fD5,
             collateralVaultImpl: 0x149C89732A9e83FDf20CA4AB03A94C3b4eb21C46,
             honeyFactoryPythWrapper: 0x0E870Ae0ecff7036A7d34F9c571794C4ce1C3d62

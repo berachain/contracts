@@ -36,9 +36,6 @@ contract HoneyFactory is IHoneyFactory, VaultAdmin {
     /// @dev It's set to 2 cents.
     uint256 private constant MAX_PEG_OFFSET = 0.02e18;
 
-    /// @notice The constant representing the max price feed delay tolerance in seconds allowed.
-    uint256 private constant MAX_PRICE_FEED_DELAY_TOLERANCE = 120 seconds;
-
     /// @notice The Honey token contract.
     Honey public honey;
 
@@ -70,7 +67,8 @@ contract HoneyFactory is IHoneyFactory, VaultAdmin {
 
     /// @notice The max number of seconds of tolerated staleness
     /// @dev It's involved into deeming a collateral asset pegged or not
-    uint256 public priceFeedMaxDelay;
+    /// @dev Deprecated, not used anymore.
+    uint256 private _priceFeedMaxDelay;
 
     address public referenceCollateral;
     mapping(address asset => uint256 limit) public relativeCap;
@@ -109,7 +107,7 @@ contract HoneyFactory is IHoneyFactory, VaultAdmin {
         polFeeCollectorFeeRate = ONE_HUNDRED_PERCENT_RATE;
 
         // NOTE: based on the average block time of ~2 seconds.
-        priceFeedMaxDelay = 10 seconds;
+        _priceFeedMaxDelay = 10 seconds;
         minSharesToRecapitalize = DEFAULT_MIN_SHARES_TO_RECAPITALIZE;
         priceOracle = IPriceOracle(_priceOracle);
         globalCap = ONE_HUNDRED_PERCENT_RATE;
@@ -156,18 +154,6 @@ contract HoneyFactory is IHoneyFactory, VaultAdmin {
         _checkRole(MANAGER_ROLE);
         forcedBasketMode = forced;
         emit BasketModeForced(forced);
-    }
-
-    /// @notice Set the max tolerated number of seconds for oracle staleness.
-    /// @dev It's involved into deeming a collateral asset pegged or not.
-    /// @dev Only Manager role can call this function.
-    function setMaxFeedDelay(uint256 maxTolerance) external {
-        _checkRole(MANAGER_ROLE);
-        if (maxTolerance > MAX_PRICE_FEED_DELAY_TOLERANCE) {
-            AmountOutOfRange.selector.revertWith();
-        }
-        priceFeedMaxDelay = maxTolerance;
-        emit MaxFeedDelaySet(maxTolerance);
     }
 
     /// @notice Set lower and upper depeg offset for an asset.
@@ -580,10 +566,8 @@ contract HoneyFactory is IHoneyFactory, VaultAdmin {
         if (!priceOracle.priceAvailable(asset)) {
             return false;
         }
+        // Staleness of the feed is monitored offchain and is not considered here.
         IPriceOracle.Data memory data = priceOracle.getPriceUnsafe(asset);
-        if (data.publishTime < block.timestamp - priceFeedMaxDelay) {
-            return false;
-        }
         return (1e18 - lowerPegOffsets[asset] <= data.price) && (data.price <= 1e18 + upperPegOffsets[asset]);
     }
 
@@ -743,7 +727,7 @@ contract HoneyFactory is IHoneyFactory, VaultAdmin {
     }
 
     function _getPrice(address asset) internal view returns (uint256) {
-        IPriceOracle.Data memory data = priceOracle.getPriceNoOlderThan(asset, priceFeedMaxDelay);
+        IPriceOracle.Data memory data = priceOracle.getPrice(asset);
         return data.price;
     }
 
