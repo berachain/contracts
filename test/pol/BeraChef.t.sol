@@ -11,7 +11,7 @@ import { RewardVault } from "src/pol/rewards/RewardVault.sol";
 import { BeaconDepositMock } from "test/mock/pol/BeaconDepositMock.sol";
 
 import { POLTest, Vm } from "./POL.t.sol";
-import { MockHoney } from "@mock/honey/MockHoney.sol";
+import { MockBUSD } from "@mock/busd/MockBUSD.sol";
 
 contract BeraChefTest is POLTest {
     address internal receiver;
@@ -23,8 +23,8 @@ contract BeraChefTest is POLTest {
     function setUp() public override {
         super.setUp();
 
-        stakeTokenVault = address(new MockHoney());
-        stakeTokenVault2 = address(new MockHoney());
+        stakeTokenVault = address(new MockBUSD());
+        stakeTokenVault2 = address(new MockBUSD());
 
         vm.startPrank(governance);
         receiver = factory.createRewardVault(address(stakeTokenVault));
@@ -247,7 +247,7 @@ contract BeraChefTest is POLTest {
     }
 
     function test_EditDefaultRewardAllocationBeforeRemoveAVaultFromWhitelist() public {
-        address stakeTokenVault3 = address(new MockHoney());
+        address stakeTokenVault3 = address(new MockBUSD());
 
         vm.startPrank(governance);
         address receiver3 = factory.createRewardVault(address(stakeTokenVault3));
@@ -597,7 +597,7 @@ contract BeraChefTest is POLTest {
 
     /// @dev Should return the default reward allocation
     function test_GetActiveRewardAllocationReturnsDefaultRewardAllocation() public {
-        address stakeTokenVault3 = address(new MockHoney());
+        address stakeTokenVault3 = address(new MockBUSD());
         test_GetActiveRewardAllocation();
 
         // remove receiver from whitelist
@@ -652,7 +652,7 @@ contract BeraChefTest is POLTest {
         test_SetDefaultRewardAllocation();
         IRewardAllocation.RewardAllocation memory defaultRa = beraChef.getDefaultRewardAllocation();
 
-        address stakeTokenVault3 = address(new MockHoney());
+        address stakeTokenVault3 = address(new MockBUSD());
         address receiver3 = factory.createRewardVault(address(stakeTokenVault3));
         vm.prank(governance);
         beraChef.setVaultWhitelistedStatus(receiver3, true, "");

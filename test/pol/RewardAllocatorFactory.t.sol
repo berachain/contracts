@@ -8,7 +8,7 @@ import { IAccessControl } from "@openzeppelin/contracts/access/IAccessControl.so
 import { ERC1967Utils } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Utils.sol";
 import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 
-import { MockHoney } from "@mock/honey/MockHoney.sol";
+import { MockBUSD } from "@mock/busd/MockBUSD.sol";
 import { IRewardAllocation } from "src/pol/interfaces/IRewardAllocation.sol";
 import { IPOLErrors } from "src/pol/interfaces/IPOLErrors.sol";
 import { RewardAllocatorFactory } from "src/pol/rewards/RewardAllocatorFactory.sol";
@@ -25,8 +25,8 @@ contract RewardAllocatorFactoryTest is POLTest {
     function setUp() public override {
         super.setUp();
 
-        _stakeTokenVault = address(new MockHoney());
-        _stakeTokenVault2 = address(new MockHoney());
+        _stakeTokenVault = address(new MockBUSD());
+        _stakeTokenVault2 = address(new MockBUSD());
 
         vm.startPrank(governance);
         rewardAllocatorFactory.grantRole(rewardAllocatorFactory.ALLOCATION_SETTER_ROLE(), allocationBot);

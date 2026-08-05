@@ -7,7 +7,7 @@ import { IPOLErrors } from "src/pol/interfaces/IPOLErrors.sol";
 import { RewardVault } from "src/pol/rewards/RewardVault.sol";
 import { BeaconRoots } from "src/libraries/BeaconRoots.sol";
 
-import { MockHoney } from "@mock/honey/MockHoney.sol";
+import { MockBUSD } from "@mock/busd/MockBUSD.sol";
 import { Mock4788BeaconRoots } from "@mock/pol/Mock4788BeaconRoots.sol";
 import { IRewardAllocation } from "src/pol/interfaces/IRewardAllocation.sol";
 
@@ -17,7 +17,7 @@ import "./POL.t.sol";
 abstract contract BeaconRootsHelperTest is POLTest {
     event AdvancedBlock(uint256 blockNum);
 
-    MockHoney internal honey;
+    MockBUSD internal busd;
     RewardVault internal vault;
     Mock4788BeaconRoots internal mockBeaconRoots;
     bool internal initDefaultRewardAllocation = false;
@@ -40,9 +40,9 @@ abstract contract BeaconRootsHelperTest is POLTest {
         // Allow the distributor to send BGT.
         bgt.whitelistSender(address(distributor), true);
 
-        // Setup the reward allocation and vault for the honey token.
-        honey = new MockHoney();
-        vault = RewardVault(payable(factory.createRewardVault(address(honey))));
+        // Setup the reward allocation and vault for the busd token.
+        busd = new MockBUSD();
+        vault = RewardVault(payable(factory.createRewardVault(address(busd))));
         vm.stopPrank();
 
         // Fund the BlockRewardController with native tokens for the WBERA wrapping flow.

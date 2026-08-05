@@ -35,10 +35,10 @@ import { BGTStaker } from "src/pol/BGTStaker.sol";
 import { FeeCollector } from "src/pol/FeeCollector.sol";
 import { WBERA } from "src/WBERA.sol";
 
-import { HoneyDeployer } from "src/honey/HoneyDeployer.sol";
-import { Honey } from "src/honey/Honey.sol";
-import { HoneyFactory } from "src/honey/HoneyFactory.sol";
-import { HoneyFactoryReader } from "src/honey/HoneyFactoryReader.sol";
+import { BUSDDeployer } from "src/busd/BUSDDeployer.sol";
+import { BUSD } from "src/busd/BUSD.sol";
+import { BUSDFactory } from "src/busd/BUSDFactory.sol";
+import { BUSDFactoryReader } from "src/busd/BUSDFactoryReader.sol";
 
 import { PeggedPriceOracle } from "src/extras/PeggedPriceOracle.sol";
 import { PythPriceOracle } from "src/extras/PythPriceOracle.sol";
@@ -119,8 +119,8 @@ contract DeployDevnetScript is BaseDeployScript, RBAC, Storage, AddressBook, Con
         // ── Phase 3: Oracles ──
         _deployOracles();
 
-        // ── Phase 4: Honey ──
-        _deployHoney();
+        // ── Phase 4: BUSD ──
+        _deployBUSD();
 
         // ── Phase 5: Configure setters ──
         _configure();
@@ -447,50 +447,50 @@ contract DeployDevnetScript is BaseDeployScript, RBAC, Storage, AddressBook, Con
         );
     }
 
-    // ─── Phase 4: Honey ───
+    // ─── Phase 4: BUSD ───
 
-    function _deployHoney() internal {
-        console2.log("\n--- [4/6] Honey ---");
+    function _deployBUSD() internal {
+        console2.log("\n--- [4/6] BUSD ---");
 
-        HoneyDeployer honeyDeployer = new HoneyDeployer(
+        BUSDDeployer busdDeployer = new BUSDDeployer(
             msg.sender,
             address(feeCollector),
             address(feeCollector),
-            _saltsForProxy(type(Honey).creationCode),
-            _saltsForProxy(type(HoneyFactory).creationCode),
-            _saltsForProxy(type(HoneyFactoryReader).creationCode),
+            _saltsForProxy(type(BUSD).creationCode),
+            _saltsForProxy(type(BUSDFactory).creationCode),
+            _saltsForProxy(type(BUSDFactoryReader).creationCode),
             address(peggedPriceOracle)
         );
 
-        honey = honeyDeployer.honey();
-        _checkDeploymentAddress("Honey", address(honey), _honeyAddresses.honey);
+        busd = busdDeployer.busd();
+        _checkDeploymentAddress("BUSD", address(busd), _busdAddresses.busd);
 
-        honeyFactory = honeyDeployer.honeyFactory();
-        _checkDeploymentAddress("HoneyFactory", address(honeyFactory), _honeyAddresses.honeyFactory);
+        busdFactory = busdDeployer.busdFactory();
+        _checkDeploymentAddress("BUSDFactory", address(busdFactory), _busdAddresses.busdFactory);
 
-        honeyFactoryReader = honeyDeployer.honeyFactoryReader();
-        _checkDeploymentAddress("HoneyFactoryReader", address(honeyFactoryReader), _honeyAddresses.honeyFactoryReader);
+        busdFactoryReader = busdDeployer.busdFactoryReader();
+        _checkDeploymentAddress("BUSDFactoryReader", address(busdFactoryReader), _busdAddresses.busdFactoryReader);
 
-        require(honeyFactory.feeReceiver() == address(feeCollector), "DeployDevnet: fee receiver not set");
-        require(honeyFactory.polFeeCollector() == address(feeCollector), "DeployDevnet: pol fee collector not set");
+        require(busdFactory.feeReceiver() == address(feeCollector), "DeployDevnet: fee receiver not set");
+        require(busdFactory.polFeeCollector() == address(feeCollector), "DeployDevnet: pol fee collector not set");
 
-        // PAUSER_ROLE's admin is MANAGER_ROLE on HoneyFactory.
+        // PAUSER_ROLE's admin is MANAGER_ROLE on BUSDFactory.
         RBAC.AccountDescription memory deployer = RBAC.AccountDescription({ name: "deployer", addr: msg.sender });
         _grantRole(
             RBAC.RoleDescription({
-                contractName: "HoneyFactory",
-                contractAddr: address(honeyFactory),
+                contractName: "BUSDFactory",
+                contractAddr: address(busdFactory),
                 name: "MANAGER_ROLE",
-                role: honeyFactory.MANAGER_ROLE()
+                role: busdFactory.MANAGER_ROLE()
             }),
             deployer
         );
         _grantRole(
             RBAC.RoleDescription({
-                contractName: "HoneyFactory",
-                contractAddr: address(honeyFactory),
+                contractName: "BUSDFactory",
+                contractAddr: address(busdFactory),
                 name: "PAUSER_ROLE",
-                role: honeyFactory.PAUSER_ROLE()
+                role: busdFactory.PAUSER_ROLE()
             }),
             deployer
         );
@@ -774,57 +774,57 @@ contract DeployDevnetScript is BaseDeployScript, RBAC, Storage, AddressBook, Con
             console2.log("RewardVaultHelper roles transferred");
         }
 
-        // ── Honey (AccessControl) ──
+        // ── BUSD (AccessControl) ──
         {
             RBAC.RoleDescription memory adminRole = RBAC.RoleDescription({
-                contractName: "Honey",
-                contractAddr: address(honey),
+                contractName: "BUSD",
+                contractAddr: address(busd),
                 name: "DEFAULT_ADMIN_ROLE",
-                role: honey.DEFAULT_ADMIN_ROLE()
+                role: busd.DEFAULT_ADMIN_ROLE()
             });
             _transferRole(adminRole, deployer, ownerDesc);
-            console2.log("Honey roles transferred");
+            console2.log("BUSD roles transferred");
         }
 
-        // ── HoneyFactory (AccessControl) ──
+        // ── BUSDFactory (AccessControl) ──
         {
             RBAC.RoleDescription memory pauserRole = RBAC.RoleDescription({
-                contractName: "HoneyFactory",
-                contractAddr: address(honeyFactory),
+                contractName: "BUSDFactory",
+                contractAddr: address(busdFactory),
                 name: "PAUSER_ROLE",
-                role: honeyFactory.PAUSER_ROLE()
+                role: busdFactory.PAUSER_ROLE()
             });
             RBAC.RoleDescription memory managerRole = RBAC.RoleDescription({
-                contractName: "HoneyFactory",
-                contractAddr: address(honeyFactory),
+                contractName: "BUSDFactory",
+                contractAddr: address(busdFactory),
                 name: "MANAGER_ROLE",
-                role: honeyFactory.MANAGER_ROLE()
+                role: busdFactory.MANAGER_ROLE()
             });
             RBAC.RoleDescription memory adminRole = RBAC.RoleDescription({
-                contractName: "HoneyFactory",
-                contractAddr: address(honeyFactory),
+                contractName: "BUSDFactory",
+                contractAddr: address(busdFactory),
                 name: "DEFAULT_ADMIN_ROLE",
-                role: honeyFactory.DEFAULT_ADMIN_ROLE()
+                role: busdFactory.DEFAULT_ADMIN_ROLE()
             });
             _transferRole(pauserRole, deployer, ownerDesc);
             _transferRole(managerRole, deployer, ownerDesc);
             _transferRole(adminRole, deployer, ownerDesc);
 
-            UpgradeableBeacon honeyFactoryBeacon = UpgradeableBeacon(honeyFactory.beacon());
-            honeyFactoryBeacon.transferOwnership(owner);
-            console2.log("HoneyFactory roles + beacon transferred");
+            UpgradeableBeacon busdFactoryBeacon = UpgradeableBeacon(busdFactory.beacon());
+            busdFactoryBeacon.transferOwnership(owner);
+            console2.log("BUSDFactory roles + beacon transferred");
         }
 
-        // ── HoneyFactoryReader (AccessControl) ──
+        // ── BUSDFactoryReader (AccessControl) ──
         {
             RBAC.RoleDescription memory adminRole = RBAC.RoleDescription({
-                contractName: "HoneyFactoryReader",
-                contractAddr: address(honeyFactoryReader),
+                contractName: "BUSDFactoryReader",
+                contractAddr: address(busdFactoryReader),
                 name: "DEFAULT_ADMIN_ROLE",
-                role: honeyFactoryReader.DEFAULT_ADMIN_ROLE()
+                role: busdFactoryReader.DEFAULT_ADMIN_ROLE()
             });
             _transferRole(adminRole, deployer, ownerDesc);
-            console2.log("HoneyFactoryReader roles transferred");
+            console2.log("BUSDFactoryReader roles transferred");
         }
 
         // ── PythPriceOracle (AccessControl) ──
@@ -888,8 +888,8 @@ contract DeployDevnetScript is BaseDeployScript, RBAC, Storage, AddressBook, Con
         console2.log("PeggedPriceOracle:               ", address(peggedPriceOracle));
         console2.log("PythPriceOracle:                 ", address(pythPriceOracle));
         console2.log("RootPriceOracle:                 ", address(rootPriceOracle));
-        console2.log("Honey:                           ", address(honey));
-        console2.log("HoneyFactory:                    ", address(honeyFactory));
-        console2.log("HoneyFactoryReader:              ", address(honeyFactoryReader));
+        console2.log("BUSD:                           ", address(busd));
+        console2.log("BUSDFactory:                    ", address(busdFactory));
+        console2.log("BUSDFactoryReader:              ", address(busdFactoryReader));
     }
 }
