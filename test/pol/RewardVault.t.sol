@@ -16,7 +16,7 @@ import { IRewardVaultFactory } from "src/pol/interfaces/IRewardVaultFactory.sol"
 import { IStakingRewards, IStakingRewardsErrors } from "src/base/IStakingRewards.sol";
 import { DistributorTest } from "./Distributor.t.sol";
 import { StakingTest } from "./Staking.t.sol";
-import { MockDAI, MockUSDT, MockAsset } from "@mock/busd/MockAssets.sol";
+import { MockDAI, MockUSDT, MockAsset } from "@mock/honey/MockAssets.sol";
 import { PausableERC20 } from "@mock/token/PausableERC20.sol";
 import { MockERC20 } from "@mock/token/MockERC20.sol";
 import { ApprovalPauseERC20 } from "@mock/token/ApprovalPauseERC20.sol";
@@ -32,8 +32,8 @@ contract RewardVaultTest is DistributorTest, StakingTest {
     address internal vaultPauser = makeAddr("vaultPauser");
     address internal daiIncentiveManager = makeAddr("daiIncentiveManager");
     address internal usdtIncentiveManager = makeAddr("usdtIncentiveManager");
-    address internal busdIncentiveManager = makeAddr("busdIncentiveManager");
-    address internal busdVaultManager = makeAddr("busdVaultManager");
+    address internal honeyIncentiveManager = makeAddr("honeyIncentiveManager");
+    address internal honeyVaultManager = makeAddr("honeyVaultManager");
     address internal incetiveTokensCollector = makeAddr("incetiveTokensCollector");
     MockDAI internal dai = new MockDAI();
     MockUSDT internal usdt = new MockUSDT();
@@ -62,8 +62,8 @@ contract RewardVaultTest is DistributorTest, StakingTest {
         // only vault manager can grant the vault pauser role.
         vm.startPrank(vaultManager);
         factory.grantRole(vaultPauserRole, vaultPauser);
-        // set the reward vault manager for busd vault.
-        vault.setRewardVaultManager(busdVaultManager);
+        // set the reward vault manager for honey vault.
+        vault.setRewardVaultManager(honeyVaultManager);
         vm.stopPrank();
         _setIncentiveTokensCollector(incetiveTokensCollector);
         _setRewardVaultHelper(rewardVaultHelper);
@@ -102,7 +102,7 @@ contract RewardVaultTest is DistributorTest, StakingTest {
     }
 
     function _setRewardsDuration(uint256 _duration) internal override {
-        vm.prank(busdVaultManager);
+        vm.prank(honeyVaultManager);
         vault.setRewardsDuration(_duration);
     }
 
@@ -119,12 +119,12 @@ contract RewardVaultTest is DistributorTest, StakingTest {
 
     /// @dev helper function to perform staking
     function performStake(address _user, uint256 _amount) internal override {
-        // Mint busd tokens to the user
-        deal(address(busd), _user, _amount);
+        // Mint honey tokens to the user
+        deal(address(honey), _user, _amount);
 
-        // Approve the vault to spend busd tokens on behalf of the user
+        // Approve the vault to spend honey tokens on behalf of the user
         vm.prank(_user);
-        busd.approve(address(vault), _amount);
+        honey.approve(address(vault), _amount);
 
         // Stake the tokens in the vault
         vm.expectEmit();
@@ -174,7 +174,7 @@ contract RewardVaultTest is DistributorTest, StakingTest {
         vault.notifyRewardAmount(valData.pubkey, 255);
 
         vm.expectRevert();
-        vault.recoverERC20(address(busd), 255);
+        vault.recoverERC20(address(honey), 255);
 
         vm.expectRevert();
         vault.pause();
@@ -183,7 +183,7 @@ contract RewardVaultTest is DistributorTest, StakingTest {
     /// @dev Should fail if initialize again
     function test_FailIfInitializeAgain() public override {
         vm.expectRevert();
-        vault.initialize(address(beraChef), address(bgt), address(distributor), address(busd));
+        vault.initialize(address(beraChef), address(bgt), address(distributor), address(honey));
     }
 
     function test_SetDistributor_FailIfNotOwner() public {
@@ -208,7 +208,7 @@ contract RewardVaultTest is DistributorTest, StakingTest {
 
     function test_RecoverERC20_FailIfNotOwner() public {
         vm.expectRevert(abi.encodeWithSelector(FactoryOwnable.OwnableUnauthorizedAccount.selector, address(this)));
-        vault.recoverERC20(address(busd), 1 ether);
+        vault.recoverERC20(address(honey), 1 ether);
     }
 
     function test_RecoverERC20_FailsIfIncentiveToken() public {
@@ -387,7 +387,7 @@ contract RewardVaultTest is DistributorTest, StakingTest {
     }
 
     function test_SetRewardDuration_FailIfInvalidDuration() public {
-        vm.startPrank(busdVaultManager);
+        vm.startPrank(honeyVaultManager);
         vm.expectRevert(IPOLErrors.InvalidRewardDuration.selector);
         // fails if less than 3 days.
         vault.setRewardsDuration(3 days - 1);
@@ -400,7 +400,7 @@ contract RewardVaultTest is DistributorTest, StakingTest {
 
     function test_SetRewardDuration_FailIfTargetRewardsPerSecondIsSet() public {
         testFuzz_SetTargetRewardsPerSecond(1e36);
-        vm.prank(busdVaultManager);
+        vm.prank(honeyVaultManager);
         vm.expectRevert(IPOLErrors.DurationChangeNotAllowed.selector);
         vault.setRewardsDuration(7 days);
     }
@@ -423,7 +423,7 @@ contract RewardVaultTest is DistributorTest, StakingTest {
         address newManager = makeAddr("newManager");
         vm.prank(vaultManager);
         vm.expectEmit();
-        emit IRewardVault.RewardVaultManagerSet(newManager, busdVaultManager);
+        emit IRewardVault.RewardVaultManagerSet(newManager, honeyVaultManager);
         vault.setRewardVaultManager(newManager);
         assertEq(vault.rewardVaultManager(), newManager);
     }
@@ -439,7 +439,7 @@ contract RewardVaultTest is DistributorTest, StakingTest {
     }
 
     function test_SetTargetRewardsPerSecond_AllowResettingToZero() public {
-        vm.startPrank(busdVaultManager);
+        vm.startPrank(honeyVaultManager);
         vault.setTargetRewardsPerSecond(1e36);
         assertEq(vault.targetRewardsPerSecond(), 1e36);
         vm.expectEmit();
@@ -456,7 +456,7 @@ contract RewardVaultTest is DistributorTest, StakingTest {
 
     function testFuzz_SetTargetRewardsPerSecond(uint256 _targetRewardsPerSecond) public {
         _targetRewardsPerSecond = bound(_targetRewardsPerSecond, 1, type(uint256).max);
-        vm.prank(busdVaultManager);
+        vm.prank(honeyVaultManager);
         vm.expectEmit();
         emit IRewardVault.TargetRewardsPerSecondUpdated(_targetRewardsPerSecond, 0);
         emit IRewardVault.MinRewardDurationForTargetRateUpdated(3 days, 0);
@@ -508,12 +508,12 @@ contract RewardVaultTest is DistributorTest, StakingTest {
     }
 
     function performDelegateStake(address _delegate, address _user, uint256 _amount) internal {
-        // Mint busd tokens to the delegate
-        busd.mint(_delegate, _amount);
+        // Mint honey tokens to the delegate
+        honey.mint(_delegate, _amount);
 
-        // Approve the vault to spend busd tokens on behalf of the delegate
+        // Approve the vault to spend honey tokens on behalf of the delegate
         vm.startPrank(_delegate);
-        busd.approve(address(vault), _amount);
+        honey.approve(address(vault), _amount);
 
         // Stake the tokens in the vault
         vm.expectEmit(true, true, true, true);
@@ -803,7 +803,7 @@ contract RewardVaultTest is DistributorTest, StakingTest {
         vm.warp(block.timestamp + 1 weeks);
 
         // Record balances before exit
-        uint256 initialTokenBalance = busd.balanceOf(user);
+        uint256 initialTokenBalance = honey.balanceOf(user);
         uint256 initialRewardBalance = emissionToken.balanceOf(otherUser);
         uint256 userRewards = vault.earned(user);
 
@@ -813,7 +813,7 @@ contract RewardVaultTest is DistributorTest, StakingTest {
         vault.exit(otherUser);
 
         // Verify user's token balance increased by the `selfStake` amount.
-        assertEq(busd.balanceOf(user), initialTokenBalance + selfStake);
+        assertEq(honey.balanceOf(user), initialTokenBalance + selfStake);
         // Verify otherUser's reward balance increased.
         assertEq(emissionToken.balanceOf(otherUser), initialRewardBalance + userRewards);
         // Verify user's balance in the vault is `delegateStake`.
@@ -874,8 +874,8 @@ contract RewardVaultTest is DistributorTest, StakingTest {
         address[] memory managers = new address[](2);
         tokenAddresses[0] = address(dai);
         managers[0] = daiIncentiveManager;
-        tokenAddresses[1] = address(busd);
-        managers[1] = busdIncentiveManager;
+        tokenAddresses[1] = address(honey);
+        managers[1] = honeyIncentiveManager;
 
         for (uint256 i; i < tokenAddresses.length; ++i) {
             vm.prank(governance);
@@ -945,7 +945,7 @@ contract RewardVaultTest is DistributorTest, StakingTest {
 
     function test_WhitelistIncentiveToken() public {
         testFuzz_WhitelistIncentiveToken(address(dai), daiIncentiveManager);
-        testFuzz_WhitelistIncentiveToken(address(busd), busdIncentiveManager);
+        testFuzz_WhitelistIncentiveToken(address(honey), honeyIncentiveManager);
     }
 
     function test_WhitelistIncentiveToken_FailsIfMinIncentiveRateIsZero() public {
@@ -1019,7 +1019,7 @@ contract RewardVaultTest is DistributorTest, StakingTest {
 
     function test_RemoveIncentiveToken() public {
         test_WhitelistIncentiveToken();
-        removeIncentiveToken(address(busd));
+        removeIncentiveToken(address(honey));
         removeIncentiveToken(address(dai));
     }
 
@@ -1166,32 +1166,32 @@ contract RewardVaultTest is DistributorTest, StakingTest {
 
     function testFuzz_ProcessIncentives(uint256 bgtEmitted) public {
         bgtEmitted = bound(bgtEmitted, 0, 1000 * 1e18);
-        // adds 100 dai, 100 busd incentive with rate 200 * 1e18.
+        // adds 100 dai, 100 honey incentive with rate 200 * 1e18.
         addIncentives(100 * 1e18, 200 * 1e18);
         performNotify(bgtEmitted);
         uint256 tokenToIncentivize = (bgtEmitted * 200);
         tokenToIncentivize = tokenToIncentivize > 100 * 1e18 ? 100 * 1e18 : tokenToIncentivize;
         (,, uint256 amountRemainingUSDC,) = vault.incentives(address(dai));
-        (,, uint256 amountRemainingBUSD,) = vault.incentives(address(busd));
+        (,, uint256 amountRemainingHoney,) = vault.incentives(address(honey));
         assertEq(amountRemainingUSDC, 100 * 1e18 - tokenToIncentivize);
-        assertEq(amountRemainingBUSD, 100 * 1e18 - tokenToIncentivize);
+        assertEq(amountRemainingHoney, 100 * 1e18 - tokenToIncentivize);
         uint256 validatorShare = tokenToIncentivize * 5 / 100;
         uint256 feeCollectorShare = tokenToIncentivize - validatorShare;
         // given default validator commission on incentive token is 5%, the validator's operator gets 5%
         // and the remaining 95% is transferred to the incetiveTokensCollector.
         assertEq(dai.balanceOf(incetiveTokensCollector), feeCollectorShare);
-        assertEq(busd.balanceOf(incetiveTokensCollector), feeCollectorShare);
+        assertEq(honey.balanceOf(incetiveTokensCollector), feeCollectorShare);
 
         // 5% of incentive tokens are transferred to the operator.
         assertEq(dai.balanceOf(address(operator)), validatorShare);
-        assertEq(busd.balanceOf(address(operator)), validatorShare);
+        assertEq(honey.balanceOf(address(operator)), validatorShare);
     }
 
     function testFuzz_ProcessIncentivesWithNonZeroCommission(uint256 bgtEmitted, uint256 commission) public {
         commission = bound(commission, 1, 0.2e4); // capped at 20%
         bgtEmitted = bound(bgtEmitted, 0, 1000 * 1e18);
 
-        // adds 100 dai, 100 busd incentive with rate 200 * 1e18.
+        // adds 100 dai, 100 honey incentive with rate 200 * 1e18.
         addIncentives(100 * 1e18, 200 * 1e18);
 
         // Set the commission on the validator
@@ -1203,17 +1203,17 @@ contract RewardVaultTest is DistributorTest, StakingTest {
         uint256 validatorShare = (tokenToIncentivize * commission) / 1e4;
         uint256 feeCollectorShare = tokenToIncentivize - validatorShare;
         (,, uint256 amountRemainingUSDC,) = vault.incentives(address(dai));
-        (,, uint256 amountRemainingBUSD,) = vault.incentives(address(busd));
+        (,, uint256 amountRemainingHoney,) = vault.incentives(address(honey));
         assertEq(amountRemainingUSDC, 100 * 1e18 - tokenToIncentivize);
-        assertEq(amountRemainingBUSD, 100 * 1e18 - tokenToIncentivize);
+        assertEq(amountRemainingHoney, 100 * 1e18 - tokenToIncentivize);
 
         // incetiveTokensCollector should get the remaining incentive tokens
         assertEq(dai.balanceOf(incetiveTokensCollector), feeCollectorShare);
-        assertEq(busd.balanceOf(incetiveTokensCollector), feeCollectorShare);
+        assertEq(honey.balanceOf(incetiveTokensCollector), feeCollectorShare);
 
         // Operator should get the validatorShare of the incentive tokens
         assertEq(dai.balanceOf(address(operator)), validatorShare);
-        assertEq(busd.balanceOf(address(operator)), validatorShare);
+        assertEq(honey.balanceOf(address(operator)), validatorShare);
     }
 
     function test_ProcessIncentives_WithNonZeroCommission() public {
@@ -1229,28 +1229,28 @@ contract RewardVaultTest is DistributorTest, StakingTest {
         uint256 feeCollectorShare = 100 * 1e18 - validatorShare;
         vm.expectEmit();
         emit IRewardVault.IncentivesProcessed(valData.pubkey, address(dai), 1e18, validatorShare);
-        emit IRewardVault.IncentivesProcessed(valData.pubkey, address(busd), 1e18, validatorShare);
+        emit IRewardVault.IncentivesProcessed(valData.pubkey, address(honey), 1e18, validatorShare);
         emit IRewardVault.IncentivesCollected(valData.pubkey, address(dai), 1e18, feeCollectorShare);
-        emit IRewardVault.IncentivesCollected(valData.pubkey, address(busd), 1e18, feeCollectorShare);
+        emit IRewardVault.IncentivesCollected(valData.pubkey, address(honey), 1e18, feeCollectorShare);
         vault.notifyRewardAmount(valData.pubkey, 1e18);
 
         // check the incentive data
         (,, uint256 amountRemainingUSDC,) = vault.incentives(address(dai));
-        (,, uint256 amountRemainingBUSD,) = vault.incentives(address(busd));
+        (,, uint256 amountRemainingHoney,) = vault.incentives(address(honey));
         assertEq(amountRemainingUSDC, 0);
-        assertEq(amountRemainingBUSD, 0);
+        assertEq(amountRemainingHoney, 0);
 
         // check the fee collector's balance
         assertEq(dai.balanceOf(incetiveTokensCollector), feeCollectorShare);
-        assertEq(busd.balanceOf(incetiveTokensCollector), feeCollectorShare);
+        assertEq(honey.balanceOf(incetiveTokensCollector), feeCollectorShare);
 
         // check the operator's balance
         assertEq(dai.balanceOf(address(operator)), validatorShare);
-        assertEq(busd.balanceOf(address(operator)), validatorShare);
+        assertEq(honey.balanceOf(address(operator)), validatorShare);
     }
 
     function test_ProcessIncentives_WithMultipleNotify() public {
-        // add 200 dai, 100 busd incentive with rate 100 * 1e18.
+        // add 200 dai, 100 honey incentive with rate 100 * 1e18.
         addIncentives(200 * 1e18, 100 * 1e18);
         performNotify(1e18);
         performNotify(1e18);
@@ -1261,9 +1261,9 @@ contract RewardVaultTest is DistributorTest, StakingTest {
         uint256 validatorShare = validatorShare1 + validatorShare2;
         uint256 feeCollectorShare = 200 * 1e18 - validatorShare;
         assertEq(dai.balanceOf(incetiveTokensCollector), feeCollectorShare);
-        assertEq(busd.balanceOf(incetiveTokensCollector), feeCollectorShare);
+        assertEq(honey.balanceOf(incetiveTokensCollector), feeCollectorShare);
         assertEq(dai.balanceOf(address(operator)), validatorShare);
-        assertEq(busd.balanceOf(address(operator)), validatorShare);
+        assertEq(honey.balanceOf(address(operator)), validatorShare);
     }
 
     function test_ProcessIncentives() public {
@@ -1276,20 +1276,20 @@ contract RewardVaultTest is DistributorTest, StakingTest {
         uint256 feeCollectorShare = 100 * 1e18 - validatorShare;
         vm.expectEmit();
         emit IRewardVault.IncentivesProcessed(valData.pubkey, address(dai), 1e18, validatorShare);
-        emit IRewardVault.IncentivesProcessed(valData.pubkey, address(busd), 1e18, validatorShare);
+        emit IRewardVault.IncentivesProcessed(valData.pubkey, address(honey), 1e18, validatorShare);
         emit IRewardVault.IncentivesCollected(valData.pubkey, address(dai), 1e18, feeCollectorShare);
-        emit IRewardVault.IncentivesCollected(valData.pubkey, address(busd), 1e18, feeCollectorShare);
+        emit IRewardVault.IncentivesCollected(valData.pubkey, address(honey), 1e18, feeCollectorShare);
         vault.notifyRewardAmount(valData.pubkey, 1e18);
         (,, uint256 amountRemainingUSDC,) = vault.incentives(address(dai));
-        (,, uint256 amountRemainingBUSD,) = vault.incentives(address(busd));
-        // total incentive tokens = min(200(incentiveRate) * 1, 100(amountRemaining)) = 100 tokens of dai and busd
+        (,, uint256 amountRemainingHoney,) = vault.incentives(address(honey));
+        // total incentive tokens = min(200(incentiveRate) * 1, 100(amountRemaining)) = 100 tokens of dai and honey
         assertEq(amountRemainingUSDC, 0);
-        assertEq(amountRemainingBUSD, 0);
+        assertEq(amountRemainingHoney, 0);
         assertEq(dai.balanceOf(incetiveTokensCollector), feeCollectorShare);
-        assertEq(busd.balanceOf(incetiveTokensCollector), feeCollectorShare);
+        assertEq(honey.balanceOf(incetiveTokensCollector), feeCollectorShare);
         // 5% of incentive tokens are transferred to the operator.
         assertEq(dai.balanceOf(address(operator)), validatorShare);
-        assertEq(busd.balanceOf(address(operator)), validatorShare);
+        assertEq(honey.balanceOf(address(operator)), validatorShare);
         vm.stopPrank();
         // Since amountRemaining is 0, incentiveRate can be updated here.
         // This will set the incentiveRate to 110 * 1e18
@@ -1311,19 +1311,19 @@ contract RewardVaultTest is DistributorTest, StakingTest {
         uint256 feeCollectorShare = 100 * 1e18 - validatorShare;
         vm.expectEmit();
         emit IRewardVault.IncentivesProcessed(valData.pubkey, address(dai), 1e18, validatorShare);
-        emit IRewardVault.IncentivesProcessed(valData.pubkey, address(busd), 1e18, validatorShare);
+        emit IRewardVault.IncentivesProcessed(valData.pubkey, address(honey), 1e18, validatorShare);
         emit IRewardVault.IncentivesCollected(valData.pubkey, address(dai), 1e18, feeCollectorShare);
-        emit IRewardVault.IncentivesCollected(valData.pubkey, address(busd), 1e18, feeCollectorShare);
+        emit IRewardVault.IncentivesCollected(valData.pubkey, address(honey), 1e18, feeCollectorShare);
         vault.notifyRewardAmount(valData.pubkey, 1e18);
 
         (,, uint256 amountRemainingUSDC,) = vault.incentives(address(dai));
-        (,, uint256 amountRemainingBUSD,) = vault.incentives(address(busd));
+        (,, uint256 amountRemainingHoney,) = vault.incentives(address(honey));
         assertEq(amountRemainingUSDC, 0);
-        assertEq(amountRemainingBUSD, 0);
+        assertEq(amountRemainingHoney, 0);
         assertEq(dai.balanceOf(incetiveTokensCollector), feeCollectorShare);
-        assertEq(busd.balanceOf(incetiveTokensCollector), feeCollectorShare);
+        assertEq(honey.balanceOf(incetiveTokensCollector), feeCollectorShare);
         assertEq(dai.balanceOf(address(operator)), validatorShare);
-        assertEq(busd.balanceOf(address(operator)), validatorShare);
+        assertEq(honey.balanceOf(address(operator)), validatorShare);
     }
 
     function test_ProcessIncentives_WithNonZeroCommissionAndMaliciousIncentive() public {
@@ -1391,10 +1391,10 @@ contract RewardVaultTest is DistributorTest, StakingTest {
 
         vm.expectEmit();
         emit IRewardVault.IncentivesProcessed(valData.pubkey, address(dai), 1e17, validatorShare);
-        emit IRewardVault.IncentivesProcessed(valData.pubkey, address(busd), 1e17, validatorShare);
+        emit IRewardVault.IncentivesProcessed(valData.pubkey, address(honey), 1e17, validatorShare);
         emit IRewardVault.IncentivesProcessFailed(valData.pubkey, address(pausableERC20), 1e17, validatorShare);
         emit IRewardVault.IncentivesCollected(valData.pubkey, address(dai), 1e17, feeCollectorShare);
-        emit IRewardVault.IncentivesCollected(valData.pubkey, address(busd), 1e17, feeCollectorShare);
+        emit IRewardVault.IncentivesCollected(valData.pubkey, address(honey), 1e17, feeCollectorShare);
         emit IRewardVault.IncentivesCollectionFailed(valData.pubkey, address(pausableERC20), 1e17, feeCollectorShare);
         vault.notifyRewardAmount(valData.pubkey, 1e17);
 
@@ -1447,13 +1447,13 @@ contract RewardVaultTest is DistributorTest, StakingTest {
         performDelegateStake(operator, user, delegateStake);
 
         // the reward vault helper is the only authorized caller and receives the withdrawn tokens.
-        uint256 helperBalanceBefore = busd.balanceOf(rewardVaultHelper);
+        uint256 helperBalanceBefore = honey.balanceOf(rewardVaultHelper);
 
         vm.prank(rewardVaultHelper);
         uint256 withdrawn = vault.withdrawAllFor(user);
 
         assertEq(withdrawn, selfStake);
-        assertEq(busd.balanceOf(rewardVaultHelper) - helperBalanceBefore, selfStake);
+        assertEq(honey.balanceOf(rewardVaultHelper) - helperBalanceBefore, selfStake);
         assertEq(vault.balanceOf(user), delegateStake);
         assertEq(vault.getTotalDelegateStaked(user), delegateStake);
     }
@@ -1513,7 +1513,7 @@ contract RewardVaultTest is DistributorTest, StakingTest {
     // incentive rate changes if undistributed incentive amount is 0.
     function addIncentives(uint256 amount, uint256 _incentiveRate) internal {
         _addIncentiveToken(address(dai), daiIncentiveManager, amount, _incentiveRate);
-        _addIncentiveToken(address(busd), busdIncentiveManager, amount, _incentiveRate);
+        _addIncentiveToken(address(honey), honeyIncentiveManager, amount, _incentiveRate);
 
         // check the dai incentive data
         (uint256 minIncentiveRate, uint256 incentiveRate, uint256 amountRemaining,) = vault.incentives(address(dai));
@@ -1699,11 +1699,11 @@ contract RewardVaultTest is DistributorTest, StakingTest {
         vm.assume(_amount > 0);
         vm.assume(_account != address(0));
 
-        // Mint busd tokens to the caller (this contract)
-        busd.mint(address(this), _amount);
+        // Mint honey tokens to the caller (this contract)
+        honey.mint(address(this), _amount);
 
-        // Approve the vault to spend busd tokens on behalf of the caller
-        busd.approve(address(vault), _amount);
+        // Approve the vault to spend honey tokens on behalf of the caller
+        honey.approve(address(vault), _amount);
 
         // Stake the tokens on behalf of the account
         vm.expectEmit();
@@ -1733,16 +1733,16 @@ contract RewardVaultTest is DistributorTest, StakingTest {
     }
 
     function test_StakeOnBehalfWithInsufficientAllowance() public {
-        busd.mint(address(this), 100 ether);
-        busd.approve(address(vault), 50 ether); // Only approve 50 ether
+        honey.mint(address(this), 100 ether);
+        honey.approve(address(vault), 50 ether); // Only approve 50 ether
 
         vm.expectRevert(ERC20.InsufficientAllowance.selector);
         vault.stakeOnBehalf(user, 100 ether);
     }
 
     function test_StakeOnBehalfWithInsufficientBalance() public {
-        busd.mint(address(this), 50 ether);
-        busd.approve(address(vault), 100 ether);
+        honey.mint(address(this), 50 ether);
+        honey.approve(address(vault), 100 ether);
 
         vm.expectRevert(ERC20.InsufficientBalance.selector);
         vault.stakeOnBehalf(user, 100 ether);
@@ -1755,8 +1755,8 @@ contract RewardVaultTest is DistributorTest, StakingTest {
         uint256 amount2 = 200 ether;
 
         // Mint and approve tokens
-        busd.mint(address(this), amount1 + amount2);
-        busd.approve(address(vault), amount1 + amount2);
+        honey.mint(address(this), amount1 + amount2);
+        honey.approve(address(vault), amount1 + amount2);
 
         // Stake on behalf of account1
         vault.stakeOnBehalf(account1, amount1);
@@ -1775,8 +1775,8 @@ contract RewardVaultTest is DistributorTest, StakingTest {
         uint256 delegateStakeAmount = 50 ether;
 
         // Mint tokens for stake on behalf
-        busd.mint(address(this), selfStakeAmount);
-        busd.approve(address(vault), selfStakeAmount);
+        honey.mint(address(this), selfStakeAmount);
+        honey.approve(address(vault), selfStakeAmount);
 
         // Stake on behalf of account
         vault.stakeOnBehalf(account, selfStakeAmount);
@@ -1944,8 +1944,8 @@ contract RewardVaultTest is DistributorTest, StakingTest {
         test_Distribute();
 
         // Stake on behalf of user
-        busd.mint(address(this), 100 ether);
-        busd.approve(address(vault), 100 ether);
+        honey.mint(address(this), 100 ether);
+        honey.approve(address(vault), 100 ether);
         vault.stakeOnBehalf(user, 100 ether);
 
         vm.warp(block.timestamp + 1 weeks);
@@ -1980,7 +1980,7 @@ contract RewardVaultTest is DistributorTest, StakingTest {
     }
 
     function test_SetMinRewardDurationForTargetRate_FailIfInvalidDuration() public {
-        vm.startPrank(busdVaultManager);
+        vm.startPrank(honeyVaultManager);
         vm.expectRevert(abi.encodeWithSelector(IPOLErrors.InvalidRewardDuration.selector));
         vault.setMinRewardDurationForTargetRate(1 days);
         vm.expectRevert(abi.encodeWithSelector(IPOLErrors.InvalidRewardDuration.selector));
@@ -1994,7 +1994,7 @@ contract RewardVaultTest is DistributorTest, StakingTest {
     function testFuzz_SetMinRewardDurationForTargetRate(uint256 minRewardDurationForTargetRate) public {
         uint256 oldMinRewardDurationForTargetRate = vault.minRewardDurationForTargetRate();
         minRewardDurationForTargetRate = bound(minRewardDurationForTargetRate, 3 days, 7 days);
-        vm.prank(busdVaultManager);
+        vm.prank(honeyVaultManager);
         vm.expectEmit();
         emit IRewardVault.MinRewardDurationForTargetRateUpdated(
             minRewardDurationForTargetRate, oldMinRewardDurationForTargetRate
@@ -2354,19 +2354,19 @@ contract RewardVaultTest is DistributorTest, StakingTest {
         assertEq(vault.targetRewardsPerSecond(), targetRewardsPerSecond);
 
         // Step 3: Verify that setRewardsDuration is blocked when target rate is active
-        vm.prank(busdVaultManager);
+        vm.prank(honeyVaultManager);
         vm.expectRevert(IPOLErrors.DurationChangeNotAllowed.selector);
         vault.setRewardsDuration(5 days);
 
         // Step 4: Switch back to duration-based distribution by setting target rate to 0
-        vm.prank(busdVaultManager);
+        vm.prank(honeyVaultManager);
         vm.expectEmit();
         emit IRewardVault.TargetRewardsPerSecondUpdated(0, targetRewardsPerSecond);
         vault.setTargetRewardsPerSecond(0);
         assertEq(vault.targetRewardsPerSecond(), 0);
 
         // Step 5: Verify that setRewardsDuration is now allowed again
-        vm.prank(busdVaultManager);
+        vm.prank(honeyVaultManager);
         vault.setRewardsDuration(5 days);
         // should be stored as pending rewards duration
         assertEq(vault.pendingRewardsDuration(), 5 days);
@@ -2402,7 +2402,7 @@ contract RewardVaultTest is DistributorTest, StakingTest {
         assertEq(vault.rewardsDuration(), 14 days); // Duration should be extended for target rate
 
         // Step 3: Switch back to duration-based distribution
-        vm.prank(busdVaultManager);
+        vm.prank(honeyVaultManager);
         vault.setTargetRewardsPerSecond(0);
         assertEq(vault.targetRewardsPerSecond(), 0);
         // duration should be reset to 7 days as current duration was 14 days in target rate mode
@@ -2430,7 +2430,7 @@ contract RewardVaultTest is DistributorTest, StakingTest {
 
     function test_TargetRate_SwitchBackToDurationBasedDistribution_WithCustomDuration() public {
         // Step 1: Set a custom duration first
-        vm.prank(busdVaultManager);
+        vm.prank(honeyVaultManager);
         vault.setRewardsDuration(6 days);
         assertEq(vault.pendingRewardsDuration(), 6 days);
         assertEq(vault.rewardsDuration(), 7 days);
@@ -2452,7 +2452,7 @@ contract RewardVaultTest is DistributorTest, StakingTest {
         assertEq(vault.rewardsDuration(), 12 days);
 
         // Step 4: Switch back to duration-based distribution
-        vm.prank(busdVaultManager);
+        vm.prank(honeyVaultManager);
         vault.setTargetRewardsPerSecond(0);
         // duration should be reset to 7 days as current duration was 12 days in target rate mode
         // and stored as pending rewards duration
@@ -2460,7 +2460,7 @@ contract RewardVaultTest is DistributorTest, StakingTest {
         assertEq(vault.rewardsDuration(), 12 days);
 
         // Step 5: Set a new custom duration
-        vm.prank(busdVaultManager);
+        vm.prank(honeyVaultManager);
         // should again update the pending rewards duration to 4 days
         vault.setRewardsDuration(4 days);
         assertEq(vault.pendingRewardsDuration(), 4 days);
@@ -2494,19 +2494,19 @@ contract RewardVaultTest is DistributorTest, StakingTest {
         testFuzz_SetTargetRewardsPerSecond(targetRewardsPerSecond);
 
         // Step 3: Switch back to duration-based
-        vm.prank(busdVaultManager);
+        vm.prank(honeyVaultManager);
         vault.setTargetRewardsPerSecond(0);
 
         // Step 4: Switch to target rate again
-        vm.prank(busdVaultManager);
+        vm.prank(honeyVaultManager);
         vault.setTargetRewardsPerSecond(targetRewardsPerSecond);
 
         // Step 5: Switch back to duration-based again
-        vm.prank(busdVaultManager);
+        vm.prank(honeyVaultManager);
         vault.setTargetRewardsPerSecond(0);
 
         // Step 6: Verify duration-based functionality works
-        vm.prank(busdVaultManager);
+        vm.prank(honeyVaultManager);
         vault.setRewardsDuration(5 days);
         assertEq(vault.pendingRewardsDuration(), 5 days);
         assertEq(vault.rewardsDuration(), 7 days);
@@ -2604,9 +2604,9 @@ contract RewardVaultTest is DistributorTest, StakingTest {
     function test_RewardTokenMigration_TriggeredOnStake() public {
         assertEq(address(vault.rewardToken()), address(emissionToken));
 
-        deal(address(busd), user, 10 ether);
+        deal(address(honey), user, 10 ether);
         vm.prank(user);
-        busd.approve(address(vault), 10 ether);
+        honey.approve(address(vault), 10 ether);
 
         vm.expectEmit(true, true, false, false, address(vault));
         emit IRewardVault.RewardTokenMigrated(address(bgt), address(emissionToken));

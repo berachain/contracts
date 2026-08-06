@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.26;
 
-import { BUSD } from "src/busd/BUSD.sol";
-import { BUSDFactory } from "src/busd/BUSDFactory.sol";
-import { BUSDFactoryReader } from "src/busd/BUSDFactoryReader.sol";
+import { Honey } from "src/honey/Honey.sol";
+import { HoneyFactory } from "src/honey/HoneyFactory.sol";
+import { HoneyFactoryReader } from "src/honey/HoneyFactoryReader.sol";
 import { BeraChef, IBeraChef } from "src/pol/rewards/BeraChef.sol";
 import { BGT } from "src/pol/BGT.sol";
 import { BGTStaker } from "src/pol/BGTStaker.sol";
@@ -39,9 +39,9 @@ abstract contract Storage {
     POLDeployer internal polDeployer;
     BGTFeeDeployer internal feeDeployer;
     WBERA internal wbera;
-    BUSD internal busd;
-    BUSDFactory internal busdFactory;
-    BUSDFactoryReader internal busdFactoryReader;
+    Honey internal honey;
+    HoneyFactory internal honeyFactory;
+    HoneyFactoryReader internal honeyFactoryReader;
     BGTIncentiveDistributor internal bgtIncentiveDistributor;
     WBERAStakerVault internal wberaStakerVault;
     WBERAStakerVaultWithdrawalRequest internal wberaStakerVaultWithdrawalRequest;

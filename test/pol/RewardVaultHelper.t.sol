@@ -11,7 +11,7 @@ import { IStakingRewards } from "src/base/IStakingRewards.sol";
 import { IRewardVaultHelper, IPOLErrors } from "src/pol/interfaces/IRewardVaultHelper.sol";
 import { IRewardAllocation } from "src/pol/interfaces/IRewardAllocation.sol";
 import { DistributorTest } from "./Distributor.t.sol";
-import { MockDAI } from "@mock/busd/MockAssets.sol";
+import { MockDAI } from "@mock/honey/MockAssets.sol";
 import { MockERC4626 } from "@mock/token/MockERC4626.sol";
 
 contract RewardVaultHelperTest is DistributorTest {
@@ -102,7 +102,7 @@ contract RewardVaultHelperTest is DistributorTest {
 
     function test_ClaimAllRewards_SingleVault() public {
         _distributeRewards();
-        _stakeInVault(user, address(vault), address(busd), 100 ether);
+        _stakeInVault(user, address(vault), address(honey), 100 ether);
         vm.warp(block.timestamp + 1 weeks);
 
         uint256 earned = vault.earned(user);
@@ -121,7 +121,7 @@ contract RewardVaultHelperTest is DistributorTest {
     function test_ClaimAllRewards_MultipleVaults() public {
         RewardVault vault2 = _createAndSetupSecondVault();
 
-        _stakeInVault(user, address(vault), address(busd), 100 ether);
+        _stakeInVault(user, address(vault), address(honey), 100 ether);
         dai.mint(user, 100 ether);
         _stakeInVault(user, address(vault2), address(dai), 100 ether);
 
@@ -153,7 +153,7 @@ contract RewardVaultHelperTest is DistributorTest {
 
     function test_ClaimAllRewards_EmitsRewardsClaimedEvent() public {
         _distributeRewards();
-        _stakeInVault(user, address(vault), address(busd), 100 ether);
+        _stakeInVault(user, address(vault), address(honey), 100 ether);
         vm.warp(block.timestamp + 1 weeks);
 
         uint256 earned = vault.earned(user);
@@ -169,7 +169,7 @@ contract RewardVaultHelperTest is DistributorTest {
 
     function test_ClaimAllRewards_NoRewardsEarned() public {
         _distributeRewards();
-        _stakeInVault(user, address(vault), address(busd), 100 ether);
+        _stakeInVault(user, address(vault), address(honey), 100 ether);
 
         address[] memory vaults = _singleVaultArray(address(vault));
 
@@ -181,7 +181,7 @@ contract RewardVaultHelperTest is DistributorTest {
 
     function test_ClaimAllRewards_ReceiverIsDifferentFromCaller() public {
         _distributeRewards();
-        _stakeInVault(user, address(vault), address(busd), 100 ether);
+        _stakeInVault(user, address(vault), address(honey), 100 ether);
         vm.warp(block.timestamp + 1 weeks);
 
         uint256 earned = vault.earned(user);
@@ -197,7 +197,7 @@ contract RewardVaultHelperTest is DistributorTest {
 
     function test_ClaimAllRewards_CallerHasNoStake() public {
         _distributeRewards();
-        _stakeInVault(user, address(vault), address(busd), 100 ether);
+        _stakeInVault(user, address(vault), address(honey), 100 ether);
         vm.warp(block.timestamp + 1 weeks);
 
         address nobody = makeAddr("nobody");
@@ -211,7 +211,7 @@ contract RewardVaultHelperTest is DistributorTest {
 
     function test_ClaimAllRewards_ClaimingTwiceYieldsZeroSecondTime() public {
         _distributeRewards();
-        _stakeInVault(user, address(vault), address(busd), 100 ether);
+        _stakeInVault(user, address(vault), address(honey), 100 ether);
         vm.warp(block.timestamp + 1 weeks);
 
         address[] memory vaults = _singleVaultArray(address(vault));
@@ -237,7 +237,7 @@ contract RewardVaultHelperTest is DistributorTest {
 
     function test_ClaimAllRewardsWithOutput_SWBERA_DepositsIntoVault() public {
         _distributeRewards();
-        _stakeInVault(user, address(vault), address(busd), 100 ether);
+        _stakeInVault(user, address(vault), address(honey), 100 ether);
         vm.warp(block.timestamp + 1 weeks);
 
         uint256 earned = vault.earned(user);
@@ -255,7 +255,7 @@ contract RewardVaultHelperTest is DistributorTest {
 
     function test_ClaimAllRewardsWithOutput_SWBERA_EmitsEvent() public {
         _distributeRewards();
-        _stakeInVault(user, address(vault), address(busd), 100 ether);
+        _stakeInVault(user, address(vault), address(honey), 100 ether);
         vm.warp(block.timestamp + 1 weeks);
 
         uint256 earned = vault.earned(user);
@@ -272,7 +272,7 @@ contract RewardVaultHelperTest is DistributorTest {
     function test_ClaimAllRewardsWithOutput_SWBERA_MultipleVaults() public {
         RewardVault vault2 = _createAndSetupSecondVault();
 
-        _stakeInVault(user, address(vault), address(busd), 100 ether);
+        _stakeInVault(user, address(vault), address(honey), 100 ether);
         dai.mint(user, 100 ether);
         _stakeInVault(user, address(vault2), address(dai), 100 ether);
 
@@ -297,7 +297,7 @@ contract RewardVaultHelperTest is DistributorTest {
 
     function test_ClaimAllRewardsWithOutput_WBERA_SendsDirectly() public {
         _distributeRewards();
-        _stakeInVault(user, address(vault), address(busd), 100 ether);
+        _stakeInVault(user, address(vault), address(honey), 100 ether);
         vm.warp(block.timestamp + 1 weeks);
 
         uint256 earned = vault.earned(user);
@@ -315,7 +315,7 @@ contract RewardVaultHelperTest is DistributorTest {
 
     function test_ClaimAllRewardsWithOutput_WBERA_EmitsEvent() public {
         _distributeRewards();
-        _stakeInVault(user, address(vault), address(busd), 100 ether);
+        _stakeInVault(user, address(vault), address(honey), 100 ether);
         vm.warp(block.timestamp + 1 weeks);
 
         uint256 earned = vault.earned(user);
@@ -331,7 +331,7 @@ contract RewardVaultHelperTest is DistributorTest {
 
     function test_ClaimAllRewardsWithOutput_NativeBERA() public {
         _distributeRewards();
-        _stakeInVault(user, address(vault), address(busd), 100 ether);
+        _stakeInVault(user, address(vault), address(honey), 100 ether);
         vm.warp(block.timestamp + 1 weeks);
 
         uint256 earned = vault.earned(user);
@@ -363,7 +363,7 @@ contract RewardVaultHelperTest is DistributorTest {
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
 
     function test_WithdrawAllFromVaults_SingleVault() public {
-        _stakeInVault(user, address(vault), address(busd), 100 ether);
+        _stakeInVault(user, address(vault), address(honey), 100 ether);
         assertEq(vault.balanceOf(user), 100 ether);
 
         address receiver = makeAddr("receiver");
@@ -373,12 +373,12 @@ contract RewardVaultHelperTest is DistributorTest {
         helper.withdrawAllFromVaults(vaults, receiver);
 
         assertEq(vault.balanceOf(user), 0);
-        assertEq(busd.balanceOf(receiver), 100 ether);
-        assertEq(busd.balanceOf(address(helper)), 0);
+        assertEq(honey.balanceOf(receiver), 100 ether);
+        assertEq(honey.balanceOf(address(helper)), 0);
     }
 
     function test_WithdrawAllFromVaults_ReceiverIsCaller() public {
-        _stakeInVault(user, address(vault), address(busd), 100 ether);
+        _stakeInVault(user, address(vault), address(honey), 100 ether);
 
         address[] memory vaults = _singleVaultArray(address(vault));
 
@@ -386,12 +386,12 @@ contract RewardVaultHelperTest is DistributorTest {
         helper.withdrawAllFromVaults(vaults, user);
 
         assertEq(vault.balanceOf(user), 0);
-        assertEq(busd.balanceOf(user), 100 ether);
+        assertEq(honey.balanceOf(user), 100 ether);
     }
 
     function test_WithdrawAllFromVaults_MultipleVaults() public {
         RewardVault vault2 = _createAndSetupSecondVault();
-        _stakeInVault(user, address(vault), address(busd), 100 ether);
+        _stakeInVault(user, address(vault), address(honey), 100 ether);
         _stakeInVault(user, address(vault2), address(dai), 50 ether);
 
         address receiver = makeAddr("receiver");
@@ -404,16 +404,16 @@ contract RewardVaultHelperTest is DistributorTest {
 
         assertEq(vault.balanceOf(user), 0);
         assertEq(vault2.balanceOf(user), 0);
-        assertEq(busd.balanceOf(receiver), 100 ether);
+        assertEq(honey.balanceOf(receiver), 100 ether);
         assertEq(dai.balanceOf(receiver), 50 ether);
-        assertEq(busd.balanceOf(address(helper)), 0);
+        assertEq(honey.balanceOf(address(helper)), 0);
         assertEq(dai.balanceOf(address(helper)), 0);
     }
 
     function test_WithdrawAllFromVaults_SkipsVaultWithNoStake() public {
         RewardVault vault2 = _createAndSetupSecondVault();
         // user only stakes in `vault`, not `vault2`
-        _stakeInVault(user, address(vault), address(busd), 100 ether);
+        _stakeInVault(user, address(vault), address(honey), 100 ether);
 
         address receiver = makeAddr("receiver");
         address[] memory vaults = new address[](2);
@@ -423,15 +423,15 @@ contract RewardVaultHelperTest is DistributorTest {
         vm.prank(user);
         helper.withdrawAllFromVaults(vaults, receiver);
 
-        assertEq(busd.balanceOf(receiver), 100 ether);
+        assertEq(honey.balanceOf(receiver), 100 ether);
         assertEq(dai.balanceOf(receiver), 0);
         assertEq(vault.balanceOf(user), 0);
     }
 
     function test_WithdrawAllFromVaults_ExcludesDelegateStake() public {
         address delegate = makeAddr("delegate");
-        _stakeInVault(user, address(vault), address(busd), 100 ether);
-        _delegateStakeInVault(delegate, user, address(vault), address(busd), 40 ether);
+        _stakeInVault(user, address(vault), address(honey), 100 ether);
+        _delegateStakeInVault(delegate, user, address(vault), address(honey), 40 ether);
 
         assertEq(vault.balanceOf(user), 140 ether);
         assertEq(vault.getTotalDelegateStaked(user), 40 ether);
@@ -443,14 +443,14 @@ contract RewardVaultHelperTest is DistributorTest {
         helper.withdrawAllFromVaults(vaults, receiver);
 
         // only the self-staked 100 is withdrawn; the delegate-staked 40 stays put
-        assertEq(busd.balanceOf(receiver), 100 ether);
+        assertEq(honey.balanceOf(receiver), 100 ether);
         assertEq(vault.balanceOf(user), 40 ether);
         assertEq(vault.getTotalDelegateStaked(user), 40 ether);
     }
 
     function test_WithdrawAllFromVaults_PreservesEarnedRewards() public {
         _distributeRewards();
-        _stakeInVault(user, address(vault), address(busd), 100 ether);
+        _stakeInVault(user, address(vault), address(honey), 100 ether);
         vm.warp(block.timestamp + 1 weeks);
 
         uint256 earnedBefore = vault.earned(user);
@@ -466,17 +466,17 @@ contract RewardVaultHelperTest is DistributorTest {
     }
 
     function test_WithdrawAllFromVaults_SecondCallWithdrawsNothing() public {
-        _stakeInVault(user, address(vault), address(busd), 100 ether);
+        _stakeInVault(user, address(vault), address(honey), 100 ether);
         address[] memory vaults = _singleVaultArray(address(vault));
 
         vm.prank(user);
         helper.withdrawAllFromVaults(vaults, user);
-        uint256 balanceAfterFirst = busd.balanceOf(user);
+        uint256 balanceAfterFirst = honey.balanceOf(user);
         assertEq(balanceAfterFirst, 100 ether);
 
         vm.prank(user);
         helper.withdrawAllFromVaults(vaults, user);
-        assertEq(busd.balanceOf(user), balanceAfterFirst);
+        assertEq(honey.balanceOf(user), balanceAfterFirst);
     }
 
     function test_WithdrawAllFromVaults_EmptyArray_NoRevert() public {
@@ -485,11 +485,11 @@ contract RewardVaultHelperTest is DistributorTest {
         vm.prank(user);
         helper.withdrawAllFromVaults(vaults, user);
 
-        assertEq(busd.balanceOf(user), 0);
+        assertEq(honey.balanceOf(user), 0);
     }
 
     function test_WithdrawAllFromVaults_RevertsOnZeroReceiver() public {
-        _stakeInVault(user, address(vault), address(busd), 100 ether);
+        _stakeInVault(user, address(vault), address(honey), 100 ether);
         address[] memory vaults = _singleVaultArray(address(vault));
 
         vm.prank(user);
@@ -498,7 +498,7 @@ contract RewardVaultHelperTest is DistributorTest {
     }
 
     function test_WithdrawAllFromVaults_RevertsWhenVaultPaused() public {
-        _stakeInVault(user, address(vault), address(busd), 100 ether);
+        _stakeInVault(user, address(vault), address(honey), 100 ether);
 
         // grant this contract the manager role, then the pauser role, then pause the vault.
         bytes32 managerRole = factory.VAULT_MANAGER_ROLE();

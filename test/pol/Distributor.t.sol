@@ -18,7 +18,7 @@ import { Distributor } from "src/pol/rewards/Distributor.sol";
 import { RewardVault } from "src/pol/rewards/RewardVault.sol";
 
 import { BeaconRootsHelperTest } from "./BeaconRootsHelper.t.sol";
-import { MockBUSD } from "@mock/busd/MockBUSD.sol";
+import { MockHoney } from "@mock/honey/MockHoney.sol";
 import { ReentrantERC20 } from "@mock/token/ReentrantERC20.sol";
 import { MockERC20 } from "@mock/token/MockERC20.sol";
 

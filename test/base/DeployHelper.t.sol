@@ -7,7 +7,7 @@ import { DeployHelper } from "src/base/DeployHelper.sol";
 import { Salt } from "src/base/Salt.sol";
 import { MockERC20 } from "../mock/token/MockERC20.sol";
 import { MockERC20WithConstructor } from "../mock/token/MockERC20WithConstructor.sol";
-import { MockDummy } from "../mock/busd/MockAssets.sol";
+import { MockDummy } from "../mock/honey/MockAssets.sol";
 
 contract DeployHelperTest is DeployHelper, Test {
     bytes private constant CONTRACT_INIT_CODE = type(MockDummy).creationCode;

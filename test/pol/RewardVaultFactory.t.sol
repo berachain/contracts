@@ -9,18 +9,18 @@ import { MockRewardVault } from "test/mock/pol/MockRewardVault.sol";
 import { RewardVault } from "src/pol/rewards/RewardVault.sol";
 import { RewardVaultFactory, IRewardVaultFactory } from "src/pol/rewards/RewardVaultFactory.sol";
 import { IPOLErrors } from "src/pol/interfaces/IRewardVaultFactory.sol";
-import { MockBUSD } from "@mock/busd/MockBUSD.sol";
+import { MockHoney } from "@mock/honey/MockHoney.sol";
 import { POLTest } from "./POL.t.sol";
 
 contract RewardVaultFactoryTest is POLTest {
-    MockBUSD internal busd;
+    MockHoney internal honey;
     address internal vaultManager = makeAddr("vaultManager");
     bytes32 internal constant VAULT_MANAGER_ROLE = keccak256("VAULT_MANAGER_ROLE");
     bytes32 internal constant VAULT_PAUSER_ROLE = keccak256("VAULT_PAUSER_ROLE");
 
     function setUp() public override {
         super.setUp();
-        busd = new MockBUSD();
+        honey = new MockHoney();
         vm.prank(governance);
         factory.grantRole(VAULT_MANAGER_ROLE, vaultManager);
     }
@@ -28,7 +28,7 @@ contract RewardVaultFactoryTest is POLTest {
     function test_InitialState() public view {
         assertEq(factory.bgt(), address(bgt));
         assertEq(factory.distributor(), address(distributor));
-        assertEq(factory.getVault(address(busd)), address(0));
+        assertEq(factory.getVault(address(honey)), address(0));
         assert(factory.hasRole(factory.DEFAULT_ADMIN_ROLE(), governance));
     }
 
@@ -45,24 +45,24 @@ contract RewardVaultFactoryTest is POLTest {
 
     function testFuzz_CreateRewardVault(address deployer) public {
         vm.prank(deployer);
-        address vault = factory.createRewardVault(address(busd));
-        assertEq(factory.predictRewardVaultAddress(address(busd)), vault);
-        assertEq(factory.getVault(address(busd)), vault);
+        address vault = factory.createRewardVault(address(honey));
+        assertEq(factory.predictRewardVaultAddress(address(honey)), vault);
+        assertEq(factory.getVault(address(honey)), vault);
     }
 
     function test_CreateRewardVault_ReturnCachedIfAlreadyCreated() public {
         address firstCreation = test_CreateRewardVault();
-        address secondCreation = factory.createRewardVault(address(busd));
+        address secondCreation = factory.createRewardVault(address(honey));
         assertEq(firstCreation, secondCreation);
     }
 
     function test_CreateRewardVault() public returns (address vault) {
-        address predictedAddress = factory.predictRewardVaultAddress(address(busd));
+        address predictedAddress = factory.predictRewardVaultAddress(address(honey));
         vm.expectEmit();
-        emit IRewardVaultFactory.VaultCreated(address(busd), predictedAddress);
-        vault = factory.createRewardVault(address(busd));
+        emit IRewardVaultFactory.VaultCreated(address(honey), predictedAddress);
+        vault = factory.createRewardVault(address(honey));
         assertEq(predictedAddress, vault);
-        assertEq(factory.getVault(address(busd)), vault);
+        assertEq(factory.getVault(address(honey)), vault);
     }
 
     function test_GetVaultsLength() public {

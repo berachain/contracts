@@ -3,8 +3,8 @@ pragma solidity 0.8.26;
 
 import { IGovernor } from "@openzeppelin/contracts/governance/IGovernor.sol";
 
-import { MockBUSD } from "@mock/busd/MockBUSD.sol";
-import { MockDAI } from "@mock/busd/MockAssets.sol";
+import { MockHoney } from "@mock/honey/MockHoney.sol";
+import { MockDAI } from "@mock/honey/MockAssets.sol";
 import { RewardVault } from "src/pol/rewards/RewardVault.sol";
 import { BerachainGovernance } from "src/gov/BerachainGovernance.sol";
 import { TimeLock } from "src/gov/TimeLock.sol";
@@ -17,8 +17,8 @@ abstract contract GovernanceBaseTest is POLTest {
     TimeLock internal timelock;
 
     function createVault() internal returns (RewardVault vault) {
-        // Setup the reward allocation and vault for the busd token.
-        MockBUSD consensusAsset = new MockBUSD();
+        // Setup the reward allocation and vault for the honey token.
+        MockHoney consensusAsset = new MockHoney();
 
         // The creation of the vault is permissionless.
         vault = RewardVault(payable(factory.createRewardVault(address(consensusAsset))));
