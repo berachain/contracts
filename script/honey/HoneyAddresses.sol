@@ -35,7 +35,7 @@ abstract contract HoneyAddressBook {
     function _getMainnetHoneyAddresses() private pure returns (HoneyAddresses memory) {
         return HoneyAddresses({
             honey: 0xFCBD14DC51f0A4d49d5E53C2E0950e0bC26d0Dce,
-            honeyImpl: 0x96b1a552A97dA5503343d0F9FF2766c616E62905,
+            honeyImpl: 0x33260B0b0A81DBB6D23509dcDc5F321CB585F22a,
             honeyFactory: 0xA4aFef880F5cE1f63c9fb48F661E27F8B4216401,
             honeyFactoryReader: 0x285e147060CDc5ba902786d3A471224ee6cE0F91,
             honeyFactoryImpl: 0xB587F98c81c37432067060196aC1DdAEC106ED8D,
@@ -51,7 +51,7 @@ abstract contract HoneyAddressBook {
     function _getTestnetHoneyAddresses() private pure returns (HoneyAddresses memory) {
         return HoneyAddresses({
             honey: 0xFCBD14DC51f0A4d49d5E53C2E0950e0bC26d0Dce,
-            honeyImpl: 0xD1886E0659Ed88812aeA75862Cc9891097c25542,
+            honeyImpl: 0xD677aE72Cd3030B37bc89De6a2e74b142B9ed245,
             honeyFactory: 0xA4aFef880F5cE1f63c9fb48F661E27F8B4216401,
             honeyFactoryReader: 0x285e147060CDc5ba902786d3A471224ee6cE0F91,
             honeyFactoryImpl: 0xF44F412c1CC4e92aE657aF93740De86048A06b95,
@@ -65,7 +65,7 @@ abstract contract HoneyAddressBook {
     function _getDevnetHoneyAddresses() private pure returns (HoneyAddresses memory) {
         return HoneyAddresses({
             honey: 0x4475bdcd6F2Ded26Ea5074beb862271f2141f696,
-            honeyImpl: 0x4D4Ff71C50D47a5A45682F42E1E96bdED8fE7516,
+            honeyImpl: 0x6a37d2CC0EbF8085fB9892488c4060C6714Fc58D,
             honeyFactory: 0x2AA7F988284fD04cE83b27d017B89731c67d8F67,
             honeyFactoryReader: 0xf1CF3467C9508dfa6D1197F5359419856B3A3300,
             honeyFactoryImpl: 0xFc5d7EDd77f0b2386f5F960D6868D9022E6603d6,
@@ -79,7 +79,7 @@ abstract contract HoneyAddressBook {
     function _getAnvilHoneyAddresses() private pure returns (HoneyAddresses memory) {
         return HoneyAddresses({
             honey: 0x442130BDb0eC2e76B1804362b9e9c25bCE299959,
-            honeyImpl: 0x36a10E516452BD2A80Bd5F421B0bC69eB0dFBca9,
+            honeyImpl: 0xB18364a3dB96b441DC8a35C30B60145e19174B5D,
             honeyFactory: 0xeBF958b3b453f76fBE491a7F3ED29e37a509F530,
             honeyFactoryReader: 0x353F8910914a46b3b971d54A131184fB46B8d7f8,
             honeyFactoryImpl: 0x22F160db4f4a5C17E985430b25de9B57609D31F1,

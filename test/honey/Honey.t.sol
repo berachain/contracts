@@ -90,12 +90,10 @@ contract HoneyTest is StdCheats, SoladyTest {
         factory = deployer.honeyFactory();
         assertEq(honey.hasRole(factory.DEFAULT_ADMIN_ROLE(), governance), true);
 
-        // verify the version is "1"
-        assertEq(honey.version(), "1");
         // initialize the contract with the v2 update
         honey.initializeV1Update();
         // verify the EIP712 domain separator version is "1"
-        assertEq(honey.version(), "1");
+        assertEq(honey.version(), "2");
     }
 
     function test_Initialize_FailsIfZeroAddresses() public {
@@ -111,8 +109,8 @@ contract HoneyTest is StdCheats, SoladyTest {
     }
 
     function test_MetaData() public {
-        assertEq(honey.name(), "Honey");
-        assertEq(honey.symbol(), "HONEY");
+        assertEq(honey.name(), "Bera USD");
+        assertEq(honey.symbol(), "BUSD");
         assertEq(honey.decimals(), 18);
     }
 
@@ -361,8 +359,8 @@ contract HoneyTest is StdCheats, SoladyTest {
     }
 
     function test_UpgradeToFaultyHoney() public {
-        assertEq(honey.name(), "Honey");
-        assertEq(honey.symbol(), "HONEY");
+        assertEq(honey.name(), "Bera USD");
+        assertEq(honey.symbol(), "BUSD");
 
         address honeyFactory = honey.factory();
 
@@ -393,8 +391,8 @@ contract HoneyTest is StdCheats, SoladyTest {
         // mint 1 honey
         _mint(1e18);
 
-        assertEq(honey.name(), "Honey");
-        assertEq(honey.symbol(), "HONEY");
+        assertEq(honey.name(), "Bera USD");
+        assertEq(honey.symbol(), "BUSD");
 
         // get the totalSupply and the factory address from current implementation
         uint256 honeyMintedBeforeUpgrade = honey.totalSupply();

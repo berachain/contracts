@@ -17,8 +17,8 @@ import { EIP3009 } from "../base/EIP3009.sol";
 contract Honey is EIP3009, EIP2612, PausableUpgradeable, AccessControlUpgradeable, UUPSUpgradeable, IHoneyErrors {
     using Utils for bytes4;
 
-    string private constant NAME = "Honey";
-    string private constant SYMBOL = "HONEY";
+    string private constant NAME = "Bera USD";
+    string private constant SYMBOL = "BUSD";
 
     /// @notice The factory contract that mints and burns Honey.
     address public factory;
@@ -85,7 +85,7 @@ contract Honey is EIP3009, EIP2612, PausableUpgradeable, AccessControlUpgradeabl
     /// @notice Version string for the EIP712 domain separator
     /// @return Version string
     function version() public pure returns (string memory) {
-        return "1";
+        return "2";
     }
 
     /// @dev Override to use the version function in case it changes to keep the EIP712 domain separator consistent.
