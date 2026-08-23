@@ -349,7 +349,7 @@ contract BeraChefTest is POLTest {
         beraChef.queueNewRewardAllocation(valData.pubkey, uint64(block.number + 1), weights);
     }
 
-    /// @dev Should fail if the new reward allocation weights too high TODO
+    /// @dev Validator's active RA becomes invalid after lowering maxWeightPerVault, should fallback to default RA.
     function test_FallbackToDefaultRAWhenLoweringMaxWeightPerVault() public {
         vm.prank(governance);
         beraChef.setVaultWhitelistedStatus(receiver2, true, "");
@@ -502,12 +502,112 @@ contract BeraChefTest is POLTest {
         assertEq(ra.weights[1].percentageNumerator, 7000);
     }
 
-    /// @dev Should queue a new reward allocation
-    // TODO: Fuzz test
-    function testFuzz_QueueANewRewardAllocation(uint32 seed) public { }
+    // Fuzz test: generate random valid weight distributions and queue them
+    function testFuzz_QueueANewRewardAllocation(uint32 seed) public {
+        // Use seed to generate a random weight split between receiver and receiver2
+        // Both are already whitelisted in setUp
+        uint96 maxWeight = uint96(beraChef.maxWeightPerVault());
+        uint96 weight1;
+        uint96 weight2;
 
-    // TODO: Invariant test
-    // function invariant_test() public { }
+        // Decide between 1-vault and 2-vault allocations
+        if (seed % 2 == 0) {
+            // Single vault: 100% to receiver (only valid if maxWeight >= 10000)
+            if (maxWeight >= 10_000) {
+                IRewardAllocation.Weight[] memory weights = new IRewardAllocation.Weight[](1);
+                weights[0] = IRewardAllocation.Weight(receiver, 10_000);
+
+                uint64 startBlock = uint64(block.number + 1);
+                vm.prank(operator);
+                beraChef.queueNewRewardAllocation(valData.pubkey, startBlock, weights);
+
+                IRewardAllocation.RewardAllocation memory ra = beraChef.getQueuedRewardAllocation(valData.pubkey);
+                assertEq(ra.startBlock, startBlock);
+                assertEq(ra.weights.length, 1);
+                assertEq(ra.weights[0].receiver, receiver);
+                assertEq(ra.weights[0].percentageNumerator, 10_000);
+            }
+        } else {
+            // Two vaults: random split that sums to 10000
+            weight1 = uint96(bound(uint256(seed), 1, 9999));
+            // Each weight must be <= maxWeight
+            if (weight1 > maxWeight) weight1 = maxWeight;
+            weight2 = 10_000 - weight1;
+            if (weight2 > maxWeight) {
+                // Adjust: clamp weight2 to maxWeight and recompute weight1
+                weight2 = maxWeight;
+                weight1 = 10_000 - weight2;
+            }
+            // Skip if either weight is 0 (invalid per _validateWeights)
+            if (weight1 == 0 || weight2 == 0) return;
+
+            IRewardAllocation.Weight[] memory weights = new IRewardAllocation.Weight[](2);
+            weights[0] = IRewardAllocation.Weight(receiver, weight1);
+            weights[1] = IRewardAllocation.Weight(receiver2, weight2);
+
+            uint64 startBlock = uint64(block.number + 1);
+            vm.prank(operator);
+            beraChef.queueNewRewardAllocation(valData.pubkey, startBlock, weights);
+
+            IRewardAllocation.RewardAllocation memory ra = beraChef.getQueuedRewardAllocation(valData.pubkey);
+            assertEq(ra.startBlock, startBlock);
+            assertEq(ra.weights.length, 2);
+            assertEq(ra.weights[0].receiver, receiver);
+            assertEq(ra.weights[0].percentageNumerator, weight1);
+            assertEq(ra.weights[1].receiver, receiver2);
+            assertEq(ra.weights[1].percentageNumerator, weight2);
+        }
+    }
+
+    /// @dev Invariant-style fuzz: queue, activate, and verify the full lifecycle preserves weight invariants.
+    function testFuzz_QueueActivateRewardAllocation_Invariants(uint96 weightSeed, uint64 blockOffset) public {
+        blockOffset = uint64(bound(blockOffset, 1, 10_000));
+        uint96 maxWeight = uint96(beraChef.maxWeightPerVault());
+
+        // Generate a valid 2-vault weight split
+        uint96 weight1 = uint96(bound(uint256(weightSeed), 1, 9999));
+        if (weight1 > maxWeight) weight1 = maxWeight;
+        uint96 weight2 = 10_000 - weight1;
+        if (weight2 > maxWeight) {
+            weight2 = maxWeight;
+            weight1 = 10_000 - weight2;
+        }
+        vm.assume(weight1 > 0 && weight2 > 0);
+
+        IRewardAllocation.Weight[] memory weights = new IRewardAllocation.Weight[](2);
+        weights[0] = IRewardAllocation.Weight(receiver, weight1);
+        weights[1] = IRewardAllocation.Weight(receiver2, weight2);
+
+        uint64 startBlock = uint64(block.number + blockOffset);
+
+        // Queue
+        vm.prank(operator);
+        beraChef.queueNewRewardAllocation(valData.pubkey, startBlock, weights);
+        assertTrue(beraChef.getQueuedRewardAllocation(valData.pubkey).startBlock > 0, "Should be queued");
+
+        // Advance and activate
+        vm.roll(startBlock);
+        vm.prank(address(distributor));
+        beraChef.activateReadyQueuedRewardAllocation(valData.pubkey);
+
+        // Invariant 1: Queued allocation should be deleted after activation
+        IRewardAllocation.RewardAllocation memory qra = beraChef.getQueuedRewardAllocation(valData.pubkey);
+        assertEq(qra.startBlock, 0, "Queued allocation should be cleared");
+        assertEq(qra.weights.length, 0, "Queued weights should be cleared");
+
+        // Invariant 2: Active allocation weights always sum to 100%
+        IRewardAllocation.RewardAllocation memory ara = beraChef.getSetActiveRewardAllocation(valData.pubkey);
+        assertEq(ara.weights.length, 2, "Should have 2 weights");
+        uint96 totalWeight = ara.weights[0].percentageNumerator + ara.weights[1].percentageNumerator;
+        assertEq(totalWeight, 10_000, "Weights must sum to 100%");
+
+        // Invariant 3: Receivers match what was queued
+        assertEq(ara.weights[0].receiver, receiver, "Receiver 0 must match");
+        assertEq(ara.weights[1].receiver, receiver2, "Receiver 1 must match");
+
+        // Invariant 4: Start block is set to activation block
+        assertEq(ara.startBlock, startBlock, "Start block should equal activation block");
+    }
 
     /* Activating a reward allocation */
 
